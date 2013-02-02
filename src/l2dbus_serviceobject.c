@@ -75,13 +75,14 @@ l2dbus_serviceObjectHandler
         L2DBUS_TRACE((L2DBUS_TRC_WARN,
             "Cannot call handler because service object has been GC'ed"));
     }
-    else
+    /* Else if a default callback function was provided then ... */
+    else if ( LUA_NOREF != ud->cbCtx.funcRef )
     {
         /* Push function and user value on the stack and execute the callback */
         lua_rawgeti(L, LUA_REGISTRYINDEX, ud->cbCtx.funcRef);
         /* Push the service object userdata */
         lua_pushvalue(L, -2 /* Service object ud */);
-        /* Push the associated Lua userdata wrapper on the stack */
+        /* Push the associated Lua connection userdata wrapper on the stack */
         l2dbus_objectRegistryGet(L, conn);
         if ( lua_isnil(L, -1) )
         {
@@ -163,12 +164,15 @@ l2dbus_newServiceObject
 {
     l2dbus_ServiceObject* svcObjUd;
     const char* path = NULL;
+    int funcIdx = L2DBUS_CALLBACK_NOREF_NEEDED;
     int userIdx = L2DBUS_CALLBACK_NOREF_NEEDED;
+    int nArgs;
 
     L2DBUS_TRACE((L2DBUS_TRC_TRACE, "Create: service object"));
 
     /* Make sure the module is initialized */
     l2dbus_checkModuleInitialized(L);
+    nArgs = lua_gettop(L);
 
     path = luaL_checkstring(L, 1);
     if ( !l2dbus_validatePath(path) )
@@ -177,10 +181,13 @@ l2dbus_newServiceObject
     }
 
     /* Check for a handler function */
-    luaL_checktype(L, 2, LUA_TFUNCTION);
+    if ( (nArgs >= 2) &&  (LUA_TFUNCTION == lua_type(L, 2)) )
+    {
+        funcIdx = 2;
+    }
 
     /* See if an optional user value is provided */
-    if ( lua_gettop(L) >  2 )
+    if ( nArgs >  2 )
     {
         userIdx = 3;
     }
@@ -199,7 +206,7 @@ l2dbus_newServiceObject
         l2dbus_callbackInit(&svcObjUd->cbCtx);
         l2dbus_refListInit(&svcObjUd->interfaces);
 
-        l2dbus_callbackRef(L, 2 /* func */, userIdx, &svcObjUd->cbCtx);
+        l2dbus_callbackRef(L, funcIdx, userIdx, &svcObjUd->cbCtx);
         svcObjUd->obj = cdbus_objectNew(path, l2dbus_serviceObjectHandler, svcObjUd);
 
         if ( NULL == svcObjUd->obj )

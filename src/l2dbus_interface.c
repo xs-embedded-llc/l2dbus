@@ -122,7 +122,7 @@ l2dbus_interfaceHandler
         L2DBUS_TRACE((L2DBUS_TRC_WARN,
             "Cannot call interface handler because service object has been GC'ed"));
     }
-    else
+    else if ( LUA_NOREF != ud->cbCtx.funcRef )
     {
         /* Push function and user value on the stack and execute the callback */
         lua_rawgeti(L, LUA_REGISTRYINDEX, ud->cbCtx.funcRef);
@@ -191,6 +191,8 @@ l2dbus_newInterface
     l2dbus_Interface* intfUd;
     const char* intfName = NULL;
     int userIdx = L2DBUS_CALLBACK_NOREF_NEEDED;
+    int funcIdx = L2DBUS_CALLBACK_NOREF_NEEDED;
+    int nArgs = lua_gettop(L);
 
     L2DBUS_TRACE((L2DBUS_TRC_TRACE, "Create: interface"));
 
@@ -205,10 +207,13 @@ l2dbus_newInterface
     }
 
     /* Check for a handler function */
-    luaL_checktype(L, 2, LUA_TFUNCTION);
+    if ( (nArgs >= 2) &&  (LUA_TFUNCTION == lua_type(L, 2)) )
+    {
+        funcIdx = 2;
+    }
 
     /* See if an optional user value is provided */
-    if ( lua_gettop(L) >  2 )
+    if ( nArgs >  2 )
     {
         userIdx = 3;
     }
@@ -226,7 +231,7 @@ l2dbus_newInterface
         /* Reset the userdata structure */
         l2dbus_callbackInit(&intfUd->cbCtx);
 
-        l2dbus_callbackRef(L, 2 /* func */, userIdx, &intfUd->cbCtx);
+        l2dbus_callbackRef(L, funcIdx, userIdx, &intfUd->cbCtx);
         intfUd->intf = cdbus_interfaceNew(intfName, l2dbus_interfaceHandler, intfUd);
 
         if ( NULL == intfUd->intf )
@@ -454,14 +459,21 @@ l2dbus_interfaceParseItems
 
                     for ( argIdx = 0; argIdx < nArgs; ++argIdx )
                     {
-                        lua_getfield(L, argTblRef, "name");
+                        lua_rawgeti(L, argTblRef, argIdx+1);
+                        if ( LUA_TTABLE != lua_type(L, -1) )
+                        {
+                            reason = "table expected containing argument description";
+                            break;
+                        }
+
+                        lua_getfield(L, -1, "name");
                         if ( lua_isstring(L, -1) )
                         {
                             (*items)[itemIdx].args[argIdx].name = l2dbus_strDup(lua_tostring(L, -1));
                         }
                         lua_pop(L, 1);
 
-                        lua_getfield(L, argTblRef, "sig");
+                        lua_getfield(L, -1, "sig");
                         if ( !lua_isstring(L, -1) )
                         {
                             reason = "argument is missing a signature";
@@ -484,7 +496,7 @@ l2dbus_interfaceParseItems
                         }
                         else
                         {
-                            lua_getfield(L, argTblRef, "dir");
+                            lua_getfield(L, -1, "dir");
                             if ( !lua_isstring(L, -1) )
                             {
                                 /* Default to in */
@@ -509,6 +521,9 @@ l2dbus_interfaceParseItems
                             }
                             lua_pop(L, 1);
                         }
+
+                        /* Pop off the argument table */
+                        lua_pop(L, 1);
                     }
 
                     /* If we encountered a problem parsing the arguments then ... */
