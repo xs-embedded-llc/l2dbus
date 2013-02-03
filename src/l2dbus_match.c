@@ -63,14 +63,8 @@ l2dbus_matchHandler
         lua_rawgeti(L, LUA_REGISTRYINDEX, match->cbCtx.funcRef);
         lua_pushlightuserdata(L, match);
 
-        /* Since this message *could* be delivered to multiple handlers
-         * we'll make a reference to it so another handler can't
-         * inadvertently free the message from behind our back.
-         */
-        dbus_message_ref(msg);
-
         /* Leaves a Message userdata object on the stack */
-        l2dbus_messageWrap(L, msg);
+        l2dbus_messageWrap(L, msg, L2DBUS_FALSE);
 
         lua_rawgeti(L, LUA_REGISTRYINDEX, match->cbCtx.userRef);
 

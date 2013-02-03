@@ -92,6 +92,7 @@ l2dbus_newMessage
     else
     {
         msgUd->msg = dbusMsg;
+        msgUd->ownsRef = L2DBUS_TRUE;
     }
 
     return 1;
@@ -187,6 +188,7 @@ l2dbus_newMessageMethodCall
     else
     {
         msgUd->msg = dbusMsg;
+        msgUd->ownsRef = L2DBUS_TRUE;
     }
 
     return 1;
@@ -228,6 +230,7 @@ l2dbus_newMessageMethodReturn
     else
     {
         replyUd->msg = replyMsg;
+        replyUd->ownsRef = L2DBUS_TRUE;
     }
 
     return 1;
@@ -305,6 +308,7 @@ l2dbus_newMessageSignal
     else
     {
         msgUd->msg = dbusMsg;
+        msgUd->ownsRef = L2DBUS_TRUE;
     }
 
     return 1;
@@ -352,6 +356,7 @@ l2dbus_newMessageError
     else
     {
         errMsgUd->msg = errDbusMsg;
+        errMsgUd->ownsRef = L2DBUS_TRUE;
     }
 
     return 1;
@@ -390,6 +395,7 @@ l2dbus_newMessageCopy
     else
     {
         copyUd->msg = msgCopy;
+        copyUd->ownsRef = L2DBUS_TRUE;
     }
 
     return 1;
@@ -1388,8 +1394,11 @@ l2dbus_messageDispose
 
     L2DBUS_TRACE((L2DBUS_TRC_TRACE, "GC: message (userdata=%p)", ud));
 
-    if ( ud->msg != NULL )
+    if ( (ud->msg != NULL) && ud->ownsRef )
     {
+        L2DBUS_TRACE((L2DBUS_TRC_TRACE, "Unref msg type: %s  serial #: %d",
+                dbus_message_type_to_string(dbus_message_get_type(ud->msg)),
+                dbus_message_get_serial(ud->msg)));
         dbus_message_unref(ud->msg);
     }
 
@@ -1442,15 +1451,18 @@ l2dbus_Message*
 l2dbus_messageWrap
     (
     lua_State*          L,
-    struct DBusMessage* msg
+    struct DBusMessage* msg,
+    l2dbus_Bool         ownsRef
     )
 {
     l2dbus_Message* msgUd = (l2dbus_Message*)l2dbus_objectNew(L, sizeof(*msgUd),
                                                      L2DBUS_MESSAGE_TYPE_ID);
-    L2DBUS_TRACE((L2DBUS_TRC_TRACE, "Message userdata=%p", msgUd));
+    L2DBUS_TRACE((L2DBUS_TRC_TRACE, "Wrap Message userdata=%p (ownsRef=%s)",
+                msgUd, ownsRef ? "true" : "false"));
     if ( NULL != msgUd )
     {
         msgUd->msg = msg;
+        msgUd->ownsRef = ownsRef;
     }
 
     return msgUd;

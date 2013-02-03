@@ -38,6 +38,7 @@
 #include "l2dbus_message.h"
 #include "l2dbus_pendingcall.h"
 #include "l2dbus_match.h"
+#include "l2dbus_serviceobject.h"
 
 
 static int
@@ -445,7 +446,7 @@ l2dbus_connectionSendWithReplyAndBlock
     else
     {
         /* Leave the userdata on the Lua stack if successful */
-        replyMsgUd = l2dbus_messageWrap(L, replyMsg);
+        replyMsgUd = l2dbus_messageWrap(L, replyMsg, L2DBUS_TRUE);
         if ( NULL == replyMsgUd )
         {
             L2DBUS_TRACE((L2DBUS_TRC_ERROR, "Failed to wrap D-Bus reply message (serial #=%d)",
@@ -597,6 +598,51 @@ l2dbus_connectionUnregisterMatch
 
 
 static int
+l2dbus_connectionRegisterObject
+    (
+    lua_State*  L
+    )
+{
+    l2dbus_Connection* connUd;
+    l2dbus_ServiceObject* svcObjUd;
+
+    /* Make sure the module is initialized */
+    l2dbus_checkModuleInitialized(L);
+    connUd = (l2dbus_Connection*)luaL_checkudata(L, 1,
+                                                L2DBUS_CONNECTION_MTBL_NAME);
+    svcObjUd = (l2dbus_ServiceObject*)luaL_checkudata(L, 2,
+                                                L2DBUS_SERVICE_OBJECT_MTBL_NAME);
+
+    lua_pushboolean(L, cdbus_connectionRegisterObject(connUd->conn, svcObjUd->obj));
+
+    return 1;
+}
+
+
+static int
+l2dbus_connectionUnregisterObject
+    (
+    lua_State*  L
+    )
+{
+    l2dbus_Connection* connUd;
+    l2dbus_ServiceObject* svcObjUd;
+
+    /* Make sure the module is initialized */
+    l2dbus_checkModuleInitialized(L);
+    connUd = (l2dbus_Connection*)luaL_checkudata(L, 1,
+                                                L2DBUS_CONNECTION_MTBL_NAME);
+
+    svcObjUd = (l2dbus_ServiceObject*)luaL_checkudata(L, 2,
+                                                L2DBUS_SERVICE_OBJECT_MTBL_NAME);
+    lua_pushboolean(L, cdbus_connectionUnregisterObject(connUd->conn,
+                       cdbus_objectGetPath(svcObjUd->obj)));
+
+    return 1;
+}
+
+
+static int
 l2dbus_connectionDispose
     (
     lua_State*  L
@@ -663,6 +709,8 @@ static const luaL_Reg l2dbus_connMetaTable[] = {
     {"sendWithReplyAndBlock", l2dbus_connectionSendWithReplyAndBlock},
     {"registerMatch", l2dbus_connectionRegisterMatch},
     {"unregisterMatch", l2dbus_connectionUnregisterMatch},
+    {"registerServiceObject", l2dbus_connectionRegisterObject},
+    {"unregisterServiceObject", l2dbus_connectionUnregisterObject},
     {"__gc", l2dbus_connectionDispose},
     {NULL, NULL},
 };

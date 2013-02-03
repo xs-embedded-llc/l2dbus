@@ -244,8 +244,10 @@ l2dbus_pendingCallStealReply
     msg = dbus_pending_call_steal_reply(ud->pendingCall);
     if ( NULL != msg )
     {
-        /* Leaves a Message user data on the Lua stack */
-        l2dbus_messageWrap(L, msg);
+        /* Leaves a Message user data on the Lua stack. The
+         * Lua object now owns the reference
+         */
+        l2dbus_messageWrap(L, msg, L2DBUS_TRUE);
     }
     else
     {
