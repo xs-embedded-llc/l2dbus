@@ -30,9 +30,12 @@ local M = { }
 local function main(arg)
     print("Module: " .. string.match(arg[0], "^(.+)%.lua"))
     local info = l2dbus.getVersion()
-    print("Version: " .. info['verStr'])
-    print("Author: " .. info['author'])
-    print(info['copyright'])
+    print("L2DBUS Version: " .. info.l2dbusVerStr)
+    print("CDBUS Version: " .. info.cdbusVerStr)
+    print(string.format("D-Bus Version: %d.%d.%d",
+    		info.dbusMajor, info.dbusMinor, info.dbusRelease))
+    print("Author: " .. info.author)
+    print(info.copyright)
 end
 
 

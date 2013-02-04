@@ -147,64 +147,6 @@ l2dbus_callbackUnref
 
 
 void*
-l2dbus_callbackAddWeakRef
-    (
-    lua_State*  L,
-    int         udIdx
-    )
-{
-    void* p;
-    udIdx = lua_absindex(L, udIdx);
-
-    p = lua_touserdata(L, udIdx);
-    if ( NULL != p )
-    {
-        lua_rawgeti(L, LUA_REGISTRYINDEX, gUdTableRef);
-        if ( !lua_istable(L, -1) )
-        {
-            p = NULL;
-        }
-        else
-        {
-            lua_pushlightuserdata(L, p);
-            lua_pushvalue(L, udIdx);
-            lua_rawset(L, -3);
-        }
-
-        /* Pop off the table referenced by gUdTableRef */
-        lua_pop(L, 1);
-    }
-
-    return p;
-}
-
-
-void
-l2dbus_callbackRemoveWeakRef
-    (
-    lua_State*  L,
-    int         udIdx
-    )
-{
-    void* p;
-    udIdx = lua_absindex(L, udIdx);
-    p = lua_touserdata(L, udIdx);
-    if ( NULL != p )
-    {
-        lua_rawgeti(L, LUA_REGISTRYINDEX, gUdTableRef);
-        if ( lua_istable(L, -1) )
-        {
-            lua_pushlightuserdata(L, p);
-            lua_pushnil(L);
-            lua_rawset(L, -3);
-        }
-        /* Pop off the userdata table */
-        lua_pop(L, 1);
-    }
-}
-
-
-void*
 l2dbus_callbackFetchUd
     (
     lua_State*  L,

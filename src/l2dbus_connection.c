@@ -683,7 +683,7 @@ l2dbus_connectionDispose
     }
 
     /* Drop the weak reference to the userdata */
-    l2dbus_callbackRemoveWeakRef(L, -1);
+    l2dbus_objectRegistryRemove(L, ud);
 
     /* We no longer need to anchor the dispatcher */
     luaL_unref(L, LUA_REGISTRYINDEX, ud->dispUdRef);

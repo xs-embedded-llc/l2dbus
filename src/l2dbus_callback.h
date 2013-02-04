@@ -46,9 +46,6 @@ void l2dbus_callbackDestroy(lua_State* L, l2dbus_CallbackCtx* ctx);
 
 void l2dbus_callbackRef(lua_State* L, int funcIdx, int userIdx, l2dbus_CallbackCtx* ctx);
 void l2dbus_callbackUnref(lua_State* L, l2dbus_CallbackCtx* ctx);
-
-void* l2dbus_callbackAddWeakRef(lua_State* L, int udIdx);
-void l2dbus_callbackRemoveWeakRef(lua_State* L, int udIdx);
 void* l2dbus_callbackFetchUd(lua_State* L, void* p);
 
 #endif /* Guard for L2DBUS_CALLBACK_H_ */

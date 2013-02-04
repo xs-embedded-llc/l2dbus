@@ -37,7 +37,7 @@ struct lua_State;
 #define L2DBUS_VERSION_STRING   L2DBUS_VERSION_MAJOR "." \
                                 L2DBUS_VERSION_MINOR "." \
                                 L2DBUS_VERSION_RELEASE
-#define L2DBUS_COPYRIGHT        "(c) Copyright 2012 XS-Embedded LLC"
+#define L2DBUS_COPYRIGHT        "(c) Copyright 2013 XS-Embedded LLC"
 #define L2DBUS_AUTHOR           "Glenn Schmottlach"
 
 void l2dbus_checkModuleInitialized(struct lua_State* L);

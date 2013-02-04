@@ -46,6 +46,7 @@ void luaL_setfuncs(lua_State* L, const luaL_Reg* l, int nup);
 #define lua_getuservalue  lua_getfenv
 
 #define luaL_checkversion(L)    ((void)0)
+#define luaL_reg luaL_Reg
 
 #endif
 

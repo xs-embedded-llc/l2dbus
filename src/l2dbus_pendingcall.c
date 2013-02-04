@@ -123,7 +123,7 @@ l2dbus_newPendingCall
         pcUd->connRef = luaL_ref(L, LUA_REGISTRYINDEX);
 
         /* Create a weak reference to the pending call user data */
-        l2dbus_callbackAddWeakRef(L, -1);
+        l2dbus_objectRegistryAdd(L, pcUd, -1);
     }
 
     return 1;
@@ -300,7 +300,7 @@ l2dbus_pendingCallDispose
     }
 
     /* Drop the weak reference to the userdata */
-    l2dbus_callbackRemoveWeakRef(L, 1);
+    l2dbus_objectRegistryRemove(L, ud);
 
     /* We no longer need to anchor the dispatcher */
     luaL_unref(L, LUA_REGISTRYINDEX, ud->connRef);

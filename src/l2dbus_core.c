@@ -116,6 +116,14 @@ l2dbus_getVersion
     lua_setfield(L, -2, "l2dbusRelease");
     lua_pushliteral(L, L2DBUS_VERSION_STRING);
     lua_setfield(L, -2, "l2dbusVerStr");
+    lua_pushinteger(L, CDBUS_MAJOR_VERSION);
+    lua_setfield(L, -2, "cdbusMajor");
+    lua_pushinteger(L, CDBUS_MINOR_VERSION);
+    lua_setfield(L, -2, "cdbusMinor");
+    lua_pushinteger(L, CDBUS_RELEASE_VERSION);
+    lua_setfield(L, -2, "cdbusRelease");
+    lua_pushliteral(L, CDBUS_VERSION_STRING);
+    lua_setfield(L, -2, "cdbusVerStr");
     lua_pushinteger(L, L2DBUS_VERSION_NUMBER);
     lua_setfield(L, -2, "l2dbusVerNum");
     lua_pushliteral(L, L2DBUS_COPYRIGHT);
