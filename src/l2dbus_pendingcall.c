@@ -51,7 +51,7 @@ l2dbus_pendingCallHandler
 {
     lua_State* L = l2dbus_callbackGetThread();
     const char* errMsg = "";
-    l2dbus_PendingCall* ud = l2dbus_callbackFetchUd(L, user);
+    l2dbus_PendingCall* ud = l2dbus_objectRegistryGet(L, user);
 
     /* Nil or the PendingCall userdata is sitting at the top of the
      * stack at this point.
@@ -247,7 +247,7 @@ l2dbus_pendingCallStealReply
         /* Leaves a Message user data on the Lua stack. The
          * Lua object now owns the reference
          */
-        l2dbus_messageWrap(L, msg, L2DBUS_TRUE);
+        l2dbus_messageWrap(L, msg, L2DBUS_FALSE);
     }
     else
     {

@@ -138,7 +138,7 @@ l2dbus_interfaceHandler
         else
         {
             /* Push a Lua wrapper around the message */
-            l2dbus_messageWrap(L, msg, L2DBUS_FALSE);
+            l2dbus_messageWrap(L, msg, L2DBUS_TRUE);
 
             lua_rawgeti(L, LUA_REGISTRYINDEX, ud->cbCtx.userRef);
 

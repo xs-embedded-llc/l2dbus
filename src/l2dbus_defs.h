@@ -32,6 +32,7 @@
 
 #define L2DBUS_META_TABLE_PREFIX    "l2dbus."
 #define L2DBUS_META_TYPE_ID_FIELD   "__typeId"
+#define L2DBUS_META_TYPE_NAME_FIELD "__type"
 
 
 #endif /* Guard for L2DBUS_DEFS_H_ */

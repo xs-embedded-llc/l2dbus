@@ -33,7 +33,6 @@
 /* The Lua thread used to run all callbacks */
 static lua_State*  gCallbackThread = NULL;
 static int gCallbackRef = LUA_NOREF;
-static int gUdTableRef = LUA_NOREF;
 
 void
 l2dbus_callbackConfigure
@@ -45,13 +44,6 @@ l2dbus_callbackConfigure
     {
         gCallbackThread = lua_newthread(L);
         gCallbackRef = luaL_ref(L, LUA_REGISTRYINDEX);
-
-        lua_newtable(L);
-        lua_pushstring(L, "__mode");
-        lua_pushstring(L, "v");
-        lua_rawset(L, -3);
-        /* Reference the new weak table */
-        gUdTableRef = luaL_ref(L, LUA_REGISTRYINDEX);
     }
 }
 
@@ -65,9 +57,7 @@ l2dbus_callbackShutdown
     if ( LUA_NOREF != gCallbackRef )
     {
         luaL_unref(L, LUA_REGISTRYINDEX, gCallbackRef);
-        luaL_unref(L, LUA_REGISTRYINDEX, gUdTableRef);
         gCallbackRef = LUA_NOREF;
-        gUdTableRef = LUA_NOREF;
     }
 }
 
@@ -145,31 +135,4 @@ l2dbus_callbackUnref
     luaL_unref(L, LUA_REGISTRYINDEX, ctx->userRef);
 }
 
-
-void*
-l2dbus_callbackFetchUd
-    (
-    lua_State*  L,
-    void*       p
-    )
-{
-    void* ud = NULL;
-    lua_rawgeti(L, LUA_REGISTRYINDEX, gUdTableRef);
-    if ( !lua_istable(L, -1) )
-    {
-        lua_pushnil(L);
-    }
-    else
-    {
-        lua_pushlightuserdata(L, p);
-        lua_rawget(L, -2);
-        ud = lua_touserdata(L, -1);
-    }
-
-    /* Pop off the userdata table */
-    lua_remove(L, -2);
-
-    /* Returns with the userdata on the top of the stack or nil if not found */
-    return ud;
-}
 

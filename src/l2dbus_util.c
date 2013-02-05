@@ -136,13 +136,17 @@ l2dbus_createMetatable
     const luaL_Reg* funcs
     )
 {
-    if ( luaL_newmetatable(L, l2dbus_getNameByTypeId(typeId)) )
+    const char* typename = l2dbus_getNameByTypeId(typeId);
+    if ( luaL_newmetatable(L, typename) )
     {
         /* Assign the methods to this new metatable */
         luaL_setfuncs(L, funcs, 0);
 
         lua_pushinteger(L, typeId);
         lua_setfield(L, -2, L2DBUS_META_TYPE_ID_FIELD);
+
+        lua_pushstring(L, typename);
+        lua_setfield(L, -2, L2DBUS_META_TYPE_NAME_FIELD);
 
         /* Set it's metatable to point to itself */
         lua_pushvalue(L, -1);
@@ -207,6 +211,7 @@ l2dbus_getTypeName
     )
 {
     const char* name = "unknown";
+
     l2dbus_TypeId typeId = l2dbus_getMetaTypeId(L, idx);
     if ( L2DBUS_INVALID_TYPE_ID == typeId )
     {

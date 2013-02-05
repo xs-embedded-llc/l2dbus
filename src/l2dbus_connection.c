@@ -446,7 +446,7 @@ l2dbus_connectionSendWithReplyAndBlock
     else
     {
         /* Leave the userdata on the Lua stack if successful */
-        replyMsgUd = l2dbus_messageWrap(L, replyMsg, L2DBUS_TRUE);
+        replyMsgUd = l2dbus_messageWrap(L, replyMsg, L2DBUS_FALSE);
         if ( NULL == replyMsgUd )
         {
             L2DBUS_TRACE((L2DBUS_TRC_ERROR, "Failed to wrap D-Bus reply message (serial #=%d)",

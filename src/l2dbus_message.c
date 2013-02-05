@@ -92,7 +92,6 @@ l2dbus_newMessage
     else
     {
         msgUd->msg = dbusMsg;
-        msgUd->ownsRef = L2DBUS_TRUE;
     }
 
     return 1;
@@ -188,7 +187,6 @@ l2dbus_newMessageMethodCall
     else
     {
         msgUd->msg = dbusMsg;
-        msgUd->ownsRef = L2DBUS_TRUE;
     }
 
     return 1;
@@ -230,7 +228,6 @@ l2dbus_newMessageMethodReturn
     else
     {
         replyUd->msg = replyMsg;
-        replyUd->ownsRef = L2DBUS_TRUE;
     }
 
     return 1;
@@ -308,7 +305,6 @@ l2dbus_newMessageSignal
     else
     {
         msgUd->msg = dbusMsg;
-        msgUd->ownsRef = L2DBUS_TRUE;
     }
 
     return 1;
@@ -356,7 +352,6 @@ l2dbus_newMessageError
     else
     {
         errMsgUd->msg = errDbusMsg;
-        errMsgUd->ownsRef = L2DBUS_TRUE;
     }
 
     return 1;
@@ -395,7 +390,6 @@ l2dbus_newMessageCopy
     else
     {
         copyUd->msg = msgCopy;
-        copyUd->ownsRef = L2DBUS_TRUE;
     }
 
     return 1;
@@ -1176,7 +1170,7 @@ l2dbus_messageTypeToString
 
 
 static int
-l2dbus_messageSetArgs
+l2dbus_messageAddArgs
     (
     lua_State*  L
     )
@@ -1199,7 +1193,7 @@ l2dbus_messageSetArgs
 
 
 static int
-l2dbus_messageSetArgsBySignature
+l2dbus_messageAddArgsBySignature
     (
     lua_State*  L
     )
@@ -1394,7 +1388,7 @@ l2dbus_messageDispose
 
     L2DBUS_TRACE((L2DBUS_TRC_TRACE, "GC: message (userdata=%p)", ud));
 
-    if ( (ud->msg != NULL) && ud->ownsRef )
+    if ( ud->msg != NULL )
     {
         L2DBUS_TRACE((L2DBUS_TRC_TRACE, "Unref msg type: %s  serial #: %d",
                 dbus_message_type_to_string(dbus_message_get_type(ud->msg)),
@@ -1437,8 +1431,8 @@ static const luaL_Reg l2dbus_messageMetaTable[] = {
     {"setSerial", l2dbus_messageSetSerial},
     {"getSerial", l2dbus_messageGetSerial},
     {"msgTypeToString", l2dbus_messageTypeToString},
-    {"setArgs", l2dbus_messageSetArgs},
-    {"setArgsBySignature", l2dbus_messageSetArgsBySignature},
+    {"addArgs", l2dbus_messageAddArgs},
+    {"addArgsBySignature", l2dbus_messageAddArgsBySignature},
     {"getArgs", l2dbus_messageGetArgs},
     {"getArgsAsArray", l2dbus_messageGetArgsAsArray},
     {"marshallToArray", l2dbus_messageMarshallToArray},
@@ -1452,17 +1446,20 @@ l2dbus_messageWrap
     (
     lua_State*          L,
     struct DBusMessage* msg,
-    l2dbus_Bool         ownsRef
+    l2dbus_Bool         addRef
     )
 {
     l2dbus_Message* msgUd = (l2dbus_Message*)l2dbus_objectNew(L, sizeof(*msgUd),
                                                      L2DBUS_MESSAGE_TYPE_ID);
-    L2DBUS_TRACE((L2DBUS_TRC_TRACE, "Wrap Message userdata=%p (ownsRef=%s)",
-                msgUd, ownsRef ? "true" : "false"));
+    L2DBUS_TRACE((L2DBUS_TRC_TRACE, "Wrap Message userdata=%p (addRef=%s)",
+                msgUd, addRef ? "true" : "false"));
     if ( NULL != msgUd )
     {
+        if ( addRef )
+        {
+            dbus_message_ref(msg);
+        }
         msgUd->msg = msg;
-        msgUd->ownsRef = ownsRef;
     }
 
     return msgUd;

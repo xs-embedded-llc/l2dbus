@@ -64,7 +64,7 @@ l2dbus_matchHandler
         lua_pushlightuserdata(L, match);
 
         /* Leaves a Message userdata object on the stack */
-        l2dbus_messageWrap(L, msg, L2DBUS_FALSE);
+        l2dbus_messageWrap(L, msg, L2DBUS_TRUE);
 
         lua_rawgeti(L, LUA_REGISTRYINDEX, match->cbCtx.userRef);
 

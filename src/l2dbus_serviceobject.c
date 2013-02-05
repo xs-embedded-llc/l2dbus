@@ -92,7 +92,7 @@ l2dbus_serviceObjectHandler
         else
         {
             /* Push a Lua wrapper around the message */
-            l2dbus_messageWrap(L, msg, L2DBUS_FALSE);
+            l2dbus_messageWrap(L, msg, L2DBUS_TRUE);
 
             /* Push the user provided value on the stack */
             lua_rawgeti(L, LUA_REGISTRYINDEX, ud->cbCtx.userRef);

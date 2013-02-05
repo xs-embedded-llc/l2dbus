@@ -46,7 +46,7 @@ l2dbus_timeoutHandler
 {
     lua_State* L = l2dbus_callbackGetThread();
     const char* errMsg = "";
-    l2dbus_Timeout* ud = l2dbus_callbackFetchUd(L, user);
+    l2dbus_Timeout* ud = l2dbus_objectRegistryGet(L, user);
 
     /* Nil or the Timeout userdata is sitting at the top of the
      * stack at this point.

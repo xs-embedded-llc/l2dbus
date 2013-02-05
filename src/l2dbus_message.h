@@ -35,10 +35,9 @@ struct DBusMessage;
 typedef struct l2dbus_Message
 {
     struct DBusMessage* msg;
-    l2dbus_Bool         ownsRef;
 } l2dbus_Message;
 
-l2dbus_Message* l2dbus_messageWrap(lua_State* L, struct DBusMessage* msg, l2dbus_Bool ownsRef);
+l2dbus_Message* l2dbus_messageWrap(lua_State* L, struct DBusMessage* msg, l2dbus_Bool addRef);
 void l2dbus_openMessage(lua_State* L);
 
 #endif /* Guard for L2DBUS_MESSAGE_H_ */
