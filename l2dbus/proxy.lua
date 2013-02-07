@@ -265,7 +265,6 @@ local Proxy =
 		local propInfo
 		if not methodInfo then
 			propInfo = proxy.metadata.properties[member]
-			error("unknown method: " .. tostring(member))
 		end
 		
 		if (methodInfo == nil) and (propInfo == nil) then
@@ -309,7 +308,7 @@ local Proxy =
 				error(string.format("property '%s' is write-only", member))
 			end
 			
-			if not proxy.ctrl.introspectionData[l2dbus.Dbus.INTERFACE_PROPERTIES] then
+			if not proxy.ctrl.introspectData[l2dbus.Dbus.INTERFACE_PROPERTIES] then
 				error(string.format("object '%s' does not support %s",
 						proxy.ctrl.objPath, l2dbus.Dbus.INTERFACE_PROPERTIES))
 			end
@@ -323,7 +322,7 @@ local Proxy =
 			end
 			
 			msg:addArgsBySignature("s", proxy.metadata.interface)
-			msg.addArgsBySignature("s", member)
+			msg:addArgsBySignature("s", member)
 			local reply, errName, errMsg = proxy.ctrl:sendMessage(msg)
 			if not reply then
 				error(string.format("%s : %s", tostring(errName), tostring(errMsg)))
@@ -352,7 +351,7 @@ local Proxy =
 			error(string.format("property '%s' is read-only", name))
 		end
 		
-		if not proxy.ctrl.introspectionData[l2dbus.Dbus.INTERFACE_PROPERTIES] then
+		if not proxy.ctrl.introspectData[l2dbus.Dbus.INTERFACE_PROPERTIES] then
 			error(string.format("object '%s' does not support %s",
 					proxy.ctrl.objPath, l2dbus.Dbus.INTERFACE_PROPERTIES))
 		end
@@ -366,8 +365,8 @@ local Proxy =
 		end
 		
 		msg:addArgsBySignature("s", proxy.metadata.interface)
-		msg.addArgsBySignature("s", name)
-		msg.addArgs(l2dbus.DbusTypes.Variant.new(value), "v" .. propInfo.sig)
+		msg:addArgsBySignature("s", name)
+		msg:addArgs(l2dbus.DbusTypes.Variant.new(value), "v" .. propInfo.sig)
 		local reply, errName, errMsg = proxy.ctrl:sendMessage(msg)
 		if not reply then
 			error(string.format("%s : %s", tostring(errName), tostring(errMsg)))
