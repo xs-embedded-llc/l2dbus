@@ -83,6 +83,7 @@ l2dbus_newDispatcher
         userData = (l2dbus_Dispatcher*)l2dbus_objectNew(L, sizeof(*userData),
                                         L2DBUS_DISPATCHER_TYPE_ID);
         userData->loopRef = LUA_NOREF;
+        userData->finalizerRef = LUA_NOREF;
         L2DBUS_TRACE((L2DBUS_TRC_TRACE, "Dispatcher userdata=%p", userData));
         if ( NULL == userData )
         {
@@ -109,6 +110,8 @@ l2dbus_newDispatcher
             lua_pushvalue(L, loopIdx);
             userData->loopRef = lua_ref(L, LUA_REGISTRYINDEX);
         }
+
+        userData->finalizerRef = l2dbus_moduleFinalizerRef(L);
     }
 
     return 1;
@@ -195,6 +198,7 @@ l2dbus_dispatcherDispose
         luaL_unref(L, LUA_REGISTRYINDEX, ud->loopRef);
         cdbus_dispatcherUnref(ud->disp);
         ud->disp = NULL;
+        l2dbus_moduleFinalizerUnref(L, ud->finalizerRef);
     }
 
     return 0;

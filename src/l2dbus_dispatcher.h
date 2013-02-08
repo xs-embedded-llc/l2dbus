@@ -34,6 +34,7 @@ typedef struct l2dbus_Dispatcher
 {
     struct cdbus_Dispatcher* disp;
     int loopRef;
+    int finalizerRef;
 
 } l2dbus_Dispatcher;
 

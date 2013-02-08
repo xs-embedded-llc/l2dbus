@@ -37,9 +37,10 @@ local ProxyController = { __type = "l2dbus.proxy_controller" }
 ProxyController.__index = ProxyController
 
 --
--- Forward declarations
+-- Forward method declarations
 --
-local newProxy
+local newMethodProxy
+local newPropertyProxy
 
 
 function M.new(conn, busName, objPath)
@@ -60,12 +61,9 @@ function M.new(conn, busName, objPath)
 end
 
 
-function ProxyController:bind(interface)
-	verify(validate.isValidInterface(interface), "invalid D-Bus interface")
-	verify(self.conn:isConnected(), "not connected to the D-Bus bus")
-	
-	local metadata
+function ProxyController:bind()
 	if not self.introspectData then
+		verify(self.conn:isConnected(), "not connected to the D-Bus bus")
 		local msg = l2dbus.Message.newMethodCall({destination=self.busName,
 								path=self.objPath,
 								interface=l2dbus.Dbus.INTERFACE_INTROSPECTABLE,
@@ -74,13 +72,13 @@ function ProxyController:bind(interface)
 		if not reply then
 			return nil, errName, errMsg
 		end
-		metadata = self:parseXml(reply:getArgs())
+		self.introspectData = self:parseXml(reply:getArgs())
 	end
-	return self:bindNoIntrospect(interface, metadata, false)
+	return true
 end
 
-function ProxyController:bindNoIntrospect(interface, introspectData, asXml)
-	verify(validate.isValidInterface(interface), "invalid D-Bus interface")
+
+function ProxyController:bindNoIntrospect(introspectData, asXml)
 	verifyTypesWithMsg("string|table", "unexpected type for arg #2", introspectData)
 	verifyTypesWithMsg("nil|boolean", "unexpected type for arg #3", asXml)
 		
@@ -88,14 +86,8 @@ function ProxyController:bindNoIntrospect(interface, introspectData, asXml)
 		self.introspectData = self:parseXml(introspectData)
 	else
 		self.introspectData = introspectData
-	end
-	
-	local metadata = self.introspectData[interface]	
-	if not metadata then
-		error("Interface '" .. interface .. "' not exposed by service")
-	end
-	
-	return newProxy(self, metadata)
+	end	
+	return true
 end
 
 
@@ -106,6 +98,19 @@ end
 
 function ProxyController:getIntrospectionData()
 	return self.introspectData
+end
+
+
+function ProxyController:getProxy(interface)
+	verify(validate.isValidInterface(interface), "invalid D-Bus interface")
+	verify( self.introspectData, "controller is not bound to service object")
+
+	local metadata = self.introspectData[interface]
+	if not metadata then
+		error("service object does not implement " .. interface)
+	end
+	
+	return { m = newMethodProxy(self, metadata), p = newPropertyProxy(self, metadata) }	
 end
 
 
@@ -167,10 +172,6 @@ end
 function ProxyController:sendMessage(msg)
 	verifyTypesWithMsg("userdata", "unexpected type for arg #1", msg)
 	
-	local function onNotifyReply(pending, co)
-		coroutine.resume(co, pending:stealReply())
-	end
-
 	local reply = nil
 	local errName = nil
 	local errMsg = nil
@@ -181,16 +182,9 @@ function ProxyController:sendMessage(msg)
 	if co then
 		local status, pending = self.conn:sendWithReply(msg, self.timeout)
 		if not status then
-			reply, errName, errMsg = nil, l2dbus.Dbus.ERROR_FAILED, "unknown failure"
+			reply, errName, errMsg = nil, l2dbus.Dbus.ERROR_FAILED, "failed to send message"
 		else
-			pending:setNotify(onNotifyReply, co)
-			reply = coroutine.yield()
-			assert( pending:isCompleted() )
-			if not reply then
-				reply, errName, errMsg = nil, l2dbus.Dbus.ERROR_FAILED, "unknown failure"
-			elseif l2dbus.Message.ERROR == reply:getType() then
-				reply, errName, errMsg = nil, reply:getErrorName(), reply:getArgs()
-			end
+			reply, errName, errMsg = pending, nil, nil
 		end
 	else
 		reply, errName, errMsg = self.conn:sendWithReplyAndBlock(msg, self.timeout)
@@ -204,6 +198,39 @@ function ProxyController:sendMessageNoReply(msg)
 	verifyTypesWithMsg("userdata", "unexpected type for arg #1", msg)
 	msg:setNoReply(true)	
 	return self.conn:send(msg)
+end
+
+
+function ProxyController:waitForReply(pendingCall)
+	verify("userdata" == type(pendingCall))
+	
+	local function onNotifyReply(pending, co)
+		coroutine.resume(co, pending:stealReply())
+	end
+	
+	local reply = nil
+	local errName = nil
+	local errMsg = nil
+	local co = coroutine.running()
+	if not co then
+		error("cannot wait(yield) for a reply from the main thread")
+	end
+	
+	if not pendingCall:isCompleted() then
+		pendingCall:setNotify(onNotifyReply, co)
+		reply = coroutine.yield()
+		assert( pendingCall:isCompleted() )
+	else
+		reply = pendingCall:stealReply()
+	end
+	
+	if not reply then
+		reply, errName, errMsg = nil, l2dbus.Dbus.ERROR_FAILED, "no reply received"
+	elseif l2dbus.Message.ERROR == reply:getType() then
+		reply, errName, errMsg = nil, reply:getErrorName(), reply:getArgs()
+	end
+	
+	return reply, errName, errMsg 
 end
 
 
@@ -256,26 +283,18 @@ function ProxyController:parseXml(xmlStr)
 end
 
 
-local Proxy = 
-{
-	__type = "l2dbus.proxy",
+newMethodProxy = function (proxyCtrl, metadata)
+	verifyTypesWithMsg("table", "unexpected type for arg #1", proxyCtrl)
+	verifyTypesWithMsg("table", "unexpected type for arg #2", metadata)
 	
-	__index = function(proxy, member)
-		local methodInfo = proxy.metadata.methods[member]
-		local propInfo
-		if not methodInfo then
-			propInfo = proxy.metadata.properties[member]
-		end
-		
-		if (methodInfo == nil) and (propInfo == nil) then
-			error("unknown member: " .. tostring(member))
-		end
-		
-		local memFunc = function(...)
-			local msg = l2dbus.Message.newMethodCall({destination=proxy.ctrl.busName,
-							path=proxy.ctrl.objPath,
-							interface=proxy.metadata.interface,
-							method=member})
+	local methodProxy = {}
+
+	local function methodFunc(ctrl, metadata, method, methodInfo)		
+		local innerFunc = function(...)
+			local msg = l2dbus.Message.newMethodCall({destination=ctrl.busName,
+							path=ctrl.objPath,
+							interface=metadata.interface,
+							method=method})
 			if not msg then
 				error("unable to create D-Bus method call message")
 			end
@@ -296,95 +315,137 @@ local Proxy =
 					msg:addArgsBySignature(inArgs[idx].sig, callingArgs[idx])
 				end
 			end
-			local reply, errName, errMsg = proxy.ctrl:sendMessage(msg)
+			local reply, errName, errMsg = ctrl:sendMessage(msg)
 			if not reply then
 				error(string.format("%s : %s", tostring(errName), tostring(errMsg)))
 			end
-			return reply:getArgs()
+			if coroutine.running() == nil then
+				return reply:getArgs()
+			-- Else return the pending call
+			else
+				return reply	-- PendingCall object
+			end
 		end
 		
-		local propFunc = function()
+		return innerFunc
+	end
+	
+	-- Create the methods for the proxy on-the-fly	
+	for method, methodInfo in pairs(metadata.methods) do
+		methodProxy[method] = methodFunc(proxyCtrl, metadata, method, methodInfo)
+	end
+		
+	return methodProxy 
+end
+
+
+newPropertyProxy = function(proxyCtrl, metadata)
+	verifyTypesWithMsg("table", "unexpected type for arg #1", proxyCtrl)
+	verifyTypesWithMsg("table", "unexpected type for arg #2", metadata)
+
+	local propProxy = {set={}, get={}}	
+	
+	local function propGetFunc(ctrl, metadata, propName, propInfo)		
+		local innerGetFunc = function()
 			if not propInfo.access:find("r") then
-				error(string.format("property '%s' is write-only", member))
+				error(string.format("property '%s' is write-only", propName))
 			end
 			
-			if not proxy.ctrl.introspectData[l2dbus.Dbus.INTERFACE_PROPERTIES] then
+			if not ctrl.introspectData[l2dbus.Dbus.INTERFACE_PROPERTIES] then
 				error(string.format("object '%s' does not support %s",
-						proxy.ctrl.objPath, l2dbus.Dbus.INTERFACE_PROPERTIES))
+						ctrl.objPath, l2dbus.Dbus.INTERFACE_PROPERTIES))
 			end
 			
-			local msg = l2dbus.Message.newMethodCall({destination=proxy.ctrl.busName,
-							path=proxy.ctrl.objPath,
+			local msg = l2dbus.Message.newMethodCall({destination=ctrl.busName,
+							path=ctrl.objPath,
 							interface=l2dbus.Dbus.INTERFACE_PROPERTIES,
 							method="Get"})
 			if not msg then
 				error("unable to create D-Bus method call message")
 			end
 			
-			msg:addArgsBySignature("s", proxy.metadata.interface)
-			msg:addArgsBySignature("s", member)
-			local reply, errName, errMsg = proxy.ctrl:sendMessage(msg)
+			msg:addArgsBySignature("s", metadata.interface)
+			msg:addArgsBySignature("s", propName)
+			local reply, errName, errMsg = ctrl:sendMessage(msg)
 			if not reply then
 				error(string.format("%s : %s", tostring(errName), tostring(errMsg)))
 			end
 			
-			return reply:getArgs()
+			-- If we're running in the main thread then ...
+			if coroutine.running() == nil then
+				return reply:getArgs()
+			-- Else return the pending call
+			else
+				return reply	-- PendingCall object
+			end
 		end
 		
-		-- Decide whether we need to return a function that calls a function
-		-- or returns a value of a property
-		if methodInfo then
-			return memFunc
-		else
-			return propFunc()
-		end	
-	end;
-
+		return innerGetFunc
+	end
 	
-	__newindex = function(proxy, name, value)
-		local propInfo = proxy.metadata.properties[name]
-		if not propInfo then
-			error("unknown property: " .. tostring(name))
+	local function propSetFunc(ctrl, metadata, propName, propInfo)
+			
+		local innerSetFunc = function(value, noReplyNeeded)
+			local propInfo = metadata.properties[propName]
+			if not propInfo then
+				error("unknown property: " .. tostring(propName))
+			end
+			
+			if not propInfo.access:find("w") then
+				error(string.format("property '%s' is read-only", propName))
+			end
+			
+			if not ctrl.introspectData[l2dbus.Dbus.INTERFACE_PROPERTIES] then
+				error(string.format("object '%s' does not support %s",
+						ctrl.objPath, l2dbus.Dbus.INTERFACE_PROPERTIES))
+			end
+			
+			local msg = l2dbus.Message.newMethodCall({destination=ctrl.busName,
+							path=ctrl.objPath,
+							interface=l2dbus.Dbus.INTERFACE_PROPERTIES,
+							method="Set"})
+			if not msg then
+				error("unable to create D-Bus method call message")
+			end
+			
+			msg:addArgsBySignature("s", metadata.interface)
+			msg:addArgsBySignature("s", propName)
+			msg:addArgs(l2dbus.DbusTypes.Variant.new(value), "v" .. propInfo.sig)
+			local reply = nil
+			local errName = nil
+			local errMsg = nil
+			if noReplyNeeded then
+				return ctrl:sendMessageNoReply(msg)
+			else
+				reply, errName, errMsg = ctrl:sendMessage(msg)
+				if not reply then
+					error(string.format("%s : %s", tostring(errName), tostring(errMsg)))
+				end
+				-- If we're running in the main thread then ...
+				if coroutine.running() == nil then
+					return reply:getArgs()
+				-- Else return the pending call
+				else
+					return reply	-- PendingCall object
+				end
+			end
 		end
 		
-		if not propInfo.access:find("w") then
-			error(string.format("property '%s' is read-only", name))
+		return innerSetFunc
+	end
+	
+	-- Create the methods for the property proxy on-the-fly	
+	for propName, propInfo in pairs(metadata.properties) do
+		if propInfo.access:find("w") then
+			propProxy.set[propName] = propSetFunc(proxyCtrl, metadata, propName, propInfo)
 		end
 		
-		if not proxy.ctrl.introspectData[l2dbus.Dbus.INTERFACE_PROPERTIES] then
-			error(string.format("object '%s' does not support %s",
-					proxy.ctrl.objPath, l2dbus.Dbus.INTERFACE_PROPERTIES))
-		end
-		
-		local msg = l2dbus.Message.newMethodCall({destination=proxy.ctrl.busName,
-						path=proxy.ctrl.objPath,
-						interface=l2dbus.Dbus.INTERFACE_PROPERTIES,
-						method="Set"})
-		if not msg then
-			error("unable to create D-Bus method call message")
-		end
-		
-		msg:addArgsBySignature("s", proxy.metadata.interface)
-		msg:addArgsBySignature("s", name)
-		msg:addArgs(l2dbus.DbusTypes.Variant.new(value), "v" .. propInfo.sig)
-		local reply, errName, errMsg = proxy.ctrl:sendMessage(msg)
-		if not reply then
-			error(string.format("%s : %s", tostring(errName), tostring(errMsg)))
+		if propInfo.access:find("r") then
+			propProxy.get[propName] = propGetFunc(proxyCtrl, metadata, propName, propInfo)
 		end
 	end
-}
-
-
-newProxy = function (proxyCtrl, interfaceInfo)
-	verifyTypesWithMsg("table", "unexpected type for arg #1", proxyCtrl)
-	verifyTypesWithMsg("table", "unexpected type for arg #2", introspectInfo)
 	
-	proxy = {
-			ctrl = proxyCtrl,
-			metadata = interfaceInfo
-			}
-	
-	return setmetatable(proxy, Proxy) 
+	return propProxy
 end
 
 

@@ -47,11 +47,15 @@
 #include "l2dbus_interface.h"
 #include "l2dbus_introspection.h"
 
-/* Initially module is not initialized */
-static l2dbus_Bool gModuleInitialized = L2DBUS_FALSE;
+#undef L2DBUS_SHUTDOWN_CDBUS
 
+
+/* Initially module is not initialized */
+static l2dbus_Bool gModuleFinalizerRef = LUA_NOREF;
+
+#ifdef L2DBUS_SHUTDOWN_CDBUS
 static void
-l2dbus_atexit
+l2dbus_shutdownCdbus
     (
     void
     )
@@ -66,7 +70,7 @@ l2dbus_atexit
         L2DBUS_TRACE((L2DBUS_TRC_ERROR, "Failed shutting down CDBUS: 0x%X", rc));
     }
 }
-
+#endif
 
 static int
 l2dbus_shutdown
@@ -76,13 +80,8 @@ l2dbus_shutdown
 {
     L2DBUS_TRACE((L2DBUS_TRC_TRACE, "Shutting down l2dbus_core"));
 
-    /* Shutdown/release the Lua specific parts. CDBUS will be
-     * shut down in an 'atexit' call since we don't know when
-     * the final Lua GC will be done.
-     */
-    l2dbus_callbackShutdown(L);
-    /* Module is no longer initialized */
-    gModuleInitialized = L2DBUS_FALSE;
+    l2dbus_moduleFinalizerUnref(L, gModuleFinalizerRef);
+    gModuleFinalizerRef = LUA_NOREF;
 
     return 0;
 }
@@ -158,13 +157,86 @@ l2dbus_getLocalMachineId
 }
 
 
-static const luaL_Reg l2dbus_core[] =
+int
+l2dbus_moduleFinalizerRef
+    (
+    struct lua_State*  L
+    )
+{
+    lua_rawgeti(L, LUA_REGISTRYINDEX, gModuleFinalizerRef);
+    if ( LUA_TUSERDATA == lua_type(L, -1) )
+    {
+        return luaL_ref(L, LUA_REGISTRYINDEX);
+    }
+    else
+    {
+        L2DBUS_TRACE((L2DBUS_TRC_ERROR,
+            "Trying to reference the module finalizer after it's been released"));
+        return LUA_NOREF;
+    }
+}
+
+
+void
+l2dbus_moduleFinalizerUnref
+    (
+    struct lua_State*   L,
+    int                 ref
+    )
+{
+    luaL_unref(L, LUA_REGISTRYINDEX, ref);
+}
+
+
+static int
+l2dbus_moduleFinalizerDispose
+    (
+    lua_State*  L
+    )
+{
+    void* p = lua_touserdata(L, -1);
+    /* This *should* be the last thing destroyed by the module */
+    L2DBUS_TRACE((L2DBUS_TRC_TRACE, "GC: module finalizer (userdata=%p)", p));
+    l2dbus_callbackShutdown(L);
+
+    /* We actually *cannot* shutdown CDBUS/D-Bus because it takes a while for
+     * D-Bus to fully shutdown. If we shut it down then we get a bunch
+     * of asserts from libev because it's been shutdown but D-Bus keeps
+     * trying to call functions on it via Watches being disabled.
+     */
+#ifdef L2DBUS_SHUTDOWN_CDBUS
+    l2dbus_shutdownCdbus();
+#endif
+
+    return 0;
+}
+
+
+static const luaL_Reg l2dbus_coreMetaTable[] =
 {
     {"getVersion", l2dbus_getVersion},
     {"machineId", l2dbus_getLocalMachineId},
     {"shutdown", l2dbus_shutdown},
     {NULL, NULL},
 };
+
+static const luaL_Reg l2dbus_moduleFinalizerMetaTable[] =
+{
+    {"__gc", l2dbus_moduleFinalizerDispose},
+    {NULL, NULL}
+};
+
+
+
+static void
+l2dbus_openModuleFinalizer
+    (
+    lua_State*  L
+    )
+{
+    lua_pop(L, l2dbus_createMetatable(L, L2DBUS_MODULE_FINALIZER_TYPE_ID,
+            l2dbus_moduleFinalizerMetaTable));
+}
 
 
 void
@@ -173,7 +245,7 @@ l2dbus_checkModuleInitialized
     struct lua_State*   L
     )
 {
-    if ( !gModuleInitialized )
+    if ( gModuleFinalizerRef == LUA_NOREF )
     {
         luaL_error(L, "l2dbus core module is not initialized!");
     }
@@ -210,8 +282,8 @@ luaopen_l2dbus_core
         l2dbus_cdbusError(L, rc, "CDBUS initialization failure");
     }
 
-    /* Register a function to shut CDBUS down at programe exit or module unload */
-    atexit(l2dbus_atexit);
+    /* Create an userdata type used to shutdown (finalize) the module */
+    l2dbus_openModuleFinalizer(L);
 
     /* Create an object registry that maps light user data pointers
      * to full user data.
@@ -221,7 +293,7 @@ luaopen_l2dbus_core
     /* Configure the callback related routines */
     l2dbus_callbackConfigure(L);
 
-    luaL_newlib(L, l2dbus_core);
+    luaL_newlib(L, l2dbus_coreMetaTable);
 
     l2dbus_openTrace(L);
     lua_setfield(L, -2, "Trace");
@@ -270,7 +342,10 @@ luaopen_l2dbus_core
 
 
     /* The module has been successfully initialized */
-    gModuleInitialized = L2DBUS_TRUE;
+    l2dbus_objectNew(L, 0, L2DBUS_MODULE_FINALIZER_TYPE_ID);
+    L2DBUS_TRACE((L2DBUS_TRC_INFO, "Created module finalizer instance (userdata=%p)",
+                lua_touserdata(L, -1)));
+    gModuleFinalizerRef = luaL_ref(L, LUA_REGISTRYINDEX);
 
     return 1;
 }
