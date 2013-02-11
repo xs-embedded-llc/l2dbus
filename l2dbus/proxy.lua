@@ -54,6 +54,7 @@ function M.new(conn, busName, objPath)
 				objPath = objPath,
 				signalHnds = {},
 				introspectData = nil,
+				blockingMode = false,
 				timeout = l2dbus.Dbus.TIMEOUT_USE_DEFAULT
 				}
 					
@@ -72,7 +73,13 @@ function ProxyController:bind()
 		if not reply then
 			return nil, errName, errMsg
 		end
-		self.introspectData = self:parseXml(reply:getArgs())
+		if self:getBlockingMode() then
+			self.introspectData = self:parseXml(reply:getArgs())
+		else
+			reply:block()
+			local msg = reply:stealReply()
+			self.introspectData = self:parseXml(msg:getArgs())
+		end
 	end
 	return true
 end
@@ -122,6 +129,16 @@ end
 
 function ProxyController:getTimeout()
 	return self.timeout
+end
+
+
+function ProxyController:setBlockingMode(mode)
+	self.blockingMode = mode and true or false
+end
+
+
+function ProxyController:getBlockingMode()
+	return self.blockingMode
 end
 
 
@@ -176,16 +193,14 @@ function ProxyController:sendMessage(msg)
 	local errName = nil
 	local errMsg = nil
 	
-	-- Determine if this function is called from a
-	-- coroutine or from the main thread
-	local co = coroutine.running()
-	if co then
+	if not self.blockingMode then
 		local status, pending = self.conn:sendWithReply(msg, self.timeout)
 		if not status then
 			reply, errName, errMsg = nil, l2dbus.Dbus.ERROR_FAILED, "failed to send message"
 		else
 			reply, errName, errMsg = pending, nil, nil
 		end
+	-- Else we're making blocking calls
 	else
 		reply, errName, errMsg = self.conn:sendWithReplyAndBlock(msg, self.timeout)
 	end
