@@ -33,7 +33,7 @@ local verifyTypesWithMsg	=	validate.verifyTypesWithMsg
 local verify				=	validate.verify
 
 local M = { }
-local ProxyController = { __type = "l2dbus.proxy_controller" }
+local ProxyController = { __type = "l2dbus.lua.proxy_controller" }
 ProxyController.__index = ProxyController
 
 --
