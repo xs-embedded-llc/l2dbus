@@ -27,7 +27,7 @@ limitations under the License.
 local l2dbus = require("l2dbus_core")
 local xml = require("l2dbus.xml")
 local validate = require("l2dbus.validate")
-local proxy = rquire("l2dbus.proxy")
+local proxy = require("l2dbus.proxy")
 
 local verifyTypes			=	validate.verifyTypes
 local verifyTypesWithMsg	=	validate.verifyTypesWithMsg

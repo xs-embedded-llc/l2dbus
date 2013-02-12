@@ -36,6 +36,7 @@ local M = { }
 local ServiceObject = { __type = "l2dbus.lua.service_object" }
 ServiceObject.__index = ServiceObject
 
+local L2DBUS_ERROR_PROCESSING_REQUEST = "org.l2dbus.error.ProcessingRequest"
 local DBUS_PROPERTIES_INTERFACE_NAME = "org.freedesktop.DBus.Properties"
 local DBUS_PROPERTIES_INTERFACE_METADATA =
 {
@@ -111,14 +112,18 @@ local DBUS_PROPERTIES_INTERFACE_METADATA =
 local newReplyContext
 
 
-local function calcInputSigFromMeta(member, metadata)
+local function calcSignatureFromMetadata(member, dir, metadata)
 	local nMethods = #metadata.methods
 	local signature = ""
+	local argDir = nil
 	for memIdx = 1, nMethods do
 		if metadata.methods[memIdx].name == member then
 			local nArgs = #metadata.methods[memIdx].args
 			for argIdx = 1, nArgs do
-				if metadata.methods[memIdx].args[argIdx].dir == "in" then
+				-- If the direction isn't specified then it's assumed to
+				-- be an input parameter
+				argDir = metadata.methods[memIdx].args[argIdx].dir or "in"
+				if argDir == dir then
 					signature = signature .. metadata.methods[memIdx].args[argIdx].sig
 				end
 			end
@@ -129,32 +134,31 @@ local function calcInputSigFromMeta(member, metadata)
 end
 
 
-local function globalHandler(lowLevelObj, conn, msg, svcObj)
-	-- TODO Loop through looking for specific handlers for the methods/properties
-	-- and unmarshall the arguments, create a reply context, and call this handlers.
-	-- anything that doesn't match goes to a client specified "global" handler but
-	-- the arguments are left as an array of arguments.
-	
+local function globalHandler(lowLevelObj, conn, msg, svcObj)	
 	local intfName = msg:getInterface()
 	local member = msg:getMember()
 	local handler = nil
 	local dbusResult = l2dbus.Dbus.HANDLER_RESULT_HANDLED
 	local context = nil
+	local status = nil
+	local result = nil
+	local outSig = nil
 	
 	-- Search for a suitable handler
 	if intfName and svcObj.interfaces[intfName] then
-		if svcObj.interfaces[intfName].methodHandlers[member] then
-			handler = svcObj.interfaces[intfName].methodHandlers[member]
+		if svcObj.interfaces[intfName].methods[member] then
+			handler = svcObj.interfaces[intfName].methods[member].handler
+			outSig = svcObj.interfaces[intfName].methods[member].outSig
 		end
 	-- Else an interface wasn't provided so find the first interface
 	-- with a matching name and method signature
 	else
 		for intfKey, intfItem in pairs(svcObj.interfaces) do
-			for memKey, memItem in pairs(intfItem.methodHandlers) do
-				if (memKey == member) then
-					local signature = calcInputSigFromMeta(member, intfItem.metadata)
-					if signature == msg:getSignature() then
-						handler = intfItem.methodHandlers[member]
+			for methName, methItem in pairs(intfItem.methods) do
+				if (methName == member) then
+					if intfItem.methods[member].inSig == msg:getSignature() then
+						handler = intfItem.methods[member].handler
+						outSig = intfItem.methods[member].outSig
 						break
 					end
 				end
@@ -165,19 +169,21 @@ local function globalHandler(lowLevelObj, conn, msg, svcObj)
 		end
 	end
 	
-	if handler ~= nil then
-		context = newReplyContext(svcObj, conn, msg)
-		local status, err = pcall(handler, context, msg:getArgs())
-		if not status then
-			-- TODO Send an error message
+	if (handler ~= nil) or (svcObj.defHandler ~= nil ) then
+		if (outSig == nil) and intfName and svcObj.interfaces[intfName] then
+			outSig = calcSignatureFromMetadata(member, "out",
+								self.svcObj.interfaces[intfName].metadata)
 		end
-	elseif svcObj.defHandler ~= nil then
-		context = newReplyContext(svcObj, conn, msg)
-		-- Probably want to use p-calls there
-		local status, err = pcall(svcObj.defHandler, context, msg:getArgsAsArray())
-		if not status then
-			-- TODO Send an error message
+		context = newReplyContext(outSig, conn, msg)
+		if handler ~= nil then
+			status, result = pcall(handler, context, msg:getArgs())
+		else
+			status, result = pcall(svcObj.defHandler, context, intfName, member, msg:getArgsAsArray())
 		end
+		if not status then
+			context:error(L2DBUS_ERROR_PROCESSING_REQUEST, result) 
+		end
+	-- Else there are no registered handlers to process this request
 	else
 		-- Indicate that it was *not* handled
 		dbusResult = l2dbus.Dbus.HANDLER_RESULT_NOT_YET_HANDLED
@@ -185,7 +191,6 @@ local function globalHandler(lowLevelObj, conn, msg, svcObj)
 	
 	return dbusResult
 end
-
 
 
 function M.new(objPath, introspectable, defaultHandler)
@@ -244,7 +249,7 @@ ServiceObject:addInterface(name, metadata)
 		if self.objInst:addInterface(intfInst) then
 			self.interfaces[name] = { intfInst = intfInst,
 									metadata = metadata,
-									methodHandlers = {}}
+									methods = {}}
 			isAdded = true
 		end
 		
@@ -317,7 +322,16 @@ ServiceObject:registerMethodHandler(intfName, methodName, handler)
 	
 	-- This will replace any previous handler that might have
 	-- already been assigned
-	self.interfaces[intfName].methodHandlers[methodName] = handler
+	self.interfaces[intfName].methods[methodName] =
+				{
+				handler = handler,
+				inSig = calcSignatureFromMetadata(methodName,
+								"in",
+								self.interfaces[intfName].metadata),
+				outSig = calcSignatureFromMetadata(methodName,
+								"out",
+								self.interfaces[intfName].metadata)
+				}
 end
 
 
@@ -326,15 +340,45 @@ ServiceObject:unregisterMethodHandler(intfName, methodName)
 	verify(validate.isValidMember(methodName), "invalid D-Bus method name")
 	
 	if ( self.interfaces[intfName] == nil )
-		error("interface unknown to this service object: " .. intfName)
+		error("interface '" .. intfName .. "' is unknown to this service object")
 	end
 	
-	if self.interfaces[intfName].methodHandlers[methodName] then
-		self.interfaces[intfName].methodHandlers[methodName] = nil
+	if self.interfaces[intfName].methods[methodName] then
+		self.interfaces[intfName].methods[methodName] = nil
 		return true
 	else
 		return false
 	end
+end
+
+
+ServiceObject:emit(conn, intfName, signalName, ...)
+	verify(validate.isValidInterface(intfName), "invalid D-Bus interface name")
+	verify(validate.isValidMember(signalName), "invalid D-Bus method name")
+	
+	if ( self.interfaces[intfName] = nil )
+		error("interface '" .. intfName .. "' is unknown to this service object")
+	end
+
+	local nSignals = #self.interfaces[intfName].metadata.signals
+	local signature = ""
+	for sigIdx = 1, nSignals do
+		local sigItem = self.interfaces[intfName].metadata.signals[sigIdx]
+		if sigItem.name == signalName then
+			local nArgs = #sigItem.args
+			for argIdx = 1, nArgs do
+				signature = signature .. sigItem.args[argIdx].sig
+			end
+			break			
+		end
+	end
+		
+	local msg = l2dbus.Message.newSignal(self.objInst:path(), intfName, signalName)
+	msg:addArgsBySignature(signature, ...)
+	
+	-- Add the arguments to the message
+	return conn:send(msg)
+	
 end
 
 
@@ -379,7 +423,8 @@ ServiceObject:convertXmlToIntfMeta(intfName, xmlStr)
                 else
                     table.insert(signals, {name = item.attr.name, args = args})
                 end
-            elseif item.tag == "property" then
+            elseif item.tag == "property" thensignature = calcSignatureFromMetadata(msg:getMember(), "out",
+								self.svcObj.interfaces[intfName].metadata)
                 local access = nil
                 if "read" == item.attr.access then
                     access = "r"
@@ -406,12 +451,11 @@ end
 local ReplyContext = { __type = "l2dbus.lua.reply_context" }
 ReplyContext.__index = RequestContext
 
-newReplyContext = function(svcObj, conn, msg)
+newReplyContext = function(outSig, conn, msg)
 	local context = {
-					svcObj = svcObj,
+					outSignature = outSig,
 					conn = conn,
-					needsReply = msg:getNoReply(),
-					replyMsg = l2dbus.Message.newMethodReturn(msg)
+					msg = msg
 					}
 	
 	return setmetatable(context, ReplyContext)
@@ -419,8 +463,34 @@ end
 
 
 ReplyContext:needsReply()
-	return self.needsReply
+	return self.msg:getNoReply()
 end
+
+
+ReplyContext:reply(...)
+	local replyMsg = l2dbus.Message.newMethodReturn(self.msg)
+	local intfName = msg:getInterface()
+	-- If an output signature is available then ...
+	if self.outSignature then
+		replyMsg:addArgsBySignature(self.outSignature, ...)
+	-- Else no interface was specified in the request message
+	else
+		-- Make our best guess encoding thing correctly
+		replyMsg:addArgs(...)
+	end
+	
+	-- Return true/serial # or false/nil
+	return self.conn:send(replyMsg)
+end
+
+
+ReplyContext:error(errName, errMsg)
+	verify(validate.isValidInterface(errName), "invalid D-Bus error name")
+	local errorMsg = l2dbus.Message.newError(self.msg, errName, errMsg)
+	-- Return true/serial # or false/nil
+	return self.conn:send(replyMsg)
+end
+
 
 -- Called when this module is run as a program
 local function main(arg)
