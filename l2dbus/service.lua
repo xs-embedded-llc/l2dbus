@@ -44,6 +44,23 @@ local DBUS_PROPERTIES_INTERFACE_METADATA =
     properties = {
     },
     signals = {
+      {
+        name = "PropertiesChanged",
+        args = {
+          {
+            sig = "s",
+            name = "interface",
+          },
+          {
+            sig = "a{sv}",
+            name = "changedProps",
+          },
+          {
+            sig = "as",
+            name = "invalidatedProps",
+          }
+        }
+      }
     },
     methods = {
       {
@@ -223,30 +240,35 @@ function M.new(objPath, introspectable, defaultHandler)
 end
 
 
-ServiceObject:attach(conn)
+function ServiceObject:attach(conn)
 	verify("userdata" == type(conn))
 	return conn:registerServiceObject(self.objInst)
 end
 
 
-ServiceObject:detach(conn)
+function ServiceObject:detach(conn)
 	verify("userdata" == type(conn))
 	return conn:unregisterServiceObject(self.objInst)
 end
 
 
-ServiceObject:addInterface(name, metadata)
+function ServiceObject:addInterface(name, metadata)
 	verify(validate.isValidInterface(name), "invalid D-Bus interface name")
 	verify("table" == type(metadata))
 	local isAdded = false
 	-- Create a lower level interface
 	local intfInst = l2dbus.Interface.new(name, nil, nil)
-	if intfInst and
-		intfInst:registerMethods(metadata.methods) and
-		intfInst:registerSignals(metadata.signals) and
-		intfInst:registerProperties(metadata.properties) then
+	if intfInst then
+		local status = pcall(intfInst.registerMethods, intfInst, metadata.methods)
+		if status then
+			status = pcall(intfInst.registerSignals, intfInst, metadata.signals)
+		end
+		if status then
+			status = pcall(intfInst.registerProperties, intfInst, metadata.properties)
+		end
+		
 		-- Add it to the lower-level service object
-		if self.objInst:addInterface(intfInst) then
+		if status and self.objInst:addInterface(intfInst) then
 			self.interfaces[name] = { intfInst = intfInst,
 									metadata = metadata,
 									methods = {}}
@@ -285,7 +307,7 @@ ServiceObject:addInterface(name, metadata)
 end
 
 
-ServiceObject:removeInterface(name)
+function ServiceObject:removeInterface(name)
 	verify(validate.isValidInterface(name), "invalid D-Bus interface name")
 	local isRemoved = false
 	if self.interfaces[name] then
@@ -298,12 +320,12 @@ ServiceObject:removeInterface(name)
 end
 
 
-ServiceObject:registerMethodHandler(intfName, methodName, handler)
+function ServiceObject:registerMethodHandler(intfName, methodName, handler)
 	verify(validate.isValidInterface(intfName), "invalid D-Bus interface name")
 	verify(validate.isValidMember(methodName), "invalid D-Bus method name")
 	verify("function" == type(handler))
 	
-	if ( self.interfaces[intfName] == nil )
+	if self.interfaces[intfName] == nil then
 		error("interface unknown to this service object: " .. intfName)
 	end
 	
@@ -335,11 +357,11 @@ ServiceObject:registerMethodHandler(intfName, methodName, handler)
 end
 
 
-ServiceObject:unregisterMethodHandler(intfName, methodName)
+function ServiceObject:unregisterMethodHandler(intfName, methodName)
 	verify(validate.isValidInterface(intfName), "invalid D-Bus interface name")
 	verify(validate.isValidMember(methodName), "invalid D-Bus method name")
 	
-	if ( self.interfaces[intfName] == nil )
+	if elf.interfaces[intfName] == nil then
 		error("interface '" .. intfName .. "' is unknown to this service object")
 	end
 	
@@ -352,11 +374,11 @@ ServiceObject:unregisterMethodHandler(intfName, methodName)
 end
 
 
-ServiceObject:emit(conn, intfName, signalName, ...)
+function ServiceObject:emit(conn, intfName, signalName, ...)
 	verify(validate.isValidInterface(intfName), "invalid D-Bus interface name")
 	verify(validate.isValidMember(signalName), "invalid D-Bus method name")
 	
-	if ( self.interfaces[intfName] = nil )
+	if self.interfaces[intfName] == nil then
 		error("interface '" .. intfName .. "' is unknown to this service object")
 	end
 
@@ -382,7 +404,7 @@ ServiceObject:emit(conn, intfName, signalName, ...)
 end
 
 
-ServiceObject:convertXmlToIntfMeta(intfName, xmlStr)
+function ServiceObject:convertXmlToIntfMeta(intfName, xmlStr)
 	-- Take either a full or partial D-Bus Wire-protocol description and convert
 	-- it to a structure that the lower-level l2dbus interface object can
 	-- parse and interpret.
@@ -423,8 +445,7 @@ ServiceObject:convertXmlToIntfMeta(intfName, xmlStr)
                 else
                     table.insert(signals, {name = item.attr.name, args = args})
                 end
-            elseif item.tag == "property" thensignature = calcSignatureFromMetadata(msg:getMember(), "out",
-								self.svcObj.interfaces[intfName].metadata)
+            elseif item.tag == "property" then
                 local access = nil
                 if "read" == item.attr.access then
                     access = "r"
@@ -462,12 +483,17 @@ newReplyContext = function(outSig, conn, msg)
 end
 
 
-ReplyContext:needsReply()
+function ReplyContext:getConnection()
+	return self.conn
+end
+
+
+function ReplyContext:needsReply()
 	return self.msg:getNoReply()
 end
 
 
-ReplyContext:reply(...)
+function ReplyContext:reply(...)
 	local replyMsg = l2dbus.Message.newMethodReturn(self.msg)
 	local intfName = msg:getInterface()
 	-- If an output signature is available then ...
@@ -484,7 +510,7 @@ ReplyContext:reply(...)
 end
 
 
-ReplyContext:error(errName, errMsg)
+function ReplyContext:error(errName, errMsg)
 	verify(validate.isValidInterface(errName), "invalid D-Bus error name")
 	local errorMsg = l2dbus.Message.newError(self.msg, errName, errMsg)
 	-- Return true/serial # or false/nil
