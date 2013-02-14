@@ -20,11 +20,10 @@
 -- *****************************************************************************
 -- @file           init.lua
 -- @author         Glenn Schmottlach
--- @brief          The core l2dbus module.
+-- @brief          The core (low-level) l2dbus module.
 -- *****************************************************************************
 
 local l2dbus = require("l2dbus_core")
-local M = { }
 
 -- Called when this module is run as a program
 local function main(arg)
@@ -45,5 +44,5 @@ if type(package.loaded[(...)]) ~= "userdata" then
     main(arg)
 else
     -- The module is being loaded rather than run
-    return M
+    return l2dbus
 end
