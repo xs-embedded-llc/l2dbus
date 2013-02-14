@@ -40,87 +40,85 @@ local L2DBUS_ERROR_PROCESSING_REQUEST = "org.l2dbus.error.ProcessingRequest"
 local DBUS_PROPERTIES_INTERFACE_NAME = "org.freedesktop.DBus.Properties"
 local DBUS_PROPERTIES_INTERFACE_METADATA =
 {
-  {
-    properties = {
-    },
-    signals = {
-      {
-        name = "PropertiesChanged",
-        args = {
-          {
-            sig = "s",
-            name = "interface",
-          },
-          {
-            sig = "a{sv}",
-            name = "changedProps",
-          },
-          {
-            sig = "as",
-            name = "invalidatedProps",
-          }
-        }
-      }
-    },
-    methods = {
-      {
-        name = "Get",
-        args = {
-          {
-            sig = "s",
-            name = "interface",
-            dir = "in"
-          },
-          {
-            sig = "s",
-            name = "propname",
-            dir = "in"
-          },
-          {
-            sig = "v",
-            name = "value",
-            dir = "out"
-          }
-        }
-      },
-      {
-        name = "Set",
-        args = {
-          {
-            sig = "s",
-            name = "interface",
-            dir = "in"
-          },
-          {
-            sig = "s",
-            name = "propname",
-            dir = "in"
-          },
-          {
-            sig = "v",
-            name = "value",
-            dir = "in"
-          }
-        }
-      },
-      {
-        name = "GetAll",
-        args = {
-          {
-            sig = "s",
-            name = "interface",
-            dir = "in"
-          },
-          {
-            sig = "a{sv}",
-            name = "props",
-            dir = "out"
-          }
-        }
-      }
-    },
-    interface = "org.freedesktop.DBus"
-  }
+	properties = {
+	},
+	signals = {
+		{
+			name = "PropertiesChanged",
+			args = {
+				{
+					sig = "s",
+					name = "interface",
+				},
+				{
+					sig = "a{sv}",
+					name = "changedProps",
+				},
+				{
+					sig = "as",
+					name = "invalidatedProps",
+				}
+			}
+		}
+	},
+	methods = {
+		{
+			name = "Get",
+			args = {
+				{
+					sig = "s",
+					name = "interface",
+					dir = "in"
+				},
+				{
+					sig = "s",
+					name = "propname",
+					dir = "in"
+				},
+				{
+					sig = "v",
+					name = "value",
+					dir = "out"
+				}
+			}
+		},
+		{
+			name = "Set",
+			args = {
+				{
+					sig = "s",
+					name = "interface",
+					dir = "in"
+				},
+				{
+					sig = "s",
+					name = "propname",
+					dir = "in"
+				},
+				{
+					sig = "v",
+					name = "value",
+					dir = "in"
+				}
+			}
+		},
+		{
+			name = "GetAll",
+			args = {
+				{
+					sig = "s",
+					name = "interface",
+					dir = "in"
+				},
+				{
+					sig = "a{sv}",
+					name = "props",
+					dir = "out"
+				}
+			}
+		}
+	},
+	interface = DBUS_PROPERTIES_INTERFACE_NAME
 }
 
 --
@@ -189,7 +187,7 @@ local function globalHandler(lowLevelObj, conn, msg, svcObj)
 	if (handler ~= nil) or (svcObj.defHandler ~= nil ) then
 		if (outSig == nil) and intfName and svcObj.interfaces[intfName] then
 			outSig = calcSignatureFromMetadata(member, "out",
-								self.svcObj.interfaces[intfName].metadata)
+								svcObj.interfaces[intfName].metadata)
 		end
 		context = newReplyContext(outSig, conn, msg)
 		if handler ~= nil then
@@ -256,14 +254,17 @@ function ServiceObject:addInterface(name, metadata)
 	verify(validate.isValidInterface(name), "invalid D-Bus interface name")
 	verify("table" == type(metadata))
 	local isAdded = false
+	local status = true
 	-- Create a lower level interface
 	local intfInst = l2dbus.Interface.new(name, nil, nil)
 	if intfInst then
-		local status = pcall(intfInst.registerMethods, intfInst, metadata.methods)
-		if status then
+		if metadata.methods then 
+			status = pcall(intfInst.registerMethods, intfInst, metadata.methods)
+		end
+		if status and metadata.signals then
 			status = pcall(intfInst.registerSignals, intfInst, metadata.signals)
 		end
-		if status then
+		if status and metadata.properties then
 			status = pcall(intfInst.registerProperties, intfInst, metadata.properties)
 		end
 		
@@ -282,7 +283,7 @@ function ServiceObject:addInterface(name, metadata)
 		-- interface to this service object. This recursive call
 		-- should work since the D-Bus Property interface has no
 		-- properties itself.
-		if (#metadata.properties > 0) and
+		if (metadata.properties and #metadata.properties > 0) and
 			(self.interfaces[DBUS_PROPERTIES_INTERFACE_NAME] == nil) then
 			if not self:addInterface(DBUS_PROPERTIES_INTERFACE_NAME,
 				DBUS_PROPERTIES_INTERFACE_METADATA) then
@@ -329,7 +330,11 @@ function ServiceObject:registerMethodHandler(intfName, methodName, handler)
 		error("interface unknown to this service object: " .. intfName)
 	end
 	
-	local numMethods = #self.interfaces[intfName].metadata.methods
+	local numMethods = 0
+	if self.interfaces[intfName].metadata.methods then
+		numMethods = #self.interfaces[intfName].metadata.methods
+	end
+	
 	local methodExists = false
 	for idx = 1, numMethods do
 		if self.interfaces[intfName].metadata.methods[idx].name == methodName  then
@@ -382,7 +387,10 @@ function ServiceObject:emit(conn, intfName, signalName, ...)
 		error("interface '" .. intfName .. "' is unknown to this service object")
 	end
 
-	local nSignals = #self.interfaces[intfName].metadata.signals
+	local nSignals = 0
+	if self.interfaces[intfName].metadata.signals then
+		nSignals = #self.interfaces[intfName].metadata.signals
+	end
 	local signature = ""
 	for sigIdx = 1, nSignals do
 		local sigItem = self.interfaces[intfName].metadata.signals[sigIdx]
@@ -470,7 +478,7 @@ end
 
 
 local ReplyContext = { __type = "l2dbus.lua.reply_context" }
-ReplyContext.__index = RequestContext
+ReplyContext.__index = ReplyContext
 
 newReplyContext = function(outSig, conn, msg)
 	local context = {
@@ -495,7 +503,7 @@ end
 
 function ReplyContext:reply(...)
 	local replyMsg = l2dbus.Message.newMethodReturn(self.msg)
-	local intfName = msg:getInterface()
+	local intfName = self.msg:getInterface()
 	-- If an output signature is available then ...
 	if self.outSignature then
 		replyMsg:addArgsBySignature(self.outSignature, ...)
