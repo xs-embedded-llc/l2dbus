@@ -374,7 +374,7 @@ l2dbus_dbusComputeSignature
                         l2dbus_transcodeGetValue(L, argIdx);
 
                         /* This should be a Lua "array" */
-                        arrayLen = lua_objlen(L, -1);
+                        arrayLen = lua_rawlen(L, -1);
                         if ( 0 == arrayLen )
                         {
                             isValid = L2DBUS_FALSE;
@@ -421,7 +421,7 @@ l2dbus_dbusComputeSignature
                          * D-Bus value on the stack
                          */
                         l2dbus_transcodeGetValue(L, argIdx);
-                        arrayLen = lua_objlen(L, -1);
+                        arrayLen = lua_rawlen(L, -1);
 
                         /* Loop over every element and encode it */
                         for ( idx = 1; (idx <= arrayLen) && isValid; ++idx )
@@ -607,7 +607,7 @@ l2dbus_dbusToString
     )
 {
     l2dbus_transcodeGetValue(L, 1);
-    lua_getfield(L, LUA_GLOBALSINDEX, "tostring");
+    l2dbus_getGlobalField(L, "tostring");
     lua_pushvalue(L, -2);
     lua_call(L, 1, 1);
     return 1;
@@ -891,7 +891,7 @@ l2dbus_dbusIsTableArray
          * Lua reports in the array should match what we've
          * counted.
          */
-        if ( isArray && (itemCnt != lua_objlen(L, tableIdx)) )
+        if ( isArray && (itemCnt != lua_rawlen(L, tableIdx)) )
         {
             /* The number of items we counted
              * better equal the number the table reports.
@@ -1010,7 +1010,7 @@ l2dbus_dbusIsTableStructure
             }
         }
 
-        if ( isStruct && (itemCnt != lua_objlen(L, tableIdx)) )
+        if ( isStruct && (itemCnt != lua_rawlen(L, tableIdx)) )
         {
             /* The number of items we counted
              * better equal the number the table reports.
@@ -1814,7 +1814,7 @@ l2dbus_transcodeMarshallAsType
             }
             else
             {
-                arrayLen = lua_objlen(L, argIdx);
+                arrayLen = lua_rawlen(L, argIdx);
                 for ( idx = 1;
                     (idx <= arrayLen) &&
                     (DBUS_TYPE_INVALID != dbus_signature_iter_get_current_type(&sigSubIt));
@@ -1845,7 +1845,7 @@ l2dbus_transcodeMarshallAsType
                 luaL_error(L, "could not open D-Bus container for structure");
             }
 
-            arrayLen = lua_objlen(L, argIdx);
+            arrayLen = lua_rawlen(L, argIdx);
             for ( idx = 1;
                 (idx <= arrayLen) &&
                 (DBUS_TYPE_INVALID != dbus_signature_iter_get_current_type(&sigSubIt));
@@ -2326,7 +2326,7 @@ l2dbus_transcodeDbusArgsToLua
     if ( LUA_TTABLE == lua_type(L, -1) )
     {
         tableIdx = lua_absindex(L, -1);
-        arrLen = lua_objlen(L, tableIdx);
+        arrLen = lua_rawlen(L, tableIdx);
         if ( !lua_checkstack(L, arrLen) )
         {
             luaL_error(L, "cannot grow Lua stack to hold D-Bus message arguments");

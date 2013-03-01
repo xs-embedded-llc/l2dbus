@@ -96,7 +96,6 @@ l2dbus_matchFreeRule
         l2dbus_free(rule->objInterface);
         l2dbus_free(rule->sender);
         l2dbus_free(rule->path);
-        l2dbus_free(rule->localObjPath);
         l2dbus_free(rule->arg0Namespace);
 
         if ( NULL != rule->filterArgs )
@@ -236,18 +235,6 @@ l2dbus_newMatch
     }
     lua_pop(L, 1);
 
-    lua_getfield(L, ruleIdx, "localObjPath");
-    if ( lua_isstring(L, -1) )
-    {
-        rule.localObjPath = l2dbus_strDup(lua_tostring(L, -1));
-    }
-    else
-    {
-        rule.localObjPath = NULL;
-    }
-    lua_pop(L, 1);
-
-
     lua_getfield(L, ruleIdx, "arg0Namespace");
     if ( lua_isstring(L, -1) )
     {
@@ -275,7 +262,7 @@ l2dbus_newMatch
     if ( lua_istable(L, -1) )
     {
         argArrayRef = lua_absindex(L, -1);
-        nFilterArgs = lua_objlen(L, -1);
+        nFilterArgs = lua_rawlen(L, -1);
         if ( nFilterArgs > 0 )
         {
             if ( nFilterArgs > DBUS_MAXIMUM_MATCH_RULE_ARG_NUMBER+1 )

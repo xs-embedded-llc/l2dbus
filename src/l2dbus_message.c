@@ -1303,7 +1303,7 @@ l2dbus_messageDemarshallToMessage
 
     luaL_argcheck(L, LUA_TTABLE == lua_type(L, 1), 1, "Lua array expected");
 
-    arrayLen = lua_objlen(L, 1);
+    arrayLen = lua_rawlen(L, 1);
     buf = l2dbus_malloc(arrayLen);
     if ( NULL == buf )
     {

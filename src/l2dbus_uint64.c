@@ -402,10 +402,10 @@ l2dbus_uint64Concat
     lua_State*  L
     )
 {
-    lua_getfield(L, LUA_GLOBALSINDEX, "tostring");
+    l2dbus_getGlobalField(L, "tostring");
     lua_pushvalue(L, 1);
     lua_call(L, 1, 1);
-    lua_getfield(L, LUA_GLOBALSINDEX, "tostring");
+    l2dbus_getGlobalField(L, "tostring");
     lua_pushvalue(L, 2);
     lua_call(L, 1, 1);
     lua_concat(L, 2);

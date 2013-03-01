@@ -390,7 +390,7 @@ l2dbus_interfaceParseItems
     }
     else
     {
-        *nItems = lua_objlen(L, itemsIdx);
+        *nItems = lua_rawlen(L, itemsIdx);
         /* I guess it's valid to register no items */
         if ( 0 == *nItems )
         {
@@ -433,7 +433,7 @@ l2dbus_interfaceParseItems
                     lua_getfield(L, -1, "args");
                     if ( LUA_TTABLE == lua_type(L, -1) )
                     {
-                        nArgs = lua_objlen(L, -1);
+                        nArgs = lua_rawlen(L, -1);
                     }
                     else
                     {
@@ -701,7 +701,7 @@ l2dbus_interfaceRegisterProperties
     /* Make sure the module is initialized */
     l2dbus_checkModuleInitialized(L);
 
-    nProps = lua_objlen(L, 2);
+    nProps = lua_rawlen(L, 2);
     /* I guess it's valid to register no items */
     if ( 0 == nProps )
     {

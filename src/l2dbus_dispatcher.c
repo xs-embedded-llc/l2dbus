@@ -108,7 +108,7 @@ l2dbus_newDispatcher
         if ( !ownsLoop )
         {
             lua_pushvalue(L, loopIdx);
-            userData->loopRef = lua_ref(L, LUA_REGISTRYINDEX);
+            userData->loopRef = luaL_ref(L, LUA_REGISTRYINDEX);
         }
 
         userData->finalizerRef = l2dbus_moduleFinalizerRef(L);

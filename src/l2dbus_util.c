@@ -224,3 +224,16 @@ l2dbus_getTypeName
 
     return name;
 }
+
+
+void
+l2dbus_getGlobalField
+    (
+    lua_State*  L,
+    const char* name
+    )
+{
+    lua_pushglobaltable(L);
+    lua_getfield(L, -1, name);
+    lua_remove(L, -2);
+}

@@ -40,5 +40,6 @@ int l2dbus_createMetatable(lua_State* L, l2dbus_TypeId typeId, const luaL_Reg* f
 l2dbus_Bool l2dbus_isValidIndex(lua_State* L, int idx);
 l2dbus_TypeId l2dbus_getMetaTypeId(lua_State* L, int idx);
 const char* l2dbus_getTypeName(lua_State* L, int idx);
+void l2dbus_getGlobalField(lua_State* L, const char* name);
 
 #endif /* Guard for L2DBUS_UTIL_H_ */

@@ -104,7 +104,7 @@ l2dbus_callbackRef
     if ( L2DBUS_CALLBACK_NOREF_NEEDED != funcIdx )
     {
         lua_pushvalue(L, funcIdx);
-        ctx->funcRef = lua_ref(L, LUA_REGISTRYINDEX);
+        ctx->funcRef = luaL_ref(L, LUA_REGISTRYINDEX);
     }
     else
     {
@@ -114,7 +114,7 @@ l2dbus_callbackRef
     if ( L2DBUS_CALLBACK_NOREF_NEEDED != userIdx )
     {
         lua_pushvalue(L, userIdx);
-        ctx->userRef = lua_ref(L, LUA_REGISTRYINDEX);
+        ctx->userRef = luaL_ref(L, LUA_REGISTRYINDEX);
     }
     else
     {
