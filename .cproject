@@ -336,7 +336,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/cdbus/include}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;/usr/include/lua5.2&quot;"/>
 								</option>
-								<option id="gnu.c.compiler.option.misc.pic.281110781" superClass="gnu.c.compiler.option.misc.pic" value="true" valueType="boolean"/>
+								<option id="gnu.c.compiler.option.misc.pic.281110781" name="Position Independent Code (-fPIC)" superClass="gnu.c.compiler.option.misc.pic" value="true" valueType="boolean"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1003171342" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.cross.cpp.compiler.873852704" name="Cross G++ Compiler" superClass="cdt.managedbuild.tool.gnu.cross.cpp.compiler">

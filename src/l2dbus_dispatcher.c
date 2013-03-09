@@ -1,4 +1,4 @@
-/*******************************************************************************
+/*===========================================================================
  *
  * Project         l2dbus
  * (c) Copyright   2012 XS-Embedded LLC
@@ -16,12 +16,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
- *******************************************************************************
- *******************************************************************************
+ *===========================================================================
+ *===========================================================================
  * @file           l2dbus_dispatcher.c        
  * @author         Glenn Schmottlach
  * @brief          Implementation of Lua Dispatcher binding.
- *******************************************************************************
+ *===========================================================================
  */
 #include <stdlib.h>
 #include "ev.h"
@@ -35,8 +35,42 @@
 #include "l2dbus_debug.h"
 #include "l2dbus_types.h"
 
+/**
+ The L2DBUS Event Dispatcher Object
+
+ This module provides a constructor and methods for manipulating the
+ D-Bus event Dispatcher object. A Dispatcher is responsible for
+ running the event loop that detects incoming D-Bus messages and
+ timeouts and also dispatches outgoing messages and signals.
+ @module l2dbus.Dispatcher
+ */
+
 #define L2DBUS_LIBEV_UNINITIALIZED_DEFAULT_LOOP ((struct ev_loop*)1)
 
+
+/**
+ @function new
+
+ Creates a new L2DBUS Dispatcher.
+
+ Constructs a new Dispatcher using an (optionally) provided Lua libev
+ <a href="https://github.com/brimworks/lua-ev">ev.Loop</a> object or, if
+ none is provided, internally create a new libev main loop to handle events.
+
+ *Note:* If passing in a libev main loop (ev.Loop) please insure
+ that it has been fully instantiated by either creating it by calling
+     loop = ev.Loop.new()
+ or calling a Lua libev function that consumes a ev.Loop object. By default
+ the libev ev.Loop objects are lazily realized. It's possible to unwittingly
+ pass an unrealized Lua libev main loop to the Dispatcher constructor
+ which will cause it to fail.
+
+ See <a href="http://software.schmorp.de/pkg/libev.html">libev</a> for
+ additional information on the underlying main loop library.
+
+ @tparam ?ev.Loop loop Optional Lua libev main loop
+ @treturn userdata Dispatcher userdata object
+ */
 int
 l2dbus_newDispatcher
     (
@@ -118,6 +152,45 @@ l2dbus_newDispatcher
 }
 
 
+/**
+ * A Dispatcher class.
+ * @type Dispatcher
+ */
+
+
+/**
+ @constant DISPATCH_WAIT
+ Calls to @{run} with this option block waiting for successive events until @{stop} is called on
+ the Dispatcher.
+ */
+
+/**
+ @constant DISPATCH_NO_WAIT
+ Calls to @{run} with this option do <b>not</b> block waiting for events and it immediately
+ returns if there are no events to dispatch. If an event is already ready to be dispatched it
+ will be processed.
+ */
+
+/**
+ @constant DISPATCH_ONCE
+ Calls to @{run} with this option block waiting for one event before immediately returning.
+ */
+
+
+/**
+ @function run
+ @within Dispatcher
+
+ Invokes the dispatcher to process messages and timeouts.
+
+ This method should be called to process one or more events
+ depending on the *run* option provided.
+
+ @tparam number runOpt One of the constant run options
+ @treturn boolean True if dispatcher successfully ran
+ one or more event iterations. Returns False on error.
+ @treturn ?string|nil An error message in the event of an error
+ */
 static int
 l2dbus_dispatcherRun
     (
@@ -151,7 +224,9 @@ l2dbus_dispatcherRun
     rc = cdbus_dispatcherRun(ud->disp, (cdbus_RunOption)runOpt);
     if ( CDBUS_FAILED(rc) )
     {
-        l2dbus_cdbusError(L, rc, "Failed to run dispatcher");
+        lua_pushboolean(L, L2DBUS_FALSE);
+        lua_pushfstring(L, "Failed to run dispatcher (errCode=%f)", (lua_Number)rc);
+        return 2;
     }
 
     lua_pushboolean(L, L2DBUS_TRUE);
@@ -159,6 +234,19 @@ l2dbus_dispatcherRun
     return 1;
 }
 
+
+/**
+ @function stop
+ @within Dispatcher
+
+ Stops the dispatcher and causes @{run} to exit.
+
+ This is used to break out of the dispatch loop entered by calling
+ @{run} on the dispatcher. A Lua error is thrown if the dispatcher
+ cannot be stopped.
+
+ @treturn boolean True if dispatcher stops
+ */
 static int
 l2dbus_dispatcherStop
     (
@@ -183,6 +271,15 @@ l2dbus_dispatcherStop
 }
 
 
+/**
+ * @brief Called by Lua VM to GC/reclaim the Dispatcher userdata.
+ *
+ * This method is called by the Lua VM to reclaim the Dispatcher
+ * userdata.
+ *
+ * @return nil
+ *
+ */
 static int
 l2dbus_dispatcherDispose
     (
@@ -204,6 +301,9 @@ l2dbus_dispatcherDispose
     return 0;
 }
 
+/*
+ * Define the methods of the Dispatcher
+ */
 static const luaL_Reg l2dbus_dispatcherMetaTable[] = {
     {"run", l2dbus_dispatcherRun},
     {"stop", l2dbus_dispatcherStop},
@@ -212,6 +312,15 @@ static const luaL_Reg l2dbus_dispatcherMetaTable[] = {
 };
 
 
+/**
+ * @brief Creates the Dispatcher sub-module.
+ *
+ * This function creates a metatable entry for the Dispatcher userdata
+ * and simulates opening the Dispatcher sub-module.
+ *
+ * @return nil
+ *
+ */
 void
 l2dbus_openDispatcher
     (

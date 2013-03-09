@@ -1,4 +1,4 @@
-/*******************************************************************************
+/*===========================================================================
  *
  * Project         l2dbus
  * (c) Copyright   2012 XS-Embedded LLC
@@ -16,12 +16,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
- *******************************************************************************
- *******************************************************************************
+ *===========================================================================
+ *===========================================================================
  * @file           l2dbus_core.c
  * @author         Glenn Schmottlach
  * @brief          The core l2dbus binding source.
- *******************************************************************************
+ *===========================================================================
  */
 #include <stdlib.h>
 #include "lua.h"
@@ -47,21 +47,57 @@
 #include "l2dbus_interface.h"
 #include "l2dbus_introspection.h"
 
+/**
+The low-level L2DBUS core module.
+
+This module provides access to the low-level functions/methods
+that implement the binding to the D-Bus reference library.
+ @module l2dbus
+ */
+
+
+/*
+ * Define/undefine to enable/disable the call to CDBUS's shutdown
+ * function. Generally it is ill-advised to define it because of
+ * shutdown sequencing issues between libev and when D-Bus has
+ * truly shutdown.
+ */
 #undef L2DBUS_SHUTDOWN_CDBUS
 
 
-/* Initially module is not initialized */
+/**
+ * @brief Used to track the lifetime of the module
+ *
+ * Initially the module is not initialized until it's
+ * loaded by Lua. This variable references a global
+ * Lua userdata item that should be GC'ed when the
+ * module is unloaded or the VM shuts down.
+ *
+ */
 static l2dbus_Bool gModuleFinalizerRef = LUA_NOREF;
 
-#ifdef L2DBUS_SHUTDOWN_CDBUS
+
+/**
+ * @brief Shuts down the underlying CDBUS library.
+ *
+ * An internal call to shutdown the underlying CDBUS library.
+ *
+ * @return none
+ *
+ */
 static void
 l2dbus_shutdownCdbus
     (
     void
     )
 {
+    /* We actually *cannot* shutdown CDBUS/D-Bus because it takes a while for
+     * D-Bus to fully shutdown. If we shut it down then we get a bunch
+     * of asserts from libev because it's been shutdown but D-Bus keeps
+     * trying to call functions on it via Watches being disabled.
+     */
+#ifdef L2DBUS_SHUTDOWN_CDBUS
     cdbus_HResult rc;
-
     L2DBUS_TRACE((L2DBUS_TRC_TRACE, "Shutting CDBUS at exit"));
     rc = cdbus_shutdown();
     if ( CDBUS_FAILED(rc) )
@@ -69,9 +105,24 @@ l2dbus_shutdownCdbus
         /* What else should we do? */
         L2DBUS_TRACE((L2DBUS_TRC_ERROR, "Failed shutting down CDBUS: 0x%X", rc));
     }
-}
 #endif
+}
 
+/**
+ @function shutdown
+
+ Shuts down the L2DBUS module.
+
+ Typically this function should be called prior to
+ an L2DBUS application terminating. Once called it
+ is no longer safe to call any other L2DBUS
+ functions/methods. Strictly speaking, it's not
+ necessary to call this function when terminating since
+ the Lua VM and OS will implicitly free any underlying
+ resources.
+
+ @return nil
+ */
 static int
 l2dbus_shutdown
     (
@@ -87,6 +138,40 @@ l2dbus_shutdown
 }
 
 
+/**
+ Version table.
+
+ A table containing version information of the L2DBUS module
+ and underlying dependencies.
+
+ @table versionInfo
+ @field dbusMajor The D-Bus major version as a number.
+ @field dbusMinor The D-Bus minor version as a number.
+ @field dbusRelese The D-Bus release version as a number.
+ @field l2dbusMajor The L2DBUS major version as a number.
+ @field l2dbusMinor The L2DBUS minor version as a number.
+ @field l2dbusRelese The L2DBUS release version as a number.
+ @field l2dbusVerNum The L2DBUS version as a number.
+ @field l2dbusVerStr The L2DBUS version as a string.
+ @field cdbusMajor The CDBUS major version as a number.
+ @field cdbusMinor The CDBUS minor version as a number.
+ @field cdbusRelease The CDBUS release version as a number.
+ @field cdbusVerStr The CDBUS version as a string.
+ @field copyright The L2DBUS copyright information.
+ @field author The L2DBUS author information.
+ */
+
+/**
+ @function getVersion
+
+ Returns version information about the L2DBUS module.
+
+ This function returns a table containing useful version
+ information related to the module itself and underlying
+ libraries.
+
+ @treturn table @{versionInfo}
+ */
 static int
 l2dbus_getVersion
     (
@@ -134,6 +219,20 @@ l2dbus_getVersion
 }
 
 
+/**
+ @function machineId
+
+ Returns the D-Bus local machine identifier.
+
+ Obtains the machine UUID of the machine this process is
+ running on.
+
+ For more details see:
+ <a href="http://dbus.freedesktop.org/doc/api/html/group__DBusMisc.html#ga2b21c9a12fea5f92763441c65ccbfcf9">
+ dbus&#95;get&#95;local&#95;machine_id(void)</a>
+
+ @treturn string The local D-Bus machine identifier.
+ */
 static int
 l2dbus_getLocalMachineId
     (
@@ -157,6 +256,17 @@ l2dbus_getLocalMachineId
 }
 
 
+/**
+ * @brief Adds a reference to the global module finalizer userdata.
+ *
+ * An internal function used to add a reference to the module's global
+ * finalizer userdata. This userdata *should* be the last object in the
+ * module GC'ed (finalized) by the Lua VM when it's unloaded or shutdown.
+ *
+ * @return The index of the reference or LUA_NOREF on failure to
+ *         add a reference to the module finalizer userdata.
+ *
+ */
 int
 l2dbus_moduleFinalizerRef
     (
@@ -177,6 +287,17 @@ l2dbus_moduleFinalizerRef
 }
 
 
+/**
+ * @brief Unreferences to the module's global finalizer userdata.
+ *
+ * An internal function used to add a reference to the module's global
+ * finalizer userdata. This userdata *should* be the last object in the module
+ * GC'ed (finalized) by the Lua VM when it's unloaded or shutdown.
+ *
+ * @return The index of the reference or LUA_NOREF on failure to
+ *         add a reference to the module finalizer userdata.
+ *
+ */
 void
 l2dbus_moduleFinalizerUnref
     (
@@ -188,6 +309,16 @@ l2dbus_moduleFinalizerUnref
 }
 
 
+/**
+ * @brief Called by Lua VM to GC the finalizer table.
+ *
+ * This method is called by the Lua VM to GC the finalizer
+ * userdata. It *should* be the last object destroyed by the
+ * Lua VM when this module is unloaded.
+ *
+ * @return nil
+ *
+ */
 static int
 l2dbus_moduleFinalizerDispose
     (
@@ -198,15 +329,7 @@ l2dbus_moduleFinalizerDispose
     /* This *should* be the last thing destroyed by the module */
     L2DBUS_TRACE((L2DBUS_TRC_TRACE, "GC: module finalizer (userdata=%p)", p));
     l2dbus_callbackShutdown(L);
-
-    /* We actually *cannot* shutdown CDBUS/D-Bus because it takes a while for
-     * D-Bus to fully shutdown. If we shut it down then we get a bunch
-     * of asserts from libev because it's been shutdown but D-Bus keeps
-     * trying to call functions on it via Watches being disabled.
-     */
-#ifdef L2DBUS_SHUTDOWN_CDBUS
     l2dbus_shutdownCdbus();
-#endif
 
     return 0;
 }
@@ -220,6 +343,7 @@ static const luaL_Reg l2dbus_coreMetaTable[] =
     {NULL, NULL},
 };
 
+/* Metatable for the finalizer userdata */
 static const luaL_Reg l2dbus_moduleFinalizerMetaTable[] =
 {
     {"__gc", l2dbus_moduleFinalizerDispose},
@@ -227,7 +351,15 @@ static const luaL_Reg l2dbus_moduleFinalizerMetaTable[] =
 };
 
 
-
+/**
+ * @brief Creates the global module finalizer metatable type.
+ *
+ * This function creates a metatable entry for the userdata
+ * used to track the lifetime of the L2DBUS module.
+ *
+ * @return nil
+ *
+ */
 static void
 l2dbus_openModuleFinalizer
     (
@@ -239,6 +371,17 @@ l2dbus_openModuleFinalizer
 }
 
 
+/**
+ * @brief Checks to see if the module was initialized successfully
+ *
+ * This function checks to see if the module initialized successfully
+ * based on whether there is a valid reference to the module's
+ * "finalizer" userdata item. It will throw a Lua error and not
+ * return if the module is not initialized.
+ *
+ * @return none
+ *
+ */
 void
 l2dbus_checkModuleInitialized
     (
