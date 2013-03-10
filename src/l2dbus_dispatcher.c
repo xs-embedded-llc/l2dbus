@@ -159,25 +159,6 @@ l2dbus_newDispatcher
 
 
 /**
- @constant DISPATCH_WAIT
- Calls to @{run} with this option block waiting for successive events until @{stop} is called on
- the Dispatcher.
- */
-
-/**
- @constant DISPATCH_NO_WAIT
- Calls to @{run} with this option do <b>not</b> block waiting for events and it immediately
- returns if there are no events to dispatch. If an event is already ready to be dispatched it
- will be processed.
- */
-
-/**
- @constant DISPATCH_ONCE
- Calls to @{run} with this option block waiting for one event before immediately returning.
- */
-
-
-/**
  @function run
  @within Dispatcher
 
@@ -334,10 +315,28 @@ l2dbus_openDispatcher
     lua_setfield(L, -2, "new");
 
     /* Set Dispatcher constants */
+
+/**
+ @constant DISPATCH_WAIT
+ Calls to @{run} with this option block waiting for successive events until @{stop} is called on
+ the Dispatcher.
+ */
     lua_pushinteger(L, CDBUS_RUN_WAIT);
     lua_setfield(L, -2, "DISPATCH_WAIT");
+
+/**
+ @constant DISPATCH_NO_WAIT
+ Calls to @{run} with this option do <b>not</b> block waiting for events and it immediately
+ returns if there are no events to dispatch. If an event is already ready to be dispatched it
+ will be processed.
+ */
     lua_pushinteger(L, CDBUS_RUN_NO_WAIT);
     lua_setfield(L, -2, "DISPATCH_NO_WAIT");
+
+/**
+ @constant DISPATCH_ONCE
+ Calls to @{run} with this option block waiting for one event before immediately returning.
+ */
     lua_pushinteger(L, CDBUS_RUN_ONCE);
     lua_setfield(L, -2, "DISPATCH_ONCE");
 }

@@ -8,5 +8,8 @@ topics = 'manual'
 readme = '../README.md'
 format = 'markdown'
 new_type("constant", "Constants")
+new_type("messageType", "Message Types")
+new_type("handlerReturn", "Message Handler Return Values")
+new_type("dbusError", "D-Bus Errors")
 
 file = { '../l2dbus', '../src' }
