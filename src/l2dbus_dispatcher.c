@@ -56,6 +56,10 @@
  Constructs a new Dispatcher using an (optionally) provided Lua libev
  <a href="https://github.com/brimworks/lua-ev">ev.Loop</a> object or, if
  none is provided, internally create a new libev main loop to handle events.
+ A Lua libev loop that is passed into this constructor is considered
+ **not** to be owned by the Dispatcher. In this case it is the
+ responsibility of the caller to dispose of it appropriately on program
+ termination.
 
  *Note:* If passing in a libev main loop (ev.Loop) please insure
  that it has been fully instantiated by either creating it by calling
@@ -168,8 +172,8 @@ l2dbus_newDispatcher
  depending on the *run* option provided.
 
  @tparam number runOpt One of the constant run options
- @treturn boolean True if dispatcher successfully ran
- one or more event iterations. Returns False on error.
+ @treturn bool Returns **true** if dispatcher successfully ran
+ one or more event iterations. Returns **false** on error.
  @treturn ?string|nil An error message in the event of an error
  */
 static int
@@ -226,7 +230,7 @@ l2dbus_dispatcherRun
  @{run} on the dispatcher. A Lua error is thrown if the dispatcher
  cannot be stopped.
 
- @treturn boolean True if dispatcher stops
+ @treturn bool True if dispatcher stops
  */
 static int
 l2dbus_dispatcherStop

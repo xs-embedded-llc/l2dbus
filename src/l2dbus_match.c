@@ -41,7 +41,85 @@
 #include "l2dbus_alloc.h"
 #include "lualib.h"
 
+/**
+ L2DBUS Match
 
+ This section defines the data structures associated with the
+ representation of a match rule.
+
+ @module l2dbus.Match
+ */
+
+
+/**
+ The table that describes keys/fields for matching a message. Excluding
+ a field indicates a wildcard match while including a field narrows
+ the scope of a match (e.g. makes it more inclusive).
+
+ @table MatchRule
+ @field msgType (number) The type of the D-Bus message to match. Possible options
+  include:
+  <ul>
+  <li>@{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL}</li>
+  <li>@{l2dbus.Dbus.MESSAGE_TYPE_METHOD_RETURN|MESSAGE_TYPE_METHOD_RETURN}</li>
+  <li>@{l2dbus.Dbus.MESSAGE_TYPE_ERROR|MESSAGE_TYPE_ERROR}</li>
+  <li>@{l2dbus.Dbus.MESSAGE_TYPE_SIGNAL|MESSAGE_TYPE_SIGNAL}</li>
+  </ul>
+ @field member (string) Matches messages with a particular signal or member name
+ @field objInterface (string) Matches messages sent over or to a particular
+ object interface
+ @field sender (string) Matches messages sent by a particular sender.
+ @field path (string) Matches messages which are sent from or to the given
+ object. This can be treated as an object path or namespace depending on
+ how treatPathAsNamespace is configured.
+ @field treatPathAsNamespace (bool) An optional value that determines how
+ to interpret the path field. If **true** then the path is treated
+ as a Java-like namespace. If **false** (the default) then treat *path* as
+ an object path.
+ @field arg0Namespace (string) Matches messages whose first argument is a string
+ and is a bus name or interface name within the specified
+ namespace. This is primarily intended for watching name owner changes
+ for a group of related bus names, rather than for signal name or all
+ name changes.
+ @field eavesdrop (bool) Since D-Bus 1.5.6, match rules do not match
+ messages which have a DESTINATION field unless the match rule
+ specifically requests this by specifying eavesdrop as **true** in the match
+ rule. Setting eavesdrop as **false** restores the default behavior.
+ Messages are delivered to their DESTINATION regardless of match rules,
+ so this match does not affect normal delivery of unicast messages. If
+ the message bus has a security policy which forbids eavesdropping, this
+ match may still be used without error, but will not have any practical
+ effect. In older versions of D-Bus, this match was not allowed in match
+ rules, and all match rules behaved as if eavesdrop equals **true** had
+ been used.
+ @field filterArgs (array) A Lua array of arg*N* @{FilterArgs|filter arguments}.
+ */
+
+/**
+ The table that describes matches on the *N*'th argument of the body
+ of a message. Only arguments of D-Bus type **string** or **object path**
+ can be matched depending on how the argument is interpreted. At most
+ 64 filter arguments can be specified.
+
+ @table FilterArgs
+ @field type (string) Possible values are *string* or *path* depending
+ on how the match should be interpreted. If not specified then *string*
+ is the default.
+ @field index (number) The argument index [0, 63].
+ @field value (string) The D-Bus *string* or *object path*.
+ */
+
+/**
+ * @brief Process rule matches and dispatch to Lua handler function.
+ *
+ * This function is called whenever a match rule is matched and needs
+ * to be dispatched to a Lua handler function.
+ *
+ * @param [in] conn The CDBUS connection on which the message matched.
+ * @param [in] hnd An opaque CDBUS match handle.
+ * @param [in] msg The D-Bus message that matched.
+ * @param [in] userData User provided data that is returned in the callback.
+ */
 static void
 l2dbus_matchHandler
     (
@@ -83,6 +161,14 @@ l2dbus_matchHandler
 }
 
 
+/**
+ * @brief De-allocates and free's a match rule structure.
+ *
+ * This function is called to free and destroy a match rule
+ * structure.
+ *
+ * @param [in] rule The match rule to free.
+ */
 static void
 l2dbus_matchFreeRule
     (
@@ -116,6 +202,24 @@ l2dbus_matchFreeRule
 }
 
 
+/**
+ * @brief Constructs a new match rule.
+ *
+ * This function is called to construct a new match rule.
+ *
+ * @param [in]      L           Lua state
+ * @param [in]      ruleIdx     The reference to the table on the Lua stack
+ * containing the representation of the match rule.
+ * @param [in]      funcIdx     The reference to a Lua function representing
+ * the handler.
+ * @param [in]      userIdx     The reference to the user token data.
+ * @param [in/out]  errMsg      A pointer to an optional string pointer to receive a
+ *                              constant error message. This returned pointer
+ *                              should not be freed. If not needed then pass
+ *                              in NULL
+ *
+ * @return
+ */
 l2dbus_Match*
 l2dbus_newMatch
     (
@@ -426,6 +530,14 @@ l2dbus_newMatch
 }
 
 
+/**
+ * @brief Called to dispose/free a match rule.
+ *
+ * This function is called to destroy a match rule.
+ *
+ * @param [in]  L       Lua state
+ * @param [in]  match   The match rule to destroy
+ */
 void
 l2dbus_disposeMatch
     (

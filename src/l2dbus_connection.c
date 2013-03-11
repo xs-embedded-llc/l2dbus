@@ -40,7 +40,39 @@
 #include "l2dbus_match.h"
 #include "l2dbus_serviceobject.h"
 
+/**
+ L2DBUS Connection
 
+ This module defines the functions/methods associated with the L2DBUS Connection
+ class.
+
+ @module l2dbus.Connection
+ */
+
+
+/**
+ @function open
+
+ Opens a connection to a remote address.
+
+ This function opens and returns a D-Bus connection. It can be used to open an
+ arbitrary address instead of one of the "standard" well-known ones. Optionally
+ the connection can be opened shared (e.g. if the connection already exists then
+ the existing connection is returned) or private. Likewise the connection
+ can be configured to cause the application to exit on disconnect. By default
+ the connection will be shared and will **not** exit on disconnect. It's recommended
+ that all connections should be opened shared to minimize resource usage.
+
+ When the connection is no longer referenced the Lua garbage collector will either
+ close the connection (if opened privately) or unreference the connection (if opened as shared).
+
+ @tparam string address Remote D-Bus address to open
+ @tparam ?bool privateConn Optional flag indicating whether this
+ is a private (**true**) or shared (**false**) connection. Defaults to a shared connection (**false**)
+ @tparam ?bool exitOnDisconnect Optional flag indicating whether
+ the application should exit on disconnect (**true** or **false**). Defaults to **false**.
+ @treturn userdata Connection userdata object
+ */
 static int
 l2dbus_openConnection
     (
@@ -123,6 +155,31 @@ l2dbus_openConnection
 }
 
 
+/**
+ @function openStandard
+
+ Opens a connection to one of the standard well-known buses.
+
+ This function opens and returns a D-Bus connection to one of the standard well-known buses.
+ The well-known buses include the @{l2dbus.Dbus.BUS_SYSTEM|BUS_SYSTEM},
+ @{l2dbus.Dbus.BUS_SESSION|BUS_SESSION}, and @{l2dbus.Dbus.BUS_STARTER|BUS_STARTER} buses.
+ The connection can optionally be opened shared (e.g. if the connection already exists then
+ the existing connection is returned) or private. Likewise the connection
+ can be configured to cause the application to exit on disconnect. By default
+ the connection will be shared and will **not** exit on disconnect. It's recommended
+ that all connections should be opened shared to minimize resource usage.
+
+ When the connection is no longer referenced the Lua garbage collector will either
+ close the connection (if opened privately) or unreference the connection (if opened as shared).
+
+ @tparam number busId The constant bus identifier: @{l2dbus.Dbus.BUS_SYSTEM|BUS_SYSTEM},
+ @{l2dbus.Dbus.BUS_SESSION|BUS_SESSION}, or  @{l2dbus.Dbus.BUS_STARTER|BUS_STARTER}
+ @tparam ?bool privateConn Optional flag indicating whether this
+ is a private (**true**) or shared (**false**) connection. Defaults to a shared connection (**false**)
+ @tparam ?bool exitOnDisconnect Optional flag indicating whether
+ the application should exit on disconnect (**true** or **false**). Defaults to **false**.
+ @treturn userdata Connection userdata object
+ */
 static int
 l2dbus_openStandardConnection
     (
@@ -204,6 +261,24 @@ l2dbus_openStandardConnection
     return 1;
 }
 
+/**
+ * A D-Bus Connection class.
+ * @type Connection
+ */
+
+/**
+ @function isConnected
+ @within Connection
+
+ Tests whether the connection is connected to the bus.
+
+ This method can be called to detect whether or not
+ the provided connection is in fact connected to the
+ bus.
+
+ @tparam userdata conn The D-Bus connection object
+ @treturn bool Returns **true** if connected, **false** otherwise.
+ */
 static int
 l2dbus_connectionIsConnected
     (
@@ -225,6 +300,21 @@ l2dbus_connectionIsConnected
 }
 
 
+/**
+ @function isAuthenticated
+ @within Connection
+
+ Tests whether the connection has been authenticated.
+
+ This method can be called to detect whether or not
+ the provided connection has been authenticated.
+
+ **Note:** If the connection was authenticated then disconnected then
+ this function still returns **true**.
+
+ @tparam userdata conn The D-Bus connection object
+ @treturn bool Returns **true** if authenticated, **false** otherwise.
+ */
 static int
 l2dbus_connectionIsAuthenticated
     (
@@ -246,6 +336,23 @@ l2dbus_connectionIsAuthenticated
 }
 
 
+/**
+ @function isAnonymous
+ @within Connection
+
+ Tests whether the connection is not authenticated as a specific user.
+
+ If the connection is not authenticated, this function returns **true**,
+ and if it is authenticated but as an anonymous user, it returns **true**.
+ If it is authenticated as a specific user, then this returns **false**.
+
+ **Note:**  If the connection was authenticated as anonymous then
+ disconnected, this function still returns **true**.
+
+
+ @tparam userdata conn The D-Bus connection object
+ @treturn bool Returns **true** if not authenticated or authenticated as anonymous
+ */
 static int
 l2dbus_connectionIsAnonymous
     (
@@ -267,6 +374,19 @@ l2dbus_connectionIsAnonymous
 }
 
 
+/**
+ @function getServerId
+ @within Connection
+
+ Gets the ID of the server address we are authenticated to on a client-side connection.
+
+ If the connection is on the server side this will always return nil. For additional
+ details on this method see the original 'C' documentation
+ <a href="http://dbus.freedesktop.org/doc/api/html/group__DBusConnection.html#gae6c19e146a37f9de6a06c1617874bed9">here<a/>.
+
+ @tparam userdata conn The D-Bus connection object
+ @treturn string|nil Returns the ID of the server if a client-side connection, **nil** otherwise.
+ */
 static int
 l2dbus_connectionGetServerId
     (
@@ -298,6 +418,18 @@ l2dbus_connectionGetServerId
 }
 
 
+/**
+ @function getBusId
+ @within Connection
+
+ Asks the bus to return its the globally unique ID as described in the D-Bus specification.
+
+ For additional details on this method see the original 'C' documentation
+ <a href="http://dbus.freedesktop.org/doc/api/html/group__DBusBus.html#ga18314500e7f6890a79bddbeace5df5f9">here<a/>.
+
+ @tparam userdata conn The D-Bus connection object
+ @treturn string|nil Returns bus ID or **nil** if there is an error.
+ */
 static int
 l2dbus_connectionGetBusId
     (
@@ -329,6 +461,22 @@ l2dbus_connectionGetBusId
 }
 
 
+/**
+ @function canSendType
+ @within Connection
+
+ Tests whether a certain type can be send via the connection.
+
+ This function will always return **true** for all types with the exception of DBUS_TYPE_UNIX_FD.
+ For additional details on this method see the original 'C' documentation
+ <a href="http://dbus.freedesktop.org/doc/api/html/group__DBusConnection.html#ga3e41509b3afdbc22872bacc5754e85c2">here<a/>.
+
+ @tparam userdata conn The D-Bus connection object
+ @tparam number|string type The D-Bus type to check. The type definitions can be found
+ <a href="http://dbus.freedesktop.org/doc/api/html/group__DBusProtocol.html">here<a/>. The
+ type can be expressed as a D-Bus integral type or as a single character string.
+ @treturn bool Returns **true** if the D-Bus type can be sent or **false** otherwise.
+ */
 static int
 l2dbus_connectionCanSendType
     (
@@ -337,6 +485,8 @@ l2dbus_connectionCanSendType
 {
     l2dbus_Connection* connUd;
     int dbusType;
+    const char* typeStr;
+    size_t len;
 
     /* Make sure the module is initialized */
     l2dbus_checkModuleInitialized(L);
@@ -344,7 +494,26 @@ l2dbus_connectionCanSendType
     connUd = (l2dbus_Connection*)luaL_checkudata(L, 1,
                                                 L2DBUS_CONNECTION_MTBL_NAME);
 
-    dbusType = luaL_checkinteger(L, 2);
+    if ( LUA_TNUMBER == lua_type(L, 2) )
+    {
+        dbusType = lua_tointeger(L, 2);
+    }
+    else if ( LUA_TSTRING == lua_type(L, 2) )
+    {
+        typeStr = lua_tolstring(L, 2, &len);
+        if ( len > 0 )
+        {
+            dbusType = (int)typeStr[0];
+        }
+        else
+        {
+            luaL_argerror(L, 2, "expected a D-Bus type encoded as a single character string");
+        }
+    }
+    else
+    {
+        luaL_argerror(L, 2, "expected a D-Bus type encoded as an integer or single character string");
+    }
 
     lua_pushboolean(L, dbus_connection_can_send_type(
                     cdbus_connectionGetDBus(connUd->conn), dbusType));
@@ -352,6 +521,25 @@ l2dbus_connectionCanSendType
     return 1;
 }
 
+
+/**
+ @function send
+ @within Connection
+
+ Adds a message to the outgoing message queue.
+
+ This method does **not** block to write the message to the network;
+ that happens asynchronously. To force the message to be written an explicit
+ call to @{flush} must be made otherwise the message will be sent the next
+ time the main loop is run.
+
+ @tparam userdata conn The D-Bus connection object
+ @tparam userdata msg The D-Bus message to send
+ @treturn bool Returns **true** if the message is queued to be sent and
+ **false** otherwise.
+ @treturn number If the message is queued successfully then this will be
+ the transmitting serial number of the message otherwise this is zero (0).
+ */
 static int
 l2dbus_connectionSend
     (
@@ -377,6 +565,29 @@ l2dbus_connectionSend
 }
 
 
+/**
+ @function sendWithReply
+ @within Connection
+
+ Queues a message to send as with @{send} but returns a PendingCall to
+ receive the reply message later.
+
+ If no reply is received in the given (optional) timeout the @{l2dbus.PendingCall|PendingCall}
+ expires and a synthetic error reply (generated locally, not by the remote
+ application) is generated indicating a timeout occurred.
+
+ @tparam userdata conn The D-Bus connection object
+ @tparam userdata msg The D-Bus message to send
+ @tparam ?number timeout An optional timeout in milliseconds to wait for a
+ reply. Two special values are allowed as well:
+ @{l2dbus.Dbus.TIMEOUT_USE_DEFAULT|TIMEOUT_USE_DEFAULT}
+ and @{l2dbus.Dbus.TIMEOUT_INFINITE|TIMEOUT_INFINITE}. The default
+ value (if none is specified) is @{l2dbus.Dbus.TIMEOUT_USE_DEFAULT|TIMEOUT_USE_DEFAULT}.
+ @treturn bool Returns **true** if the message is queued to be sent
+ and **false** otherwise.
+ @treturn userdata|nil If the message is queued successfully then a
+ @{l2dbus.PendingCall|PendingCall} is returned or **nil** on failure.
+ */
 static int
 l2dbus_connectionSendWithReply
     (
@@ -411,6 +622,31 @@ l2dbus_connectionSendWithReply
 }
 
 
+/**
+ @function sendWithReplyAndBlock
+ @within Connection
+
+ Sends a message and blocks for a certain period of time while waiting
+ for a reply.
+
+ This function does **not** re-enter the main loop. This means messages
+ other than the reply (e.g. other requests, signals, etc...) are queued
+ but not processed. This function is used to invoke method calls on a
+ remote object.
+
+ @tparam userdata conn The D-Bus connection object
+ @tparam userdata msg The D-Bus message to send
+ @tparam ?number timeout An optional timeout in milliseconds to wait for a
+ reply. Two special values are allowed as well:
+ @{l2dbus.Dbus.TIMEOUT_USE_DEFAULT|TIMEOUT_USE_DEFAULT}
+ and @{l2dbus.Dbus.TIMEOUT_INFINITE|TIMEOUT_INFINITE}. The default
+ value (if none is specified) is @{l2dbus.Dbus.TIMEOUT_USE_DEFAULT|TIMEOUT_USE_DEFAULT}.
+ @treturn userdata|nil The reply message or **nil** if there was an error
+ @treturn string|nil If there was an error then a string indicating the error
+ *may* be returned or **nil**
+ @treturn string|nil If there was an error then an error message *may*
+ be returned or **nil**
+ */
 static int
 l2dbus_connectionSendWithReplyAndBlock
     (
@@ -472,6 +708,14 @@ l2dbus_connectionSendWithReplyAndBlock
 }
 
 
+/**
+ @function flush
+ @within Connection
+
+ Blocks until the outgoing message queue is empty.
+
+ @tparam userdata conn The D-Bus connection object
+ */
 static int
 l2dbus_connectionFlush
     (
@@ -490,6 +734,19 @@ l2dbus_connectionFlush
 }
 
 
+/**
+ @function hasMessagesToSend
+ @within Connection
+
+ Checks whether there are messages in the outgoing message queue.
+
+ The @{flush} method can be used to block until all outgoing messages
+ have been written to the underlying transport (such as a socket).
+
+ @tparam userdata conn The D-Bus connection object
+ @treturn bool Returns **true** if there are pending messages in
+ the outgoing queue or **false** otherwise.
+ */
 static int
 l2dbus_connectionHasMessagesToSend
     (
@@ -516,6 +773,32 @@ l2dbus_connectionHasMessagesToSend
 }
 
 
+/**
+ @function registerMatch
+ @within Connection
+
+ Registers a handler for messages that match a defined set of rules.
+
+ This method registers a function to receive messages that match a
+ specific *match* rule. A match rule as described
+ <a href="http://dbus.freedesktop.org/doc/dbus-specification.html#message-bus-routing-match-rules">here<a/>
+ is part of the message bus routing protocol. These rules describe the
+ messages that should be delivered to a client based on the contents of
+ a message. The rule itself is describe by a Lua @{l2dbus.Match.MatchRule|table}
+ that contains specific fields that map to keywords in the D-Bus specification.
+
+ The message handler should have the following prototype:
+     function onMatch(match, message, userToken)
+
+ @tparam userdata conn The D-Bus connection object
+ @tparam table rule The match rule table
+ @see l2dbus.Match.MatchRule
+ @tparam func handler The message handler for the rule
+ @tparam ?any userToken Optional user defined data that is delivered to
+ the message handler
+ @treturn lightuserdata Returns a *match* rule handle. The handle can be used
+ to @{unregisterMatch|unregister} a match.
+ */
 static int
 l2dbus_connectionRegisterMatch
     (
@@ -559,6 +842,20 @@ l2dbus_connectionRegisterMatch
 }
 
 
+/**
+ @function unregisterMatch
+ @within Connection
+
+ Unregisters a message handler for the given match rule.
+
+ This method unregisters the handler for the match rule referenced by the
+ handle returned by the call to @{registerMatch|register} a match.
+
+ @tparam userdata conn The D-Bus connection object
+ @tparam lightuserdata handle The match rule handle
+ @treturn bool Returns **true** if the match rule is unregistered successfully
+ and **false** if the handle is unknown or there is an error.
+ */
 static int
 l2dbus_connectionUnregisterMatch
     (
@@ -597,6 +894,21 @@ l2dbus_connectionUnregisterMatch
 }
 
 
+/**
+ @function registerServiceObject
+ @within Connection
+
+ Registers a service object with the connection.
+
+ This method registers a service object with the connection that
+ will receive and handle requests from clients. A service object
+ can be registered to more than one connection if necessary.
+
+ @tparam userdata conn The D-Bus connection object
+ @tparam userdata svcObj The D-Bus service object
+ @treturn bool Returns **true** if the service object is registered
+ successfully and **false** otherwise
+ */
 static int
 l2dbus_connectionRegisterObject
     (
@@ -619,6 +931,20 @@ l2dbus_connectionRegisterObject
 }
 
 
+/**
+ @function unregisterServiceObject
+ @within Connection
+
+ Unregisters a service object from the connection.
+
+ This method unregisters a service object from the specified
+ D-Bus connection.
+
+ @tparam userdata conn The D-Bus connection object
+ @tparam userdata svcObj The D-Bus service object to unregister
+ @treturn bool Returns **true** if the service object is unregistered
+ successfully and **false** otherwise
+ */
 static int
 l2dbus_connectionUnregisterObject
     (
@@ -642,6 +968,15 @@ l2dbus_connectionUnregisterObject
 }
 
 
+/**
+ * @brief Called by Lua VM to GC/reclaim the Connection userdata.
+ *
+ * This method is called by the Lua VM to reclaim the Connection
+ * userdata.
+ *
+ * @return nil
+ *
+ */
 static int
 l2dbus_connectionDispose
     (
@@ -695,6 +1030,9 @@ l2dbus_connectionDispose
 }
 
 
+/*
+ * Define the methods of the Connection class
+ */
 static const luaL_Reg l2dbus_connMetaTable[] = {
     {"isConnected", l2dbus_connectionIsConnected},
     {"isAuthenticated", l2dbus_connectionIsAuthenticated},
@@ -716,6 +1054,15 @@ static const luaL_Reg l2dbus_connMetaTable[] = {
 };
 
 
+/**
+ * @brief Creates the Connection sub-module.
+ *
+ * This function creates a metatable entry for the Connection userdata
+ * and simulates opening the Connection sub-module.
+ *
+ * @return A table defining the Connection sub-module
+ *
+ */
 void
 l2dbus_openConnectionLib
     (

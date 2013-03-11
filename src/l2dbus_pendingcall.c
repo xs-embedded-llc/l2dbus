@@ -41,7 +41,25 @@
 #include "l2dbus_message.h"
 #include "lualib.h"
 
+/**
+ L2DBUS PendingCall
 
+ This section describes the PendingCall object which is used to receive
+ messages replies to a request.
+
+ @module l2dbus.PendingCall
+ */
+
+
+/**
+ * @brief Processes the reply message to a request.
+ *
+ * This function is called asynchronously from the main loop
+ * whenever a reply message is received for an earlier request.
+ *
+ * @param [in] pending The underlying D-Bus pending call object.
+ * @param [in] user User data associated with the pending call.
+ */
 static void
 l2dbus_pendingCallHandler
     (
@@ -88,6 +106,17 @@ l2dbus_pendingCallHandler
 }
 
 
+/**
+ * @brief Creates a new (Lua) PendingCall object.
+ *
+ * This function creates a new Lua PendingCall object that
+ * wraps an underlying D-Bus object.
+ *
+ * @param [in] L            The Lua state
+ * @param [in] dbusPending  The underlying D-Bus pending call object.
+ * @param [in] connIdx      A reference to the Lua connection userdata object.
+ * @return Returns the Lua PendingCall userdata object on the Lua stack.
+ */
 int
 l2dbus_newPendingCall
     (
@@ -130,6 +159,27 @@ l2dbus_newPendingCall
 }
 
 
+/**
+ * A D-Bus PendingCall class.
+ * @type PendingCall
+ */
+
+/**
+ @function setNotify
+ @within PendingCall
+
+ Sets a notification function for the reply.
+
+ This method sets a notification function to be called when the reply is
+ received or the pending call times out.
+
+ @tparam func notifyFunc The function to be called when a reply
+ message is received or a timeout occurs. The signature of the notification
+ function should conform to the following:
+     function onNotify(pendingCall, userToken)
+ @tparam ?any userToken An optional user data value passed back to the function.
+ @treturn bool Returns **true** if notification function is set, **false** otherwise.
+ */
 static int
 l2dbus_pendingCallSetNotify
     (
