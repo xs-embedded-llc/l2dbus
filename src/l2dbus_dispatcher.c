@@ -171,6 +171,7 @@ l2dbus_newDispatcher
  This method should be called to process one or more events
  depending on the *run* option provided.
 
+ @tparam userdata disp The Dispatcher instance.
  @tparam number runOpt One of the constant run options
  @treturn bool Returns **true** if dispatcher successfully ran
  one or more event iterations. Returns **false** on error.
@@ -230,6 +231,7 @@ l2dbus_dispatcherRun
  @{run} on the dispatcher. A Lua error is thrown if the dispatcher
  cannot be stopped.
 
+ @tparam userdata disp The Dispatcher instance.
  @treturn bool True if dispatcher stops
  */
 static int

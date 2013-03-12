@@ -43,7 +43,37 @@
 #include "lauxlib.h"
 
 
+/**
+ L2DBUS Message
 
+ This section describes the Message class which is used to encapsulate D-Bus messages.
+
+ @module l2dbus.Message
+ */
+
+
+/**
+ @function new
+
+ Creates a new D-Bus Message of the specified type.
+
+ Constructs one of the following types of new D-Bus messages:
+ <ul>
+ <li>@{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL}</li>
+ <li>@{l2dbus.Dbus.MESSAGE_TYPE_METHOD_RETURN|MESSAGE_TYPE_METHOD_RETURN}</li>
+ <li>@{l2dbus.Dbus.MESSAGE_TYPE_SIGNAL|MESSAGE_TYPE_SIGNAL}</li>
+ <li>@{l2dbus.Dbus.MESSAGE_TYPE_ERROR|MESSAGE_TYPE_ERROR}</li>
+ </ul>
+ The constructed message is initially empty (e.g. there are no arguments or
+ parameters assigned to it).
+
+ @tparam number msgType One of the defined D-Bus message types:
+ @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL},
+ @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_RETURN|MESSAGE_TYPE_METHOD_RETURN},
+ @{l2dbus.Dbus.MESSAGE_TYPE_SIGNAL|MESSAGE_TYPE_SIGNAL}, or
+ @{l2dbus.Dbus.MESSAGE_TYPE_ERROR|MESSAGE_TYPE_ERROR}
+ @treturn userdata Message userdata object
+ */
 static int
 l2dbus_newMessage
     (
@@ -98,6 +128,46 @@ l2dbus_newMessage
 }
 
 
+/**
+ A D-Bus method call message "initializer" table.
+
+ This table can be used in lieu of a parameter list to initialize a new
+ D-Bus method call message.
+
+ @see newMethodCall
+
+ @table MethodCallInitializer
+ @field method (string) [Req] The method name to call.
+ @field interface (string) [Opt] The interface to invoke the method on.
+ @field path (string) [Req] The D-Bus object path the message should be sent to.
+ @field destination (string) [Opt] The bus name that the message should be sent to.
+ */
+
+
+/**
+ @function newMethodCall
+
+ Creates a new D-Bus method call Message.
+
+ Constructs a D-Bus method call message either using an initialization
+ @{MethodCallInitializer|table} or a parameter list. The *destination* may
+ be **nil** in which no destination is set which is appropriate when
+ using D-Bus in a peer-to-peer context (e.g. no message bus). The
+ *interface* may be **nil** which means it remains undefined which
+ object receives the message if more than one interface defines the
+ same member name.
+
+ @tparam string|table member The member name to call **or** a
+ @{MethodCallInitializer} table containing all the method call parameters. If
+ a table is specified then the parameters following the table are ignored.
+ @tparam ?string|nil interface The interface to invoke the method on. Ignored
+ if the first parameter is a table.
+ @tparam string path The D-Bus object path the message should be sent to. Ignored
+ if the first parameter is a table.
+ @tparam ?string|nil destination The bus name that the message should be sent to.
+ Ignored if the first parameter is a table.
+ @treturn userdata Message userdata object
+ */
 static int
 l2dbus_newMessageMethodCall
     (
@@ -193,6 +263,17 @@ l2dbus_newMessageMethodCall
 }
 
 
+/**
+ @function newMethodReturn
+
+ Creates a new D-Bus method return Message.
+
+ Constructs a D-Bus method return message based on a method call message.
+
+ @tparam userdata callMsg The D-Bus call message on which to
+ form the D-Bus return message.
+ @treturn userdata Message userdata object for a return message.
+ */
 static int
 l2dbus_newMessageMethodReturn
     (
@@ -234,6 +315,38 @@ l2dbus_newMessageMethodReturn
 }
 
 
+/**
+ A D-Bus signal message "initializer" table.
+
+ This table can be used in lieu of a parameter list to initialize a new
+ D-Bus signal message.
+
+ @see newSignal
+
+ @table SignalInitializer
+ @field name (string) [Req] The name of the signal.
+ @field interface (string) [Req] The interface the signal is emitted from.
+ @field path (string) [Req] The path to the object emitting the signal.
+ */
+
+
+/**
+ @function newSignal
+
+ Creates a new D-Bus signal message.
+
+ Constructs a D-Bus signal message either using an initializer @{SignalInitializer|table}
+ or parameter list.
+
+ @tparam string|table name The signal name **or** a
+ @{SignalInitializer} table containing all the signal parameters. If
+ a table is specified then the parameters following the table are ignored.
+ @tparam ?string|nil interface The interface the signal is emitted from. Ignored
+ if the first parameter is a table.
+ @tparam string path The path to the object emitting the signal. Ignored
+ if the first parameter is a table.
+ @treturn userdata Message userdata object for a signal.
+ */
 static int
 l2dbus_newMessageSignal
     (
@@ -311,7 +424,20 @@ l2dbus_newMessageSignal
 }
 
 
+/**
+ @function newError
 
+ Creates a new D-Bus error message based on a request message.
+
+ @tparam userdata callMsg The D-Bus call message on which to
+ base the D-Bus error message.
+ @tparam string errName The error name for the message. It must be
+ a valid name according to the syntax given in the D-Bus
+ <a href="http://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-names">specification</a>.
+ @tparam ?string|nil errMsg The error message or **nil** if
+ there is not one.
+ @treturn userdata Message userdata object for a error message.
+ */
 static int
 l2dbus_newMessageError
     (
@@ -358,6 +484,19 @@ l2dbus_newMessageError
 }
 
 
+/**
+ @function copy
+
+ Creates a new D-Bus message based on an existing instance.
+
+ Creates a new message that is an exact replica of the message specified
+ except that its serial number is reset to 0 and if the original
+ message was "locked" (in the outgoing message queue and thus not
+ modifiable) the new message will be unlocked.
+
+ @tparam userdata origMsg The original D-Bus message to copy.
+ @treturn userdata Message userdata object for the new copy.
+ */
 static int
 l2dbus_newMessageCopy
     (
@@ -395,6 +534,23 @@ l2dbus_newMessageCopy
     return 1;
 }
 
+
+/**
+ @function getType
+
+ Gets the type of the message.
+
+ The valid types include @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL},
+ @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_RETURN|MESSAGE_TYPE_METHOD_RETURN},
+ @{l2dbus.Dbus.MESSAGE_TYPE_SIGNAL|MESSAGE_TYPE_SIGNAL}, and
+ @{l2dbus.Dbus.MESSAGE_TYPE_ERROR|MESSAGE_TYPE_ERROR}. Other types are
+ allowed and all code must silently ignore messages of unknown type. The
+ @{l2dbus.Dbus.MESSAGE_TYPE_INVALID|MESSAGE_TYPE_INVALID} type will **never**
+ be returned.
+
+ @tparam userdata msg The D-Bus message to get the type.
+ @treturn number The D-Bus message type constant.
+ */
 static int
 l2dbus_messageGetType
     (
@@ -413,6 +569,25 @@ l2dbus_messageGetType
 }
 
 
+/**
+ @function setNoReply
+
+ Sets flag indicating the message does not want a reply.
+
+ This method sets a flag in the message that indicates that it does not
+ want a reply. If this flag is set the other end of the connection
+ *may* (e.g. is not required to) optimize by not sending method return
+ or error replies.
+
+ If this flag is set then there is no way to know if the message
+ successfully arrived at the remote end. The reply message is used
+ to indicate a message has been received. By default a new message
+ has this flag set to **false** so the far-end is required to reply.
+
+ @tparam userdata msg The D-Bus message to set the flag.
+ @tparam bool flag Set to **true** to indicate not reply is
+ necessary. Set to **false** to indicate a reply is needed.
+ */
 static int
 l2dbus_messageSetNoReply
     (
@@ -433,6 +608,17 @@ l2dbus_messageSetNoReply
 }
 
 
+/**
+ @function getNoReply
+
+ Determines if a reply message is needed.
+
+ Returns **true** if the message does not expect a reply.
+
+ @tparam userdata msg The D-Bus message to get the flag status.
+ @return bool Returns **true** if the message does not expect a
+ reply or **false** if a reply is expected.
+ */
 static int
 l2dbus_messageGetNoReply
     (
@@ -450,6 +636,21 @@ l2dbus_messageGetNoReply
 }
 
 
+/**
+ @function setAutoStart
+
+ Sets flag indicating that the owner for the destination name will be
+ automatically started before the message is delivered.
+
+ When this flag is set the message is held until a name owner finishes
+ starting up or fails. If it fails then the reply will be an error
+ message. By default new messages have this set to **true** so that
+ auto-starting is the default.
+
+ @tparam userdata msg The D-Bus message on which the flag will be set.
+ @tparam bool flag Set to **true** to indicate auto-start is enabled
+ or **false** otherwise.
+ */
 static int
 l2dbus_messageSetAutoStart
     (
@@ -470,6 +671,17 @@ l2dbus_messageSetAutoStart
 }
 
 
+/**
+ @function getAutoStart
+
+ Returns **true** if the provided message will cause the recipient of
+ the message (e.g. the destination name) to be auto-started. Otherwise
+ **false** is returned and the destination is not auto-started.
+
+ @tparam userdata msg The D-Bus message on which to retrieve the flag.
+ @treturn bool Returns **true** to indicate auto-start is enabled
+ or **false** otherwise.
+ */
 static int
 l2dbus_messageGetAutoStart
     (
@@ -487,6 +699,18 @@ l2dbus_messageGetAutoStart
 }
 
 
+/**
+ @function setPath
+
+ Sets the object path the message is being sent to (for a
+ @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL}) or the
+ one the signal is being emitted from (for @{l2dbus.Dbus.MESSAGE_TYPE_SIGNAL|MESSAGE_TYPE_SIGNAL})
+
+ The path must be a valid D-Bus object path.
+
+ @tparam userdata msg The D-Bus message to set the path.
+ @tparam string|nil path The path to set. Can be **nil** to unset the path.
+ */
 static int
 l2dbus_messageSetPath
     (
@@ -527,6 +751,18 @@ l2dbus_messageSetPath
 }
 
 
+/**
+ @function getObjectPath
+
+ Gets the object path this message is being sent to (for a
+ @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL}) or the
+ path the signal is being emitted from (for @{l2dbus.Dbus.MESSAGE_TYPE_SIGNAL|MESSAGE_TYPE_SIGNAL})
+
+ The path must be a valid D-Bus object path.
+
+ @tparam userdata msg The D-Bus message to get the path.
+ @treturn string|nil The path or **nil** if it's not set.
+ */
 static int
 l2dbus_messageGetPath
     (
@@ -559,6 +795,18 @@ l2dbus_messageGetPath
 }
 
 
+/**
+ @function hasObjectPath
+
+ Gets the object path this message is being sent to (for a
+ @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL}) or the
+ path the signal is being emitted from (for @{l2dbus.Dbus.MESSAGE_TYPE_SIGNAL|MESSAGE_TYPE_SIGNAL}).
+
+ The path must be a valid D-Bus object path.
+
+ @tparam userdata msg The D-Bus message to get the path.
+ @treturn string|nil The path or **nil** if it's not set.
+ */
 static int
 l2dbus_messageHasPath
     (
@@ -584,6 +832,21 @@ l2dbus_messageHasPath
 }
 
 
+/**
+ @function getDecomposedObjectPath
+
+ Gets the decomposed object path this message is being sent to (for a
+ @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL}) or the
+ decomposed path the signal is being emitted from (for @{l2dbus.Dbus.MESSAGE_TYPE_SIGNAL|MESSAGE_TYPE_SIGNAL}).
+
+ The decomposed form is defined as one array element per path component. An
+ empty but non-NULL path means the "/" path. So the path "/foo/bar" becomes
+ *{"foo", "bar"}* and the path "/" becomes an empty table *{}*.
+
+ @tparam userdata msg The D-Bus message to get the path.
+ @treturn table A Lua table/array containing the decomposed path as elements
+ of the array.
+ */
 static int
 l2dbus_messageDecomposedPath
     (
@@ -625,6 +888,20 @@ l2dbus_messageDecomposedPath
 }
 
 
+/**
+ @function setInterface
+
+ Sets the interface this message is being sent to (for a
+ @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL}) or the
+ interface the signal is being emitted from (for @{l2dbus.Dbus.MESSAGE_TYPE_SIGNAL|MESSAGE_TYPE_SIGNAL}).
+
+ The interface name must contain only valid characters from the D-Bus
+ <a href="http://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-names">specification</a>.
+
+ @tparam userdata msg The D-Bus message to set the interface.
+ @tparam ?string|nil interface The D-Bus interface name or **nil** if the
+ interface is to be unset.
+ */
 static int
 l2dbus_messageSetInterface
     (
@@ -665,6 +942,16 @@ l2dbus_messageSetInterface
 }
 
 
+/**
+ @function getInterface
+
+ Gets the interface this message is being sent to (for a
+ @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL}) or the
+ interface the signal is being emitted from (for @{l2dbus.Dbus.MESSAGE_TYPE_SIGNAL|MESSAGE_TYPE_SIGNAL}).
+
+ @tparam userdata msg The D-Bus message to get the interface.
+ @treturn ?string|nil The D-Bus interface name or **nil** if unset.
+ */
 static int
 l2dbus_messageGetInterface
     (
@@ -697,6 +984,16 @@ l2dbus_messageGetInterface
 }
 
 
+/**
+ @function hasInterface
+
+ Checks to see if the message has a matching interface.
+
+ @tparam userdata msg The D-Bus message to compare with the interface.
+ @tparam string interface The interface name.
+ @treturn bool Returns **true** if the interface field in the message
+ header matches, **false** otherwise.
+ */
 static int
 l2dbus_messageHasInterface
     (
@@ -722,6 +1019,20 @@ l2dbus_messageHasInterface
 }
 
 
+/**
+ @function setMember
+
+ Sets the interface member this being invoked (for a
+ @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL}) or the
+ member name for the signal being emitted (for @{l2dbus.Dbus.MESSAGE_TYPE_SIGNAL|MESSAGE_TYPE_SIGNAL}).
+
+ The member name must contain only valid characters from the D-Bus
+ <a href="http://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-names">specification</a>.
+
+ @tparam userdata msg The D-Bus message to set the member name.
+ @tparam ?string|nil name The D-Bus member name or **nil** if the
+ name is to be unset.
+ */
 static int
 l2dbus_messageSetMember
     (
@@ -762,6 +1073,16 @@ l2dbus_messageSetMember
 }
 
 
+/**
+ @function getMember
+
+ Gets the interface member being invoked (for a
+ @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL}) or emitted
+ (for @{l2dbus.Dbus.MESSAGE_TYPE_SIGNAL|MESSAGE_TYPE_SIGNAL}).
+
+ @tparam userdata msg The D-Bus message to get the member name.
+ @treturn ?string|nil The D-Bus member name or **nil** if unset.
+ */
 static int
 l2dbus_messageGetMember
     (
@@ -794,6 +1115,16 @@ l2dbus_messageGetMember
 }
 
 
+/**
+ @function hasMember
+
+ Checks to see if the message has a matching interface member.
+
+ @tparam userdata msg The D-Bus message to compare with the interface member.
+ @tparam string interface The member name to compare.
+ @treturn bool Returns **true** if the member field in the message
+ header matches, **false** otherwise.
+ */
 static int
 l2dbus_messageHasMember
     (
@@ -819,6 +1150,17 @@ l2dbus_messageHasMember
 }
 
 
+/**
+ @function setErrorName
+
+ Sets the name of the error message.
+
+ The error name must be fully qualified according the the D-Bus
+ <a href="http://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-names">specification</a>.
+
+ @tparam userdata msg The D-Bus error message to set the name.
+ @tparam ?string|nil name The error name or **nil** to unset this field.
+ */
 static int
 l2dbus_messageSetErrorName
     (
@@ -858,6 +1200,15 @@ l2dbus_messageSetErrorName
 }
 
 
+/**
+ @function getErrorName
+
+ Gets the error name for messages of type
+ @{l2dbus.Dbus.MESSAGE_TYPE_ERROR|MESSAGE_TYPE_ERROR}).
+
+ @tparam userdata msg The D-Bus error message to get the error name.
+ @treturn ?string|nil The D-Bus error name or **nil** if unset.
+ */
 static int
 l2dbus_messageGetErrorName
     (
@@ -889,6 +1240,19 @@ l2dbus_messageGetErrorName
 }
 
 
+/**
+ @function setDestination
+
+ Sets the message's destination.
+
+ The destination is the name of another connection on the bus and
+ may specify either the *well-known* name or the *unique* name assigned
+ by the bus. The destination name must be fully qualified according the the D-Bus
+ <a href="http://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-names">specification</a>.
+
+ @tparam userdata msg The D-Bus message to set the destination.
+ @tparam ?string|nil name The destination or **nil** to unset this field.
+ */
 static int
 l2dbus_messageSetDestination
     (
@@ -924,6 +1288,14 @@ l2dbus_messageSetDestination
 }
 
 
+/**
+ @function getDestination
+
+ Gets the destination of a message.
+
+ @tparam userdata msg The D-Bus message to get the destination.
+ @treturn ?string|nil The D-Bus destination or **nil** if unset.
+ */
 static int
 l2dbus_messageGetDestination
     (
@@ -951,6 +1323,19 @@ l2dbus_messageGetDestination
 }
 
 
+/**
+ @function hasDestination
+
+ Checks to see if the message has a matching destination.
+
+ If the message has no destination specified or has a different destination
+ then **false** is returned, otherwise **true**.
+
+ @tparam userdata msg The D-Bus message to compare with the destination.
+ @tparam string destination The destination to compare.
+ @treturn bool Returns **true** if the destination in the message
+ header matches, **false** otherwise.
+ */
 static int
 l2dbus_messageHasDestination
     (
@@ -971,6 +1356,20 @@ l2dbus_messageHasDestination
 }
 
 
+/**
+ @function setSender
+
+ Sets the message sender.
+
+ The sender name must be fully qualified according the the D-Bus
+ <a href="http://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-names">specification</a>.
+
+ **Note:** You usually don't want to call this method unless you're implementing
+ a message bus daemon since that is typically one function of the daemon.
+
+ @tparam userdata msg The D-Bus message to set sender.
+ @tparam ?string|nil name The sender or **nil** to unset this field.
+ */
 static int
 l2dbus_messageSetSender
     (
@@ -1001,6 +1400,19 @@ l2dbus_messageSetSender
 }
 
 
+/**
+ @function getSender
+
+ Gets the unique name of the connection which originated this
+ message or **nil** if unknown or inapplicable.
+
+ The sender is typically filled in by the message bus. The sender will
+ always be the *unique* bus name and **not** one of the (potentially
+ multiple) *well-known* names a connection may own.
+
+ @tparam userdata msg The D-Bus message to get the sender.
+ @treturn ?string|nil The unique D-Bus sender or **nil** if unset.
+ */
 static int
 l2dbus_messageGetSender
     (
@@ -1028,6 +1440,23 @@ l2dbus_messageGetSender
 }
 
 
+/**
+ @function hasSender
+
+ Checks to see if the message has the given unique name as its sender.
+
+ If the message has no sender specified or has a different sender then
+ **false** is returned. Messages from the message bus itself will have
+ @{l2dbus.Dbus.SERVICE_DBUS|SERVICE_DBUS} as the sender.
+
+ **Note:** A peer application will always have the unique name of the
+ connection as the sender and **not** the a sender's *well-known* name.
+
+ @tparam userdata msg The D-Bus message to compare with the sender name.
+ @tparam string sender The sender name to compare.
+ @treturn bool Returns **true** if the sender in the message
+ header matches, **false** otherwise.
+ */
 static int
 l2dbus_messageHasSender
     (
@@ -1048,6 +1477,19 @@ l2dbus_messageHasSender
 }
 
 
+/**
+ @function getSignature
+
+ Gets the type signature of the message.
+
+ The type signature are the arguments in the message payload. The payload
+ only includes the *in* arguments for @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL}
+ messages and only *out* arguments for @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_RETURN|MESSAGE_TYPE_METHOD_RETURN}
+ messages. Therefore the result is **not** the complete signature of the entire C++ style method.
+
+ @tparam userdata msg The D-Bus message to get the signature.
+ @treturn ?string|nil The D-Bus signature in terms of type codes or **nil** if unset.
+ */
 static int
 l2dbus_messageGetSignature
     (
@@ -1075,6 +1517,15 @@ l2dbus_messageGetSignature
 }
 
 
+/**
+ @function hasSignature
+
+ Checks to see if the message has the given signature.
+
+ @tparam userdata msg The D-Bus message to compare with the signature.
+ @tparam string signature The signature to compare.
+ @treturn bool Returns **true** if the signature matches, **false** otherwise.
+ */
 static int
 l2dbus_messageHasSignature
     (
@@ -1095,6 +1546,15 @@ l2dbus_messageHasSignature
 }
 
 
+/**
+ @function containsUnixFds
+
+ Checks to see if the message contains Unix file descriptors (fds).
+
+ @tparam userdata msg The D-Bus message to check for Unix file descriptors.
+ @treturn bool Returns **true** if the message contains Unix file descriptors,
+ **false** otherwise.
+ */
 static int
 l2dbus_messageContainsUnixFds
     (
@@ -1113,6 +1573,22 @@ l2dbus_messageContainsUnixFds
 }
 
 
+/**
+ @function setSerial
+
+ Sets the message serial number.
+
+ The serial number can only be done **once** for a message.
+
+ **Note:** The underlying @{l2dbus.Connection|Connection} will automatically
+ set the serial to an appropriate value when it is enqueued to be sent. This
+ function typically only needs to be used in situations where the message is
+ being encapsulated in another protocol or it's being sent via a mechanism
+ outside of the standard @{l2dbus.Connection|Connection} methods.
+
+ @tparam userdata msg The D-Bus message to set the serial number.
+ @tparam number serialNum The integral serial number to set.
+ */
 static int
 l2dbus_messageSetSerial
     (
@@ -1133,6 +1609,18 @@ l2dbus_messageSetSerial
 }
 
 
+/**
+ @function getSerial
+
+ Returns the serial number of the message or zero (0) if none has been set.
+
+ The message's serial number is provided by the application sending the
+ message and is used to identify replies to the message. All messages received
+ on a connection will have a serial provided by the remote application.
+
+ @tparam userdata msg The D-Bus message to get the serial number.
+ @treturn number The serial number of the message.
+ */
 static int
 l2dbus_messageGetSerial
     (
@@ -1151,6 +1639,22 @@ l2dbus_messageGetSerial
 }
 
 
+/**
+ @function msgTypeToString
+
+ Converts the D-Bus message type into a machine-readable string.
+
+ <ul>
+ <li>@{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL} -> "method_call"</li>
+ <li>@{l2dbus.Dbus.MESSAGE_TYPE_METHOD_RETURN|MESSAGE_TYPE_METHOD_RETURN} -> "method_return"</li>
+ <li>@{l2dbus.Dbus.MESSAGE_TYPE_SIGNAL|MESSAGE_TYPE_SIGNAL} -> "signal"</li>
+ <li>@{l2dbus.Dbus.MESSAGE_TYPE_ERROR|MESSAGE_TYPE_ERROR} -> "error"</li>
+ <li>@{l2dbus.Dbus.MESSAGE_TYPE_INVALID|MESSAGE_TYPE_INVALID} -> "invalid"</li>
+ </ul>
+
+ @tparam number msgType The D-Bus message type.
+ @treturn string The machine-readable message type string.
+ */
 static int
 l2dbus_messageTypeToString
     (
@@ -1430,7 +1934,6 @@ static const luaL_Reg l2dbus_messageMetaTable[] = {
     {"containsUnixFds", l2dbus_messageContainsUnixFds},
     {"setSerial", l2dbus_messageSetSerial},
     {"getSerial", l2dbus_messageGetSerial},
-    {"msgTypeToString", l2dbus_messageTypeToString},
     {"addArgs", l2dbus_messageAddArgs},
     {"addArgsBySignature", l2dbus_messageAddArgsBySignature},
     {"getArgs", l2dbus_messageGetArgs},
@@ -1492,6 +1995,9 @@ l2dbus_openMessage
 
     lua_pushcfunction(L, l2dbus_newMessageCopy);
     lua_setfield(L, -2, "copy");
+
+    lua_pushcfunction(L, l2dbus_messageTypeToString);
+    lua_setfield(L, -2, "msgTypeToString");
 
     lua_pushcfunction(L, l2dbus_messageDemarshallToMessage);
     lua_setfield(L, -2, "demarshallToMessage");

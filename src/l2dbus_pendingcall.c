@@ -45,7 +45,9 @@
  L2DBUS PendingCall
 
  This section describes the PendingCall object which is used to receive
- messages replies to a request.
+ messages replies to a request. A PendingCall object cannot be created
+ directly but instead is returned by a call to the Connection method
+ @{l2dbus.Connection.sendWithReply|sendWithReply}.
 
  @module l2dbus.PendingCall
  */
@@ -173,6 +175,7 @@ l2dbus_newPendingCall
  This method sets a notification function to be called when the reply is
  received or the pending call times out.
 
+ @tparam userdata pending The PendingCall object
  @tparam func notifyFunc The function to be called when a reply
  message is received or a timeout occurs. The signature of the notification
  function should conform to the following:
@@ -228,6 +231,17 @@ l2dbus_pendingCallSetNotify
 }
 
 
+/**
+ @function cancel
+ @within PendingCall
+
+ Cancels the pending call.
+
+ This method drops the pending call such that any reply or error will
+ just be ignored.
+
+ @tparam userdata pending The PendingCall object.
+ */
 static int
 l2dbus_pendingCallCancel
     (
@@ -249,6 +263,16 @@ l2dbus_pendingCallCancel
 }
 
 
+/**
+ @function isCompleted
+ @within PendingCall
+
+ Checks whether the pending call has received a reply yet or not.
+
+ @tparam userdata pending The PendingCall object.
+ @treturn bool Returns **true** if a reply has been received and
+ **false** otherwise.
+ */
 static int
 l2dbus_pendingCallIsCompleted
     (
@@ -276,6 +300,20 @@ l2dbus_pendingCallIsCompleted
 }
 
 
+/**
+ @function stealReply
+ @within PendingCall
+
+ Tries to get the pending reply.
+
+ The method will attempt to get any received reply and if none has
+ been received yet it will return **nil**. The method can only be
+ called **once** (assuming a reply message is returned) since
+ ownership of the message transfers to the caller.
+
+ @tparam userdata pending The PendingCall object.
+ @treturn userdata|nil The reply message (if available) or **nil**.
+ */
 static int
 l2dbus_pendingCallStealReply
     (
@@ -308,6 +346,22 @@ l2dbus_pendingCallStealReply
 }
 
 
+/**
+ @function block
+ @within PendingCall
+
+ Block until the pending call is completed.
+
+ The blocking call is done as with @{l2dbus.Connection.sendWithReplyAndBlock|sendWithReplyAndBlock}
+ so the call does not enter the main loop or process other messages while waiting. It simply waits
+ for the reply in question. If the pending call is already completed then the method returns
+ immediately.
+
+ **Note:** When the blocking starts internally the timeout is reset so the the timeout period
+ will extend beyond the time originally specified when the request was made.
+
+ @tparam userdata pending The PendingCall object.
+ */
 static int
 l2dbus_pendingCallBlock
     (
@@ -328,6 +382,15 @@ l2dbus_pendingCallBlock
 }
 
 
+/**
+ * @brief Called by the Lua VM to GC/dispose of the PendingCall
+ *
+ * This function is called by the Lua VM to garbage collect the PendingCall
+ * object once it is no longer referenced.
+ *
+ * @param [in] L            The Lua state
+ * @return None
+ */
 static int
 l2dbus_pendingCallDispose
     (
@@ -362,7 +425,9 @@ l2dbus_pendingCallDispose
 }
 
 
-
+/*
+ * Define the methods of the PendingCall class
+ */
 static const luaL_Reg l2dbus_pendingCallMetaTable[] = {
     {"setNotify", l2dbus_pendingCallSetNotify},
     {"cancel", l2dbus_pendingCallCancel},
@@ -374,6 +439,16 @@ static const luaL_Reg l2dbus_pendingCallMetaTable[] = {
 };
 
 
+/**
+ * @brief "Opens" the PendingCall sub-module.
+ *
+ * This function creates a metatable entry for the PendingCall userdata
+ * and simulates opening the PendingCall sub-module. The corresponding
+ * object can **only** be created by a Connection:sendWithReply call.
+ *
+ * @return None
+ *
+ */
 void
 l2dbus_openPendingCall
     (
