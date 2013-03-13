@@ -72,7 +72,7 @@
  See <a href="http://software.schmorp.de/pkg/libev.html">libev</a> for
  additional information on the underlying main loop library.
 
- @tparam ?ev.Loop loop Optional Lua libev main loop
+ @tparam ?ev.Loop|nil loop Optional Lua libev main loop
  @treturn userdata Dispatcher userdata object
  */
 int

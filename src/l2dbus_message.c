@@ -59,10 +59,10 @@
 
  Constructs one of the following types of new D-Bus messages:
  <ul>
- <li>@{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL}</li>
- <li>@{l2dbus.Dbus.MESSAGE_TYPE_METHOD_RETURN|MESSAGE_TYPE_METHOD_RETURN}</li>
- <li>@{l2dbus.Dbus.MESSAGE_TYPE_SIGNAL|MESSAGE_TYPE_SIGNAL}</li>
- <li>@{l2dbus.Dbus.MESSAGE_TYPE_ERROR|MESSAGE_TYPE_ERROR}</li>
+ <li>@{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL} or @{METHOD_CALL}</li>
+ <li>@{l2dbus.Dbus.MESSAGE_TYPE_METHOD_RETURN|MESSAGE_TYPE_METHOD_RETURN} or @{METHOD_RETURN}</li>
+ <li>@{l2dbus.Dbus.MESSAGE_TYPE_SIGNAL|MESSAGE_TYPE_SIGNAL} or @{SIGNAL}</li>
+ <li>@{l2dbus.Dbus.MESSAGE_TYPE_ERROR|MESSAGE_TYPE_ERROR} or @{ERROR}</li>
  </ul>
  The constructed message is initially empty (e.g. there are no arguments or
  parameters assigned to it).
@@ -537,6 +537,7 @@ l2dbus_newMessageCopy
 
 /**
  @function getType
+ @within l2dbus.Message
 
  Gets the type of the message.
 
@@ -571,6 +572,7 @@ l2dbus_messageGetType
 
 /**
  @function setNoReply
+ @within l2dbus.Message
 
  Sets flag indicating the message does not want a reply.
 
@@ -610,6 +612,7 @@ l2dbus_messageSetNoReply
 
 /**
  @function getNoReply
+ @within l2dbus.Message
 
  Determines if a reply message is needed.
 
@@ -638,6 +641,7 @@ l2dbus_messageGetNoReply
 
 /**
  @function setAutoStart
+ @within l2dbus.Message
 
  Sets flag indicating that the owner for the destination name will be
  automatically started before the message is delivered.
@@ -673,6 +677,7 @@ l2dbus_messageSetAutoStart
 
 /**
  @function getAutoStart
+ @within l2dbus.Message
 
  Returns **true** if the provided message will cause the recipient of
  the message (e.g. the destination name) to be auto-started. Otherwise
@@ -701,6 +706,7 @@ l2dbus_messageGetAutoStart
 
 /**
  @function setPath
+ @within l2dbus.Message
 
  Sets the object path the message is being sent to (for a
  @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL}) or the
@@ -753,6 +759,7 @@ l2dbus_messageSetPath
 
 /**
  @function getObjectPath
+ @within l2dbus.Message
 
  Gets the object path this message is being sent to (for a
  @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL}) or the
@@ -797,6 +804,7 @@ l2dbus_messageGetPath
 
 /**
  @function hasObjectPath
+ @within l2dbus.Message
 
  Gets the object path this message is being sent to (for a
  @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL}) or the
@@ -834,6 +842,7 @@ l2dbus_messageHasPath
 
 /**
  @function getDecomposedObjectPath
+ @within l2dbus.Message
 
  Gets the decomposed object path this message is being sent to (for a
  @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL}) or the
@@ -890,6 +899,7 @@ l2dbus_messageDecomposedPath
 
 /**
  @function setInterface
+ @within l2dbus.Message
 
  Sets the interface this message is being sent to (for a
  @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL}) or the
@@ -944,6 +954,7 @@ l2dbus_messageSetInterface
 
 /**
  @function getInterface
+ @within l2dbus.Message
 
  Gets the interface this message is being sent to (for a
  @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL}) or the
@@ -986,6 +997,7 @@ l2dbus_messageGetInterface
 
 /**
  @function hasInterface
+ @within l2dbus.Message
 
  Checks to see if the message has a matching interface.
 
@@ -1021,6 +1033,7 @@ l2dbus_messageHasInterface
 
 /**
  @function setMember
+ @within l2dbus.Message
 
  Sets the interface member this being invoked (for a
  @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL}) or the
@@ -1075,6 +1088,7 @@ l2dbus_messageSetMember
 
 /**
  @function getMember
+ @within l2dbus.Message
 
  Gets the interface member being invoked (for a
  @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL}) or emitted
@@ -1117,6 +1131,7 @@ l2dbus_messageGetMember
 
 /**
  @function hasMember
+ @within l2dbus.Message
 
  Checks to see if the message has a matching interface member.
 
@@ -1152,6 +1167,7 @@ l2dbus_messageHasMember
 
 /**
  @function setErrorName
+ @within l2dbus.Message
 
  Sets the name of the error message.
 
@@ -1202,6 +1218,7 @@ l2dbus_messageSetErrorName
 
 /**
  @function getErrorName
+ @within l2dbus.Message
 
  Gets the error name for messages of type
  @{l2dbus.Dbus.MESSAGE_TYPE_ERROR|MESSAGE_TYPE_ERROR}).
@@ -1242,6 +1259,7 @@ l2dbus_messageGetErrorName
 
 /**
  @function setDestination
+ @within l2dbus.Message
 
  Sets the message's destination.
 
@@ -1290,6 +1308,7 @@ l2dbus_messageSetDestination
 
 /**
  @function getDestination
+ @within l2dbus.Message
 
  Gets the destination of a message.
 
@@ -1325,6 +1344,7 @@ l2dbus_messageGetDestination
 
 /**
  @function hasDestination
+ @within l2dbus.Message
 
  Checks to see if the message has a matching destination.
 
@@ -1358,6 +1378,7 @@ l2dbus_messageHasDestination
 
 /**
  @function setSender
+ @within l2dbus.Message
 
  Sets the message sender.
 
@@ -1402,6 +1423,7 @@ l2dbus_messageSetSender
 
 /**
  @function getSender
+ @within l2dbus.Message
 
  Gets the unique name of the connection which originated this
  message or **nil** if unknown or inapplicable.
@@ -1442,6 +1464,7 @@ l2dbus_messageGetSender
 
 /**
  @function hasSender
+ @within l2dbus.Message
 
  Checks to see if the message has the given unique name as its sender.
 
@@ -1479,6 +1502,7 @@ l2dbus_messageHasSender
 
 /**
  @function getSignature
+ @within l2dbus.Message
 
  Gets the type signature of the message.
 
@@ -1519,6 +1543,7 @@ l2dbus_messageGetSignature
 
 /**
  @function hasSignature
+ @within l2dbus.Message
 
  Checks to see if the message has the given signature.
 
@@ -1548,6 +1573,7 @@ l2dbus_messageHasSignature
 
 /**
  @function containsUnixFds
+ @within l2dbus.Message
 
  Checks to see if the message contains Unix file descriptors (fds).
 
@@ -1575,6 +1601,7 @@ l2dbus_messageContainsUnixFds
 
 /**
  @function setSerial
+ @within l2dbus.Message
 
  Sets the message serial number.
 
@@ -1611,6 +1638,7 @@ l2dbus_messageSetSerial
 
 /**
  @function getSerial
+ @within l2dbus.Message
 
  Returns the serial number of the message or zero (0) if none has been set.
 
@@ -1673,6 +1701,20 @@ l2dbus_messageTypeToString
 }
 
 
+/**
+ @function addArgs
+ @within l2dbus.Message
+
+ Append Lua arguments to a D-Bus message.
+
+ The Lua arguments are converted to their equivalent D-Bus types
+ before encoding them into the message using a set of heuristics.
+ A Lua error is generated if any errors are detected during the
+ encoding process.
+
+ @tparam userdata msg   D-Bus message to append arguments to.
+ @tparam args ... Lua arguments to append to the message.
+ */
 static int
 l2dbus_messageAddArgs
     (
@@ -1696,6 +1738,22 @@ l2dbus_messageAddArgs
 }
 
 
+/**
+ @function addArgsBySignature
+ @within l2dbus.Message
+
+ Append Lua arguments to a D-Bus message using signature.
+
+ The Lua arguments are converted to their equivalent D-Bus types
+ using the provide D-Bus signature. The signature is used as guide
+ so that the conversions are explicit. If an error is encountered
+ in the conversion process a Lua error is thrown. The provided
+ signature **must** be a valid message signature.
+
+ @tparam userdata msg   D-Bus message to append arguments to.
+ @tparam string signature The valid D-Bus signature for the arguments.
+ @tparam args ... Lua arguments to append to the message.
+ */
 static int
 l2dbus_messageAddArgsBySignature
     (
@@ -1723,6 +1781,20 @@ l2dbus_messageAddArgsBySignature
 }
 
 
+/**
+ @function getArgs
+ @within l2dbus.Message
+
+ Retrieve the arguments from the D-Bus message.
+
+ This method unmarshalls the arguments from the D-Bus message
+ converting them to equivalent Lua types. The arguments are passed
+ back as multiple return values. If there is an error then a Lua
+ error is thrown.
+
+ @tparam userdata msg   D-Bus message to extract arguments.
+ @treturn ... Lua arguments passed out as multiple return values.
+ */
 static int
 l2dbus_messageGetArgs
     (
@@ -1740,6 +1812,20 @@ l2dbus_messageGetArgs
 }
 
 
+/**
+ @function getArgsAsArray
+ @within l2dbus.Message
+
+ Retrieve the arguments from the D-Bus message and return as an array.
+
+ This method unmarshalls the arguments from the D-Bus message
+ converting them to equivalent Lua types. The arguments are returned
+ in a Lua table treated as an array. The arguments are ordered arg[1..N]
+ in the array. If there is an error then a Lua error is thrown.
+
+ @tparam userdata msg   D-Bus message to extract arguments.
+ @treturn array Lua arguments returned in an array.
+ */
 static int
 l2dbus_messageGetArgsAsArray
     (
@@ -1756,6 +1842,21 @@ l2dbus_messageGetArgsAsArray
     return l2dbus_transcodeDbusArgsToLuaArray(L, msgUd->msg);
 }
 
+
+/**
+ @function marshallToArray
+ @within l2dbus.Message
+
+ Marshall the D-Bus message data to a byte array.
+
+ This method marshalls the contents of the D-Bus message into a Lua array
+ of numbers (bytes). The array represents a binary representation of the
+ D-Bus message.
+
+ @tparam userdata msg D-Bus message to extract binary data.
+ @treturn array Array of numbers containing the binary representation of
+ the message.
+ */
 static int
 l2dbus_messageMarshallToArray
     (
@@ -1790,8 +1891,21 @@ l2dbus_messageMarshallToArray
 }
 
 
+/**
+ @function unmarshallToMessage
+
+ Unmarshalls a binary array into a D-Bus message.
+
+ This method takes an array of numbers representing the binary
+ representation of a D-Bus message and turns it into a new message. This
+ is the opposite operation performed by @{marshallToArray}.
+
+ @tparam array msgBuf Array of numbers containing the binary representation of
+ the message.
+ @return userdata A D-Bus message created from the binary representation.
+ */
 static int
-l2dbus_messageDemarshallToMessage
+l2dbus_messageUnmarshallToMessage
     (
     lua_State*  L
     )
@@ -1849,6 +1963,18 @@ l2dbus_messageDemarshallToMessage
 }
 
 
+/**
+ @function validateSignature
+
+ Check a type signature for validity.
+
+ This function checks the validity of the type signature against the D-Bus
+ specification.
+
+ @tparam string signature The signature to validate.
+ @treturn bool Returns **true** if the signature is valid, **false** otherwise.
+ @treturn ?string|nil An error message if there signature is invalid, **nil** otherwise.
+ */
 static int
 l2dbus_messageValidateSignature
     (
@@ -1881,6 +2007,15 @@ l2dbus_messageValidateSignature
 }
 
 
+/**
+ * @brief Called by Lua VM to GC/reclaim the D-Bus Message userdata.
+ *
+ * This method is called by the Lua VM to reclaim the D-Bus Message
+ * userdata.
+ *
+ * @return nil
+ *
+ */
 static int
 l2dbus_messageDispose
     (
@@ -1904,7 +2039,9 @@ l2dbus_messageDispose
 }
 
 
-
+/*
+ * Define the methods of the D-Bus Message class
+ */
 static const luaL_Reg l2dbus_messageMetaTable[] = {
     {"getType", l2dbus_messageGetType},
     {"setNoReply", l2dbus_messageSetNoReply},
@@ -1944,6 +2081,20 @@ static const luaL_Reg l2dbus_messageMetaTable[] = {
 };
 
 
+/**
+ * @brief Wraps an underlying D-Bus message is a Lua userdata.
+ *
+ * This method wraps or embeds a raw D-Bus message into
+ * a Lua userdata container. It can optionally add a reference
+ * if it's owned by the container.
+ *
+ * @param [in] L        The Lua state.
+ * @param [in] msg      The raw D-Bus message to wrap.
+ * @param [in] addRef   Indication of whether to increment the
+ * message ref-count (true) or not (false).
+ * @return The Lua userdata pointer,
+ *
+ */
 l2dbus_Message*
 l2dbus_messageWrap
     (
@@ -1969,6 +2120,15 @@ l2dbus_messageWrap
 }
 
 
+/**
+ * @brief Creates the Message sub-module.
+ *
+ * This function creates a metatable entry for the Message userdata
+ * and simulates opening the Message sub-module.
+ *
+ * @return A table defining the Message sub-module
+ *
+ */
 void
 l2dbus_openMessage
     (
@@ -1999,28 +2159,53 @@ l2dbus_openMessage
     lua_pushcfunction(L, l2dbus_messageTypeToString);
     lua_setfield(L, -2, "msgTypeToString");
 
-    lua_pushcfunction(L, l2dbus_messageDemarshallToMessage);
-    lua_setfield(L, -2, "demarshallToMessage");
+    lua_pushcfunction(L, l2dbus_messageUnmarshallToMessage);
+    lua_setfield(L, -2, "unmarshallToMessage");
 
     lua_pushcfunction(L, l2dbus_messageValidateSignature);
     lua_setfield(L, -2, "validateSignature");
 
+/**
+ @messageType INVALID
+ This value is never a valid message type.
+ Equivalent to @{l2dbus.Dbus.MESSAGE_TYPE_INVALID}.
+ */
     lua_pushstring(L, "INVALID");
     lua_pushinteger(L, DBUS_MESSAGE_TYPE_INVALID);
     lua_rawset(L, -3);
 
+/**
+ @messageType METHOD_CALL
+ Message type of a method call.
+ Equivalent to @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL}.
+ */
     lua_pushstring(L, "METHOD_CALL");
     lua_pushinteger(L, DBUS_MESSAGE_TYPE_METHOD_CALL);
     lua_rawset(L, -3);
 
+/**
+ @messageType METHOD_RETURN
+ Message type of a method return.
+ Equivalent to @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_RETURN}.
+ */
     lua_pushstring(L, "METHOD_RETURN");
     lua_pushinteger(L, DBUS_MESSAGE_TYPE_METHOD_RETURN);
     lua_rawset(L, -3);
 
+/**
+ @messageType ERROR
+ Message type of an error.
+ Equivalent to @{l2dbus.Dbus.MESSAGE_TYPE_ERROR}.
+ */
     lua_pushstring(L, "ERROR");
     lua_pushinteger(L, DBUS_MESSAGE_TYPE_ERROR);
     lua_rawset(L, -3);
 
+/**
+ @messageType SIGNAL
+ Message type of a signal.
+ Equivalent to @{l2dbus.Dbus.MESSAGE_TYPE_SIGNAL}.
+ */
     lua_pushstring(L, "SIGNAL");
     lua_pushinteger(L, DBUS_MESSAGE_TYPE_SIGNAL);
     lua_rawset(L, -3);

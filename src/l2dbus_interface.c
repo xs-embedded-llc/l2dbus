@@ -44,6 +44,26 @@
 #include "l2dbus_dbuscompat.h"
 #include "lualib.h"
 
+/**
+ L2DBUS Interface
+
+ This section describes a Lua Interface class. This class is used to
+ define an interface in D-Bus terms so that services can be offered on
+ the D-Bus that support a specific API.
+
+ Once created, interfaces are typically associated with one (or more)
+ D-Bus service objects. The interface itself can be configured to
+ receive and handle client requests or the associated service object can
+ handle these as well as a fallback.
+
+
+ @module l2dbus.Interface
+ */
+
+
+/**
+ * @brief Frees up the elements of an introspection argument.
+ */
 static void
 l2dbus_interfaceDestroyArg
     (
@@ -58,6 +78,11 @@ l2dbus_interfaceDestroyArg
 }
 
 
+/**
+ * @brief Frees up the elements of an introspection item.
+ *
+ * This has a member name and possibly additional arguments.
+ */
 static void
 l2dbus_interfaceDestroyItem
     (
@@ -78,6 +103,11 @@ l2dbus_interfaceDestroyItem
 }
 
 
+/**
+ * @brief Frees up the elements of an introspection property.
+ *
+ * This has a property name and signature.
+ */
 static void
 l2dbus_interfaceDestroyProperty
     (
@@ -92,6 +122,24 @@ l2dbus_interfaceDestroyProperty
 }
 
 
+/**
+ * @brief Handles and processes requests to the interface.
+ *
+ * This function will try to deliver a callback to a Lua handler function
+ * when invoked. The handler itself will determine whether or not it
+ * can handle the request.
+ *
+ * @param [in] conn     The CDBUS connection associated with this interface
+ * request.
+ * @param [in] obj      The CDBUS service object implementing the interface.
+ * @param [in] msg      The D-Bus request message (e.g. method call).
+ * @param [in] userdata Opaque data provided by the client when the handler
+ * was registered.
+ * @return A suitable DBusHandlerResult value. Returning
+ * DBUS_HANDLER_RESULT_HANDLED indicates the interface handler processed
+ * the request. Otherwise the service object will be given a change to
+ * handle the request.
+ */
 static DBusHandlerResult
 l2dbus_interfaceHandler
     (
@@ -182,6 +230,45 @@ l2dbus_interfaceHandler
 }
 
 
+/**
+ @function new
+
+ Creates a new Interface.
+
+ Creates an empty D-Bus Interface used to describe the API of of a service.
+ With the interface there can be associated a handler that can process
+ client requests. The signature of the handler has the form:
+
+     DBusHandlerResult function onRequest(svcObj, conn, msg, userToken)
+
+ Where:
+
+ <ul>
+ <li>*svcObj*     - The D-Bus service object implementing this interface</li>
+ <li>*conn*       - The D-Bus connection from which the request was received</li>
+ <li>*msg*        - The D-Bus request message</li>
+ <li>*userToken*  - A value specified by the user when the interface was created.</li>
+ </ul>
+
+ The handler function should return one of the following values:
+
+ <ul>
+ <li>@{l2dbus.Dbus.HANDLER_RESULT_HANDLED|HANDLER_RESULT_HANDLED} - Request handled</li>
+ <li>@{l2dbus.Dbus.HANDLER_RESULT_NOT_YET_HANDLED|HANDLER_RESULT_NOT_YET_HANDLED} - Request **not** handled</li>
+ <li>@{l2dbus.Dbus.HANDLER_RESULT_NEED_MEMORY|HANDLER_RESULT_NEED_MEMORY} - Request **not** handled due to lack of memory</li>
+ </ul>
+
+ For all cases except @{l2dbus.Dbus.HANDLER_RESULT_HANDLED|HANDLER_RESULT_HANDLED} if the
+ service object has a handler then it will be given the opportunity to handle the request.
+ If there are no handlers to satisfy the request or an error occurs the client will
+ receive an appropriate error message in reply.
+
+ @tparam string interface A valid D-Bus interface name to assign to the interface.
+ @tparam ?func|nil handler An optional interface handler function or **nil** if none desired.
+ @tparam ?any userToken Optional client data associated with the handler. Will be passed
+ to the handler when its invoked.
+ @treturn userdata The userdata object representing the Interface.
+ */
 static int
 l2dbus_newInterface
     (

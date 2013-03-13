@@ -70,23 +70,8 @@ l2dbus_dumpItem
             break;
         }
 
-#if 0
-        case LUA_TUSERDATA:
-        {
-            lua_getfield(L, LUA_GLOBALSINDEX, "tostring");
-            lua_pushvalue(L, idx);
-            lua_call(L, 1, 1);
-            if ( lua_isstring(L, -1) )
-            {
-                fprintf(L2DBUS_DUMP_FP, "%s'%s'", prefix, lua_tostring(L, -1));
-            }
-            lua_pop(L, 1);
-            break;
-        }
-#endif
         default:
         {
-            //fprintf(L2DBUS_DUMP_FP, "%s%s", prefix, l2dbus_getTypeName(L, idx));
             fprintf(L2DBUS_DUMP_FP, "%s%s", prefix, lua_typename(L, t));
             break;
         }

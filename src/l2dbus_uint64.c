@@ -35,6 +35,44 @@
 #include "l2dbus_object.h"
 #include "l2dbus_defs.h"
 
+/**
+ L2DBUS Uint64
+
+ This section describes a Lua Uint64 type used to manipulate D-Bus Uint64 types
+ in the Lua environment.
+
+ Since Lua's fundamental numerical type in most installations is a floating
+ point number (a 'C' double or float), supporting D-Bus Uint64 types without
+ loss of precision is problematic. As a result a Lua Uint64 type was created
+ to wrap D-Bus Uint64 types and provide a means to manipulate and print these
+ types from Lua. Likewise, these types can be added as arguments to D-Bus
+ messages where they will be converted correctly to the underlying D-Bus
+ Uint64 type.
+
+ Several numerical operations are supported supported by this type. For
+ binary operations the "other" number is first cast to an Uint64 before the
+ operator is applied. What this means is that standard Lua numbers which are
+ floating point will be truncated and potentially lose information. Please
+ be aware of this limitation when operating on these types. The operators
+ supported include:
+
+ <ul>
+ <li>Addition (+)</li>
+ <li>Subtraction (-)</li>
+ <li>Multiplication (*)</li>
+ <li>Division (/) </li>
+ <li>Modulus (%)</li>
+ <li>Negation (-)</li>
+ <li>Equal (==)</li>
+ <li>Less Than (<)</li>
+ <li>Less Than Equal (<=)</li>
+ <li>Greater Than (>)</li>
+ <li>Greater Than Equal (>=)</li>
+ </ul>
+ @module l2dbus.Uint64
+ */
+
+
 
 static uint64_t
 l2dbus_uint64Cast
@@ -139,6 +177,20 @@ l2dbus_uint64Create
 }
 
 
+/**
+ @function new
+
+ Creates a new Uint64 value.
+
+ @tparam ?number|string value  The number to convert to an Uint64. If passed
+ in as a string the <a href="http://www.manpagez.com/man/3/strtoul/">strtoul()</a>
+ function is used to convert the number to a numerical value.
+
+ @tparam ?number base The base must be in the range [2, 36] or equal to 0.
+ See <a href="http://www.manpagez.com/man/3/strtoul/">strtoul()</a> for
+ more details.
+ @treturn userdata The userdata object representing an Uint64.
+ */
 static int
 l2dbus_newUint64
     (
@@ -342,6 +394,19 @@ l2dbus_uint64LessEqual
 }
 
 
+/**
+ @function toNumber
+ @within l2dbus.Uint64
+
+ Converts the Uint64 to a Lua number.
+
+ In converting the Uint64 to a Lua number there is the chance of losing
+ precision since Lua number's typically cannot precisely represent all
+ integral values. For a Lua double this range is [-2^52, 2^52 -1].
+
+ @tparam userdata value The Uint64 value to convert to a Lua number.
+ @treturn number A (possibly) equivalent Lua number.
+ */
 static int
 l2dbus_uint64ToNumber
     (
@@ -354,6 +419,15 @@ l2dbus_uint64ToNumber
 }
 
 
+/**
+ @function toString
+ @within l2dbus.Uint64
+
+ Converts the Uint64 to a string.
+
+ @tparam userdata value The Uint64 value to convert to a string.
+ @treturn string A string representing the Uint64.
+ */
 static int
 l2dbus_uint64ToString
     (
@@ -414,6 +488,15 @@ l2dbus_uint64Concat
 }
 
 
+/**
+ * @brief Called by Lua VM to GC/reclaim the Uint64 userdata.
+ *
+ * This method is called by the Lua VM to reclaim the Uint64
+ * userdata.
+ *
+ * @return nil
+ *
+ */
 static int
 l2dbus_uint64Dispose
     (
@@ -429,6 +512,9 @@ l2dbus_uint64Dispose
 }
 
 
+/*
+ * Define the methods of the Uint64 class
+ */
 static const luaL_Reg l2dbus_uint64MetaTable[] = {
     {"__add", l2dbus_uint64Add},
     {"__sub", l2dbus_uint64Subtract},
@@ -450,6 +536,15 @@ static const luaL_Reg l2dbus_uint64MetaTable[] = {
 };
 
 
+/**
+ * @brief Creates the Uint64 sub-module.
+ *
+ * This function creates a metatable entry for the Uint64 userdata
+ * and simulates opening the Uint64 sub-module.
+ *
+ * @return A table defining the Uint64 sub-module
+ *
+ */
 void
 l2dbus_openUint64
     (

@@ -28,6 +28,8 @@
 #include <string.h>
 #include <math.h>
 #include <limits.h>
+#include <float.h>
+#include <luaconf.h>
 #include "cdbus/cdbus.h"
 #include "l2dbus_transcode.h"
 #include "l2dbus_types.h"
@@ -43,6 +45,21 @@
 
 
 #define L2DBUS_DEFAULT_SIGNATURE_LENGTH (32)
+
+#ifdef LUA_NUMBER_DOUBLE
+#define L2DBUS_LUA_MANTISSA_DIG (DBL_MANT_DIG)
+#elif defined(LUA_NUMBER_FLOAT)
+#define L2DBUS_LUA_MANTISSA_DIG (FLT_MANT_DIG)
+#else
+#define L2DBUS_LUA_MANTISSA_DIG (sizeof(LUA_NUMBER) * 8)
+#endif
+
+/*
+ * Define the min/max values that can be expressed as an integer without
+ * losing precision.
+ */
+#define L2DBUS_MAX_INTEGRAL_LUA_NUM ((2LL << (L2DBUS_LUA_MANTISSA_DIG - 1)) - 1)
+#define L2DBUS_MIN_INTEGRAL_LUA_NUM (-(2LL << (L2DBUS_LUA_MANTISSA_DIG - 1)))
 
 /*
  * Forward prototypes
@@ -1384,6 +1401,76 @@ static const l2dbus_DbusTypeItem gDbusTypeRegistry[] = {
 
 
 static int
+l2dbus_calcDbusNumType
+    (
+    lua_Number value
+    )
+{
+    int dbusType = DBUS_TYPE_INVALID;
+    lua_Number whole;
+    lua_Number frac;
+
+#ifdef LUA_NUMBER_DOUBLE
+    frac = modf(value, &whole);
+#elif defined LUA_NUMBER_FLOAT
+    frac = modff(value, &whole);
+#else
+    /* Assume it's an integral type */
+    frac = 0;
+    whole = value;
+#endif
+
+    /* If there is a fractional part to it then */
+    if ( frac != 0 )
+    {
+        dbusType = DBUS_TYPE_DOUBLE;
+    }
+    /* Else no fractional parts - whole number */
+    else
+    {
+        /* If this is a positive number then ... */
+        if ( whole >= 0 )
+        {
+            if ( whole <= INT32_MAX )
+            {
+                dbusType = DBUS_TYPE_INT32;
+            }
+            else if ( whole <= UINT32_MAX )
+            {
+                dbusType = DBUS_TYPE_UINT32;
+            }
+            else if ( whole <= L2DBUS_MAX_INTEGRAL_LUA_NUM )
+            {
+                dbusType = DBUS_TYPE_INT64;
+            }
+            else
+            {
+                dbusType = DBUS_TYPE_DOUBLE;
+            }
+        }
+        /* Else a negative number */
+        else
+        {
+            if ( whole >= INT32_MIN )
+            {
+                dbusType = DBUS_TYPE_INT32;
+            }
+            else if ( whole >= L2DBUS_MIN_INTEGRAL_LUA_NUM )
+            {
+                dbusType = DBUS_TYPE_INT64;
+            }
+            else
+            {
+                dbusType = DBUS_TYPE_DOUBLE;
+            }
+        }
+    }
+
+    return dbusType;
+}
+
+
+static int
 l2dbus_transcodeMapLuaToDbusType
     (
     lua_State*  L,
@@ -1391,45 +1478,12 @@ l2dbus_transcodeMapLuaToDbusType
     )
 {
     int dbusType = DBUS_TYPE_INVALID;
-    lua_Number num;
-    lua_Number whole;
-    float floatValue;
-    lua_Number frac;
     l2dbus_TypeId metaTypeId;
 
     switch ( lua_type(L, idx) )
     {
         case LUA_TNUMBER:
-            num = lua_tonumber(L, idx);
-            if ( sizeof(num) == sizeof(double) )
-            {
-                frac = modf(num, &whole);
-            }
-            else if ( sizeof(num) == sizeof(float) )
-            {
-                frac = modff(num, &floatValue);
-                whole = floatValue;
-            }
-            else
-            {
-                luaL_error(L, "unsupported lua_Number type");
-            }
-
-            if ( frac == 0.0 )
-            {
-                if ( (whole > INT32_MAX) || (whole < INT32_MIN) )
-                {
-                    dbusType = DBUS_TYPE_INT64;
-                }
-                else
-                {
-                    dbusType = DBUS_TYPE_INT32;
-                }
-            }
-            else
-            {
-                dbusType = DBUS_TYPE_DOUBLE;
-            }
+            dbusType = l2dbus_calcDbusNumType(lua_tonumber(L, idx));
             break;
 
         case LUA_TBOOLEAN:
