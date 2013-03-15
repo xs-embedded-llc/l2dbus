@@ -382,7 +382,7 @@ l2dbus_connectionIsAnonymous
 
  If the connection is on the server side this will always return nil. For additional
  details on this method see the original 'C' documentation
- <a href="http://dbus.freedesktop.org/doc/api/html/group__DBusConnection.html#gae6c19e146a37f9de6a06c1617874bed9">here<a/>.
+ <a href="http://dbus.freedesktop.org/doc/api/html/group__DBusConnection.html#gae6c19e146a37f9de6a06c1617874bed9">here</a>.
 
  @tparam userdata conn The D-Bus connection object
  @treturn string|nil Returns the ID of the server if a client-side connection, **nil** otherwise.
@@ -425,7 +425,7 @@ l2dbus_connectionGetServerId
  Asks the bus to return its the globally unique ID as described in the D-Bus specification.
 
  For additional details on this method see the original 'C' documentation
- <a href="http://dbus.freedesktop.org/doc/api/html/group__DBusBus.html#ga18314500e7f6890a79bddbeace5df5f9">here<a/>.
+ <a href="http://dbus.freedesktop.org/doc/api/html/group__DBusBus.html#ga18314500e7f6890a79bddbeace5df5f9">here</a>.
 
  @tparam userdata conn The D-Bus connection object
  @treturn string|nil Returns bus ID or **nil** if there is an error.
@@ -469,11 +469,11 @@ l2dbus_connectionGetBusId
 
  This function will always return **true** for all types with the exception of DBUS_TYPE_UNIX_FD.
  For additional details on this method see the original 'C' documentation
- <a href="http://dbus.freedesktop.org/doc/api/html/group__DBusConnection.html#ga3e41509b3afdbc22872bacc5754e85c2">here<a/>.
+ <a href="http://dbus.freedesktop.org/doc/api/html/group__DBusConnection.html#ga3e41509b3afdbc22872bacc5754e85c2">here</a>.
 
  @tparam userdata conn The D-Bus connection object
  @tparam number|string type The D-Bus type to check. The type definitions can be found
- <a href="http://dbus.freedesktop.org/doc/api/html/group__DBusProtocol.html">here<a/>. The
+ <a href="http://dbus.freedesktop.org/doc/api/html/group__DBusProtocol.html">here</a>. The
  type can be expressed as a D-Bus integral type or as a single character string.
  @treturn bool Returns **true** if the D-Bus type can be sent or **false** otherwise.
  */
@@ -781,7 +781,7 @@ l2dbus_connectionHasMessagesToSend
 
  This method registers a function to receive messages that match a
  specific *match* rule. A match rule as described
- <a href="http://dbus.freedesktop.org/doc/dbus-specification.html#message-bus-routing-match-rules">here<a/>
+ <a href="http://dbus.freedesktop.org/doc/dbus-specification.html#message-bus-routing-match-rules">here</a>
  is part of the message bus routing protocol. These rules describe the
  messages that should be delivered to a client based on the contents of
  a message. The rule itself is describe by a Lua @{l2dbus.Match.MatchRule|table}
@@ -898,11 +898,13 @@ l2dbus_connectionUnregisterMatch
  @function registerServiceObject
  @within Connection
 
- Registers a service object with the connection.
+ Registers a @{l2dbus.ServiceObject|service object} with the connection.
 
  This method registers a service object with the connection that
  will receive and handle requests from clients. A service object
- can be registered to more than one connection if necessary.
+ can be registered with more than one connection if necessary. This means
+ a service object can span multiple buses (e.g. the same instance across a
+ *session* or *system* bus).
 
  @tparam userdata conn The D-Bus connection object
  @tparam userdata svcObj The D-Bus service object
@@ -935,10 +937,10 @@ l2dbus_connectionRegisterObject
  @function unregisterServiceObject
  @within Connection
 
- Unregisters a service object from the connection.
+ Unregisters a @{l2dbus.ServiceObject|service object} from the connection.
 
- This method unregisters a service object from the specified
- D-Bus connection.
+ This method unregisters a @{l2dbus.ServiceObject|service object} from the
+ specified D-Bus connection.
 
  @tparam userdata conn The D-Bus connection object
  @tparam userdata svcObj The D-Bus service object to unregister

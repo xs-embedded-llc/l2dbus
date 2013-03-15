@@ -213,7 +213,8 @@ l2dbus_matchFreeRule
  * @param [in]      funcIdx     The reference to a Lua function representing
  * the handler.
  * @param [in]      userIdx     The reference to the user token data.
- * @param [in/out]  errMsg      A pointer to an optional string pointer to receive a
+ * @param [in]      connIdx     The reference to the Lua connection userdata.
+ * @param [in,out]  errMsg      A pointer to an optional string pointer to receive a
  *                              constant error message. This returned pointer
  *                              should not be freed. If not needed then pass
  *                              in NULL

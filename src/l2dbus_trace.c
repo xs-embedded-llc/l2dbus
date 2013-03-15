@@ -30,8 +30,37 @@
 #include "l2dbus_trace.h"
 #include "lauxlib.h"
 
+/**
+ L2DBUS Trace
+
+ This section describes a L2DBUS Trace capabilities.
+
+ The L2DBUS module can (optionally) be compiled with internal diagnostic
+ tracing support. The build flag **TRACE** enables or disables the trace
+ output by being defined or undefined (#define/#undef) when the module is
+ compiled. If the module has been built with trace support then the functions
+ in this module will control the types of trace messages that are emitted to
+ stderr.
+
+ The trace flags associated with this module are not strictly *levels* of
+ trace but rather discrete channels. This means that @{ERROR} traces can
+ be turned *on* while @{INFO}, @{WARN} or @{DEBUG} might be suppressed if not
+ explicitly enabled (or turned *on*}. Treat these *levels* as individual flags
+ that can be selectively enabled or disabled.
+
+ @module l2dbus.Trace
+ */
+
+
 static volatile unsigned gsTraceMask = L2DBUS_TRC_ALL;
 
+
+/**
+ * @brief Determines whether the trace is enabled for the given level.
+ *
+ * @param [in] level    The trace mask or level to compare.
+ * @return Returns zero if the trace is **not** enabled, non-zero otherwise.
+ */
 int
 l2dbus_traceIsEnabled
     (
@@ -43,6 +72,14 @@ l2dbus_traceIsEnabled
 }
 
 
+/**
+ * @brief Optionally prints a prefix in front of a trace message.
+ *
+ * @param [in] isEnabled    Controls whether or not the prefix is printed.
+ * @param [in] file         A (possibly NULL) string referencing a file name.
+ * @param [in] funcName     A (possibly NULL) string referencing a function name.
+ * @param [in] line         The line number in the file.
+ */
 void
 l2dbus_tracePrintPrefix
     (
@@ -66,6 +103,13 @@ l2dbus_tracePrintPrefix
 }
 
 
+/**
+ * @brief Optionally prints a trace message depending on the trace "level".
+ *
+ * @param [in] level    Trace mask controlling whether trace appears.
+ * @param [in] fmt      A printf-style format string.
+ * @param [in] ...      Variable argument list applied against format string.
+ */
 void
 l2dbus_trace
     (
@@ -114,6 +158,11 @@ l2dbus_trace
 }
 
 
+/**
+ * @brief Sets the trace mask to enable/disable trace levels.
+ *
+ * @param [in] mask    A bitmask of trace levels.
+ */
 void
 l2dbus_traceSetMask
     (
@@ -124,6 +173,11 @@ l2dbus_traceSetMask
 }
 
 
+/**
+ * @brief Gets the current trace mask.
+ *
+ * @return The trace mask.
+ */
 unsigned
 l2dbus_traceGetMask()
 {
@@ -131,6 +185,17 @@ l2dbus_traceGetMask()
 }
 
 
+/**
+ @function setFlags
+
+ Sets the trace flags for the module.
+
+ Multiple trace flags can be turned on at once, e.g.
+
+     l2dbus.Trace.setFlags(l2dbus.Trace.WARN, l2dbus.Trace.ERROR)
+
+ @tparam ... args A list of parameters to turn *on*.
+ */
 static int
 l2dbus_traceSetFlags
     (
@@ -173,6 +238,23 @@ l2dbus_traceSetFlags
 }
 
 
+/**
+ @function getFlags
+
+ Retrieves the trace flags that are currently enabled (*on*).
+
+ A Lua table is returned with the following format:
+
+     {
+         mask = 6,      -- A bitmask of all the enabled flags OR'ed together
+         flags = {2, 4} -- An array of l2dbus.Trace.XXXX trace/flag constants
+     }
+
+ If there are no flags set then the **flags** field references an empty Lua
+ table/array.
+
+ @treturn table flags A table contains information of what flags are enabled.
+ */
 static int
 l2dbus_traceGetFlags
     (
@@ -216,6 +298,13 @@ l2dbus_traceGetFlags
 }
 
 
+/**
+ * @brief Creates the Trace sub-module.
+ *
+ * This function simulates opening the Trace sub-module.
+ *
+ * @return A table defining the Trace sub-module.
+ */
 void
 l2dbus_openTrace
     (
@@ -230,34 +319,66 @@ l2dbus_openTrace
     lua_pushcfunction(L, l2dbus_traceGetFlags);
     lua_setfield(L, -2, "getFlags");
 
+/**
+ @constant OFF
+ This flag disables all tracing.
+ */
     lua_pushstring(L, "OFF");
     lua_pushinteger(L, L2DBUS_TRC_OFF);
     lua_rawset(L, -3);
 
+/**
+ @constant FATAL
+ This flag controls the output of *FATAL* category trace messages.
+ */
     lua_pushstring(L, "FATAL");
     lua_pushinteger(L, L2DBUS_TRC_FATAL);
     lua_rawset(L, -3);
 
+/**
+ @constant ERROR
+ This flag controls the output of *ERROR* category trace messages.
+ */
     lua_pushstring(L, "ERROR");
     lua_pushinteger(L, L2DBUS_TRC_ERROR);
     lua_rawset(L, -3);
 
+/**
+ @constant WARN
+ This flag controls the output of *WARN* category trace messages.
+ */
     lua_pushstring(L, "WARN");
     lua_pushinteger(L, L2DBUS_TRC_WARN);
     lua_rawset(L, -3);
 
+/**
+ @constant INFO
+ This flag controls the output of *INFO* category trace messages.
+ */
     lua_pushstring(L, "INFO");
     lua_pushinteger(L, L2DBUS_TRC_INFO);
     lua_rawset(L, -3);
 
+/**
+ @constant DEBUG
+ This flag controls the output of *DEBUG* category trace messages.
+ */
     lua_pushstring(L, "DEBUG");
     lua_pushinteger(L, L2DBUS_TRC_DEBUG);
     lua_rawset(L, -3);
 
+/**
+ @constant TRACE
+ This flag controls the output of *TRACE* category trace messages.
+ */
     lua_pushstring(L, "TRACE");
     lua_pushinteger(L, L2DBUS_TRC_TRACE);
     lua_rawset(L, -3);
 
+/**
+ @constant ALL
+ This flag turns *on* (enables) all the trace flags.
+ */
     lua_pushstring(L, "ALL");
     lua_pushinteger(L, L2DBUS_TRC_ALL);
     lua_rawset(L, -3);

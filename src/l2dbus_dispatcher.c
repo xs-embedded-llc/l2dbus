@@ -300,13 +300,12 @@ static const luaL_Reg l2dbus_dispatcherMetaTable[] = {
 
 
 /**
- * @brief Creates the Dispatcher sub-module.
- *
- * This function creates a metatable entry for the Dispatcher userdata
- * and simulates opening the Dispatcher sub-module.
- *
- * @return nil
- *
+ @brief Creates the Dispatcher sub-module.
+
+ This function creates a metatable entry for the Dispatcher userdata
+ and simulates opening the Dispatcher sub-module.
+
+ @return nil
  */
 void
 l2dbus_openDispatcher

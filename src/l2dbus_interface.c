@@ -53,9 +53,9 @@
 
  Once created, interfaces are typically associated with one (or more)
  D-Bus service objects. The interface itself can be configured to
- receive and handle client requests or the associated service object can
- handle these as well as a fallback.
-
+ receive and handle client requests. If not handled by the interface
+ the associated service object is given the opportunity to the
+ request.
 
  @module l2dbus.Interface
  */
@@ -123,22 +123,22 @@ l2dbus_interfaceDestroyProperty
 
 
 /**
- * @brief Handles and processes requests to the interface.
- *
- * This function will try to deliver a callback to a Lua handler function
- * when invoked. The handler itself will determine whether or not it
- * can handle the request.
- *
- * @param [in] conn     The CDBUS connection associated with this interface
- * request.
- * @param [in] obj      The CDBUS service object implementing the interface.
- * @param [in] msg      The D-Bus request message (e.g. method call).
- * @param [in] userdata Opaque data provided by the client when the handler
- * was registered.
- * @return A suitable DBusHandlerResult value. Returning
- * DBUS_HANDLER_RESULT_HANDLED indicates the interface handler processed
- * the request. Otherwise the service object will be given a change to
- * handle the request.
+ @brief Handles and processes requests to the interface.
+
+ This function will try to deliver a callback to a Lua handler function
+ when invoked. The handler itself will determine whether or not it
+ can handle the request.
+
+ @param [in] conn     The CDBUS connection associated with this interface
+ request.
+ @param [in] obj      The CDBUS service object implementing the interface.
+ @param [in] msg      The D-Bus request message (e.g. method call).
+ @param [in] userdata Opaque data provided by the client when the handler
+ was registered.
+ @return A suitable DBusHandlerResult value. Returning
+ DBUS_HANDLER_RESULT_HANDLED indicates the interface handler processed
+ the request. Otherwise the service object will be given a change to
+ handle the request.
  */
 static DBusHandlerResult
 l2dbus_interfaceHandler
@@ -258,10 +258,10 @@ l2dbus_interfaceHandler
  <li>@{l2dbus.Dbus.HANDLER_RESULT_NEED_MEMORY|HANDLER_RESULT_NEED_MEMORY} - Request **not** handled due to lack of memory</li>
  </ul>
 
- For all cases except @{l2dbus.Dbus.HANDLER_RESULT_HANDLED|HANDLER_RESULT_HANDLED} if the
- service object has a handler then it will be given the opportunity to handle the request.
+ For all cases except @{l2dbus.Dbus.HANDLER_RESULT_HANDLED|HANDLER_RESULT_HANDLED} the
+ service object (if it has a handler) will be given the opportunity to process the request.
  If there are no handlers to satisfy the request or an error occurs the client will
- receive an appropriate error message in reply.
+ receive an appropriate error message.
 
  @tparam string interface A valid D-Bus interface name to assign to the interface.
  @tparam ?func|nil handler An optional interface handler function or **nil** if none desired.
@@ -340,6 +340,15 @@ l2dbus_newInterface
 }
 
 
+/**
+ * @brief Called by Lua VM to GC/reclaim the Interface userdata.
+ *
+ * This method is called by the Lua VM to reclaim the Interface
+ * userdata.
+ *
+ * @return nil
+ *
+ */
 static int
 l2dbus_interfaceDispose
     (
@@ -368,6 +377,25 @@ l2dbus_interfaceDispose
 }
 
 
+/**
+ * The L2DBUS Interface class.
+ * @type Interface
+ */
+
+/**
+ @function name
+ @within Interface
+
+ Tests whether the connection is connected to the bus.
+
+ This method can be called to detect whether or not
+ the provided connection is in fact connected to the
+ bus.
+
+ @tparam userdata interface The Interface from which to retrieve the name.
+ @treturn ?string|nil A string with the interface name or **nil** if it
+ is unset.
+ */
 static int
 l2dbus_interfaceGetName
     (
@@ -395,6 +423,15 @@ l2dbus_interfaceGetName
 }
 
 
+/**
+ @function setData
+ @within Interface
+
+ Sets the user data to be passed to the request handler.
+
+ @tparam userdata interface The Interface to set the user data.
+ @tparam any data The user data. Can be any value.
+ */
 static int
 l2dbus_interfaceSetData
     (
@@ -421,6 +458,15 @@ l2dbus_interfaceSetData
 }
 
 
+/**
+ @function getData
+ @within Interface
+
+ Gets the user data associated with the handler.
+
+ @tparam userdata interface The Interface to get the user data.
+ @treturn any The user data associated with the interface handler.
+ */
 static int
 l2dbus_interfaceGetData
     (
@@ -439,6 +485,68 @@ l2dbus_interfaceGetData
 }
 
 
+/**
+ This table that defines an individual D-Bus property item in an interface
+ description. An individual property is typically one of many in an array
+ that is associated with an interface.
+
+Possible values for the *access* field include *r* (read), *w* (write), *rw* or
+*wr* (read/write).
+
+ @table IntrospectProp
+ @field name (string) [Req] The name of the D-Bus property.
+ @field sig (string) [Req] The D-Bus signature of the property.
+ @field access (string) [Req] The access permissions for the property.
+ @see registerProperties
+ */
+
+
+/**
+ This table that defines an individual method/signal argument in an interface
+ description. An individual argument is typically one of many in an array
+ that is associated with a method/signal.
+
+ The field *dir* can be either *in* or *out* but **not** *inout*. For D-Bus
+ signal arguments this field isn't required because they are always *out*. For
+ method arguments if the direction is omitted then it is assumed to be *in*.
+
+ @table IntrospectArg
+ @field name (string) [Opt] The name of the argument.
+ @field sig (string) [Req] The D-Bus signature of the argument.
+ @field dir (string) [Opt] The *direction* of the argument.
+ @see registerMethods
+ @see registerSignals
+ */
+
+/**
+ This table that defines a D-Bus method or signal exposed by an interface.
+ An **array** of these tables is passed to the @{registerMethods} or
+ @{registerSignals} to register the methods/signals an interface exposes.
+
+
+ @table IntrospectItem
+ @field name (string) [Req] The name of the method or signal
+ @field args (array) [Opt] An array of arguments of type @{IntrospectArg}
+ */
+
+
+/**
+ @brief Parses table of interface items.
+
+ These interface items can either describe methods or signals.
+
+ @param [in]        L           Lua state.
+ @param [in]        itemsIdx    Index on Lua stack to the item table.
+ @param [in,out]    items       Returns a pointer to an array of
+ interface items.
+ @param [in,out]    nItems      If non-NULL returns the number of items
+ in the 'items' array.
+ @param [in]        parseAsMethods  If true parse items as method definitions
+ rather than signal definitions.
+ @param [in,out]    whyFail     If non-NULL on return it will point to a
+ constant string with the reason for the failure. This should *not* be freed.
+ @return Returns true if the item was parsed successfully, false otherwise.
+ */
 static l2dbus_Bool
 l2dbus_interfaceParseItems
     (
@@ -640,6 +748,48 @@ l2dbus_interfaceParseItems
     return isValid;
 }
 
+
+/**
+ @function registerMethods
+ @within Interface
+
+ Registers methods supported by the interface.
+
+ This method registers D-Bus methods exposed by this interface.
+ It does **not** support incremental registration of methods one
+ at a time. Repeated calls will erase the previous methods before adding
+ the new ones. The interface description should be encoded into a
+ Lua table with the following structure:
+     {
+         {                      -- IntrospectItem[1]
+             name = "SetPosition",
+             args =
+                 {
+                     {          -- IntrospectArg[1]
+                     name = "x",
+                     sig = "i",
+                     dir = "in"
+                     },
+                     {          -- IntrospectArg[2]
+                     name = "y"
+                     sig = "i",
+                     dir = "in"
+                     },
+                     ...        -- IntrospectArg[N]
+                  }
+          },
+          ...                   -- IntrospectItem[N]
+      }
+
+
+ See @{IntrospectItem} and @{IntrospectArg} for the definition of the
+ individual elements of the introspection table. Any error parsing or
+ registering the methods will result in a Lua error being thrown.
+
+ @tparam userdata interface The Interface on which to register methods.
+ @tparam table methods The introspection data for the methods being
+ registered with this interface.
+ */
 static int
 l2dbus_interfaceRegisterMethods
     (
@@ -687,6 +837,16 @@ l2dbus_interfaceRegisterMethods
 }
 
 
+/**
+ @function clearMethods
+ @within Interface
+
+ Clears or erases the methods supported by the interface.
+
+ @tparam userdata interface The Interface on which to clear the methods.
+ @treturn bool Returns **true** if the methods are cleared successfully,
+ **false** otherwise.
+ */
 static int
 l2dbus_interfaceClearMethods
     (
@@ -704,6 +864,45 @@ l2dbus_interfaceClearMethods
 }
 
 
+/**
+ @function registerSignals
+ @within Interface
+
+ Registers signal emitted by the interface.
+
+ This method registers D-Bus signals emitted by this interface.
+ It does **not** support incremental registration of signals one
+ at a time. Repeated calls will erase the previous signals before adding
+ the new ones. The description of the signals should be encoded into a
+ Lua table with the following structure:
+     {
+         {                      -- IntrospectItem[1]
+             name = "PositionUpdate",
+             args =
+                 {
+                     {          -- IntrospectArg[1]
+                     name = "x",
+                     sig = "i",
+                     },
+                     {          -- IntrospectArg[2]
+                     name = "y"
+                     sig = "i",
+                     },
+                     ...        -- IntrospectArg[N]
+                  }
+          },
+          ...                   -- IntrospectItem[N]
+      }
+
+
+ See @{IntrospectItem} and @{IntrospectArg} for the definition of the
+ individual elements of the introspection table. Any error parsing or
+ registering the signals will result in a Lua error being thrown.
+
+ @tparam userdata interface The Interface on which to register signals.
+ @tparam table signals The introspection data for the signals being
+ registered with this interface.
+ */
 static int
 l2dbus_interfaceRegisterSignals
     (
@@ -751,6 +950,16 @@ l2dbus_interfaceRegisterSignals
 }
 
 
+/**
+ @function clearSignals
+ @within Interface
+
+ Clears or erases the signals supported by the interface.
+
+ @tparam userdata interface The Interface on which to clear the signals.
+ @treturn bool Returns **true** if the signals are cleared successfully,
+ **false** otherwise.
+ */
 static int
 l2dbus_interfaceClearSignals
     (
@@ -768,6 +977,45 @@ l2dbus_interfaceClearSignals
 }
 
 
+/**
+ @function registerProperties
+ @within Interface
+
+ Registers properties supported by the interface.
+
+ This method registers D-Bus properties supported by this interface.
+ It does **not** support incremental registration of properties one
+ at a time. Repeated calls will erase the previous properties before adding
+ the new ones. The properties should be encoded into a Lua table with the
+ following structure:
+     {
+         {                      --  IntrospectProp[1]
+             name = "Time",
+             sig = "i",
+             access = "r"
+         },
+         {                      --  IntrospectProp[2]
+             name = "Velocity",
+             sig = "d",
+             access = "rw"
+         },
+         ...                    --  IntrospectProp[N]
+      }
+
+
+ See @{IntrospectProp} for the definition of the individual elements of the
+ introspective properties table. Any error parsing or
+ registering the properties will result in a Lua error being thrown. Although
+ these properties will appear as part of the D-Bus Introspection data if a
+ client should introspect a service implementing this interface, it is implied
+ that the service must also implement the
+ <a href="http://dbus.freedesktop.org/doc/dbus-specification.html#standard-interfaces-properties">Properties</a>
+ interface in order for the client to directly access them.
+
+ @tparam userdata interface The Interface on which to register properties.
+ @tparam table properties The introspection data for the properties being
+ registered with this interface.
+ */
 static int
 l2dbus_interfaceRegisterProperties
     (
@@ -891,6 +1139,16 @@ l2dbus_interfaceRegisterProperties
 }
 
 
+/**
+ @function clearProperties
+ @within Interface
+
+ Clears or erases the properties supported by the interface.
+
+ @tparam userdata interface The Interface on which to clear the properties.
+ @treturn bool Returns **true** if the properties are cleared successfully,
+ **false** otherwise.
+ */
 static int
 l2dbus_interfaceClearProperties
     (
@@ -908,6 +1166,21 @@ l2dbus_interfaceClearProperties
 }
 
 
+/**
+ @function introspect
+ @within Interface
+
+ Returns the D-Bus XML introspection data for this interface only.
+
+ This isn't usually called directly by client code but is is collected
+ by a service implementing the
+ <a href="http://dbus.freedesktop.org/doc/dbus-specification.html#standard-interfaces-introspectable">Introspectable</a> interface.
+ See @{l2dbus.Introspection} for more details.
+
+ @tparam userdata interface The Interface to be introspected.
+ @treturn string Returns D-Bus XML introspection data if the interface has
+ registered methods, signals, or properties, otherwise **nil**.
+ */
 static int
 l2dbus_interfaceIntrospect
     (
@@ -936,8 +1209,11 @@ l2dbus_interfaceIntrospect
 }
 
 
+/*
+ * Define the methods of the Interface class
+ */
 static const luaL_Reg l2dbus_interfaceMetaTable[] = {
-    {"path", l2dbus_interfaceGetName},
+    {"name", l2dbus_interfaceGetName},
     {"setData", l2dbus_interfaceSetData},
     {"data", l2dbus_interfaceGetData},
     {"registerMethods", l2dbus_interfaceRegisterMethods},
@@ -952,6 +1228,15 @@ static const luaL_Reg l2dbus_interfaceMetaTable[] = {
 };
 
 
+/**
+ * @brief Creates the Interface sub-module.
+ *
+ * This function creates a metatable entry for the Interface userdata
+ * and simulates opening the Interface sub-module.
+ *
+ * @return A table defining the Interface sub-module.
+ *
+ */
 void
 l2dbus_openInterface
     (

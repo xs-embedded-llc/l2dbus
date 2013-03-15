@@ -36,7 +36,38 @@
 #include "l2dbus_debug.h"
 #include "l2dbus_types.h"
 
+/**
+ L2DBUS Timeout
 
+ This section describes a L2DBUS Timeout class.
+
+ The L2DBUS Timeout class exposes methods that provide for the creation of
+ timeouts, enabling/disabling timeouts, and setting the repetition rate.
+ Although normally used internally by L2DBUS, timeouts are useful for creating
+ functions that will be called periodically in the future. Timeouts are driven
+ (and dispatched) from the @{l2dbus.Dispatcher|Dispatcher} main loop so the
+ @{l2dbus.Dispatcher.run|run} method must be called frequently in order to
+ trigger timeout callbacks. As a result, the timeouts may not be a highly
+ accurate timing mechanism depending on how much time is spent in these timer
+ callback routines. The timeout callback should **not** block the thread of
+ execution or the L2DBUS dispatch loop will block as well. Every effort should
+ be made to exit the timeout handler quickly.
+
+ @module l2dbus.Timeout
+ */
+
+
+/**
+ * @brief Handles and processes timeout callbacks.
+ *
+ * This function will try to deliver a callback to a Lua timeout handler
+ * when invoked.
+ *
+ * @param [in] t      The CDBUS timeout instance.
+ * @param [in] user   Opaque data provided by the client when the handler
+ * was registered.
+ * @return A boolean value that is currently unused by CDBUS.
+ */
 static cdbus_Bool
 l2dbus_timeoutHandler
     (
@@ -86,6 +117,39 @@ l2dbus_timeoutHandler
 }
 
 
+/**
+ @function new
+
+ Creates a new Timeout.
+
+ Creates a new Timeout with an associated handler that can be called (possibly
+ repeatedly) as the timeout expires.
+ A handler (callback) is associated with a timeout and it is called when the
+ timeout expires. The signature of the handler has the form:
+
+    function onTimeout(timeout, userToken)
+
+ Where:
+
+ <ul>
+ <li>*timeout*    - The L2DBUS Timeout instance</li>
+ <li>*userToken*  - A value specified by the user when the timeout was created.</li>
+ </ul>
+
+ The handler does not have to return anything but should exit quickly to
+ minimize interruption to the @{l2dbus.Dispatcher|Dispatcher} main loop.
+
+ @tparam userdata The @{l2dbus.Dispatcher|dispatcher} with which to associate
+ the timeout.
+ @tparam number interval The amount of time (in millisecond) before the timeout
+ will expire.
+ @tparam bool repeat Set to **true** if the the timeout should reset after
+ expiring (and starta agin) or **false** if it should only fire once.
+ @tparam func handler The timeout handler that's called when a timeout expires.
+ @tparam ?any userToken User data that will be passed to the timeout
+ handler when it's called. Can be any Lua value.
+ @treturn userdata The userdata object representing the Timeout.
+ */
 int
 l2dbus_newTimeout
     (
@@ -165,7 +229,15 @@ l2dbus_newTimeout
 }
 
 
-
+/**
+ * @brief Called by Lua VM to GC/reclaim the Timeout userdata.
+ *
+ * This method is called by the Lua VM to reclaim the Timeout
+ * userdata.
+ *
+ * @return nil
+ *
+ */
 static int
 l2dbus_timeoutDispose
     (
@@ -196,6 +268,21 @@ l2dbus_timeoutDispose
 }
 
 
+/**
+ * The L2DBUS Timeout class.
+ * @type Timeout
+ */
+
+/**
+ @function isEnabled
+ @within Timeout
+
+ Tests to determine whether the timeout is enabled.
+
+ @tparam userdata timeout The timeout to test.
+ @treturn bool Returns **true** if the timeout is enabled and **false**
+ otherwise.
+ */
 static int
 l2dbus_timeoutIsEnabled
     (
@@ -213,6 +300,16 @@ l2dbus_timeoutIsEnabled
 }
 
 
+/**
+ @function setEnable
+ @within Timeout
+
+ Enables or disables a timeout.
+
+ @tparam userdata timeout The timeout to set.
+ @tparam bool option Set to **true** to enable the timeout or **false** to
+ disable it.
+ */
 static int
 l2dbus_timeoutSetEnable
     (
@@ -240,6 +337,15 @@ l2dbus_timeoutSetEnable
 }
 
 
+/**
+ @function interval
+ @within Timeout
+
+ Returns the timeout interval (in milliseconds).
+
+ @tparam userdata timeout The timeout to get the interval.
+ @treturn number Returns the timeout interval in milliseconds.
+ */
 static int
 l2dbus_timeoutInterval
     (
@@ -256,6 +362,19 @@ l2dbus_timeoutInterval
     return 1;
 }
 
+
+/**
+ @function setInterval
+ @within Timeout
+
+ Sets the timeout interval.
+
+ The timeout interval must be a positive number and specifies the number
+ of milliseconds before the timeout expires.
+
+ @tparam userdata timeout The timeout to set the interval.
+ @tparam number interval The interval of the timeout (in milliseconds).
+ */
 static int
 l2dbus_timeoutSetInterval
     (
@@ -282,6 +401,16 @@ l2dbus_timeoutSetInterval
 }
 
 
+/**
+ @function repeats
+ @within Timeout
+
+ Returns whether or not the timeout is configured to repeatedly fire.
+
+ @tparam userdata timeout The timeout to determine if it repeats.
+ @treturn bool Returns **true** if the timeout is configured to repeat and
+ **false** otherwise.
+ */
 static int
 l2dbus_timeoutRepeat
     (
@@ -299,6 +428,19 @@ l2dbus_timeoutRepeat
 }
 
 
+/**
+ @function setRepeat
+ @within Timeout
+
+ Configures the timeout to repeat or not.
+
+ If the timeout is set to repeat then it will reset after firing and begin
+ counting down to the next timeout period.
+
+ @tparam userdata timeout The timeout to set the repeat option.
+ @tparam bool option Set to **true** to enable the timeout to repeatedly fire
+ or **false** so that it fires only once.
+ */
 static int
 l2dbus_timeoutSetRepeat
     (
@@ -318,6 +460,15 @@ l2dbus_timeoutSetRepeat
 }
 
 
+/**
+ @function data
+ @within Timeout
+
+ Returns the user specified data associated with the timeout.
+
+ @tparam userdata timeout The timeout to get the user data.
+ @treturn any Returns the user data associated with the timeout.
+ */
 static int
 l2dbus_timeoutData
     (
@@ -335,6 +486,16 @@ l2dbus_timeoutData
 }
 
 
+
+/**
+ @function setData
+ @within Timeout
+
+ Sets the user specific data passed to the timeout handler.
+
+ @tparam userdata timeout The timeout to set the user data.
+ @tparam any userToken The user specific data to associate with the timeout.
+ */
 static int
 l2dbus_timeoutSetData
     (
@@ -361,6 +522,9 @@ l2dbus_timeoutSetData
 }
 
 
+/*
+ * Define the methods of the Timeout class
+ */
 static const luaL_Reg l2dbus_timeoutMetaTable[] = {
     {"isEnabled", l2dbus_timeoutIsEnabled},
     {"setEnable", l2dbus_timeoutSetEnable},
@@ -375,6 +539,14 @@ static const luaL_Reg l2dbus_timeoutMetaTable[] = {
 };
 
 
+/**
+ * @brief Creates the Timeout sub-module.
+ *
+ * This function creates a metatable entry for the Timeout userdata
+ * and simulates opening the Timeout sub-module.
+ *
+ * @return A table defining the Timeout sub-module.
+ */
 void
 l2dbus_openTimeout
     (
