@@ -140,13 +140,13 @@ l2dbus_timeoutHandler
  minimize interruption to the @{l2dbus.Dispatcher|Dispatcher} main loop.
 
  @tparam userdata The @{l2dbus.Dispatcher|dispatcher} with which to associate
- the timeout.
+ the Timeout.
  @tparam number interval The amount of time (in millisecond) before the timeout
  will expire.
  @tparam bool repeat Set to **true** if the the timeout should reset after
  expiring (and starta agin) or **false** if it should only fire once.
  @tparam func handler The timeout handler that's called when a timeout expires.
- @tparam ?any userToken User data that will be passed to the timeout
+ @tparam ?any userToken User data that will be passed to the Timeout
  handler when it's called. Can be any Lua value.
  @treturn userdata The userdata object representing the Timeout.
  */
@@ -232,8 +232,7 @@ l2dbus_newTimeout
 /**
  * @brief Called by Lua VM to GC/reclaim the Timeout userdata.
  *
- * This method is called by the Lua VM to reclaim the Timeout
- * userdata.
+ * This method is called by the Lua VM to reclaim the Timeout userdata.
  *
  * @return nil
  *

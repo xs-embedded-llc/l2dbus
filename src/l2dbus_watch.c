@@ -41,6 +41,48 @@
 #include "ev.h"
 #include "lualib.h"
 
+/**
+ L2DBUS Watch
+
+ This section describes a L2DBUS Watch class which represents a file
+ descriptor that can be monitored for activity. On Linux platforms this
+ can include sockets, pipes, files, and anything that yields a poll-able
+ descriptor. Internally, L2DBUS monitors the file-descriptor associated
+ with a @{l2dbus.Connection|Connection} to detect when new messages are
+ available to be received. Client applications can use this same mechanism
+ to monitor activity on various descriptors themselves.
+
+ @module l2dbus.Watch
+ */
+
+/**
+ The EventTable provides an indication of what events are signaled on
+ a given file-descriptor. The *evMask* field is a bitwise **OR** of a
+ combination of the following constants: @{READ}, @{WRITE}, @{ERROR}, and
+ @{HANGUP}. There are also discrete fields in the table for each event type
+ and these will be set to **true** or **false** depending on whether they are
+ signaled.
+
+ @table EventTable
+ @field evMask (number) The actual event mask of signaled events.
+ @field READ (bool) Set to **true** if the *read* event is signaled.
+ @field WRITE (bool) Set to **true** if the *write* event is signaled.
+ @field ERROR (bool) Set to **true** if the *error* event is signaled.
+ @field HANGUP (bool) Set to **true** if the *hangup* event is signaled.
+ */
+
+
+/**
+ * @brief Creates a Lua table containing file descriptor event information.
+ *
+ * This function will leave on the Lua stack a table that represents the
+ * events that are passed into the function.
+ *
+ * @param [in] L      Lua state.
+ * @param [in] event  A bit-mask of signaled file-descriptor events.
+ * @return A table on the Lua stack containing the event mask itself as
+ * well as the actual events broken out.
+ */
 static void
 l2dbus_watchMakeEvTable
     (
@@ -72,6 +114,21 @@ l2dbus_watchMakeEvTable
     /* Returns an event table on the top of the stack */
 }
 
+
+/**
+ * @brief A helper function to parse specified events from Lua
+ *
+ * This function will interrogate a Lua parameter on the stack and
+ * attempt to deduce which file descriptor events are specified by the
+ * parameter. The parameter can be a number in which case it's assumed to
+ * be a bitmask of event types. If it's a string then it's assumed to
+ * contain the characters 'r' (READ), 'w' (WRITE), 'e' (ERROR), and
+ * 'h' (HANGUP).
+ *
+ * @param [in] L    Lua state.
+ * @param [in] idx  The index on the Lua stack for the event parameter.
+ * Expected to be a Lua number or string.
+ */
 static cdbus_UInt32
 l2dbus_watchParseEvents
     (
@@ -134,6 +191,17 @@ l2dbus_watchParseEvents
 }
 
 
+/**
+ * @brief Processes watch events from the underlying CDBUS callback.
+ *
+ * This function translates and dispatches CDBUS Watch events to the associated
+ * Lua Watch handler.
+ *
+ * @param [in] w            CDBUS Watch instance.
+ * @param [in] rcvEvents    The bitmask of signaled events.
+ * @param [in] user         Client/user data associated with the Watch.
+ * @return A boolean value that is ignored by CDBUS.
+ */
 static cdbus_Bool
 l2dbus_watchHandler
     (
@@ -185,6 +253,44 @@ l2dbus_watchHandler
 }
 
 
+/**
+ @function new
+
+ Creates a new Watch.
+
+ Creates a new Watch with an associated handler that is called whenever one
+ of the specified events is signaled on the provided file descriptor.
+ The Watch handler has a signature of the form:
+
+    function onWatch(watch, evTable, userToken)
+
+ Where:
+
+ <ul>
+ <li>*watch*        - The L2DBUS Watch instance</li>
+ <li>*evTable*      - An table of signaled events. See @{EventTable}.</li>
+ <li>*userToken*    - A value specified by the client when the watch is created.</li>
+ </ul>
+
+ The handler does not have to return anything but should exit quickly to
+ minimize interruptions to the @{l2dbus.Dispatcher|Dispatcher} main loop.
+
+ @tparam userdata The @{l2dbus.Dispatcher|dispatcher} with which to associate
+ the Watch.
+ @tparam ?number|userdata fd The file descriptor to watch. This can be either
+ a Lua file (e.g. userdata wrapping the actual file descriptor) or the
+ raw integral file descriptor received from the operating system that is
+ pollable.
+ @tparam number|string events The events (@{READ}, @{WRITE}, @{ERROR},
+ @{HANGUP}) which should be monitored. If the parameter is a Lua number then
+ it is assumed to be a bitmask of the previous constants **OR**'ed together. If
+ it is a string then the letters *r* (@{READ}), *w* (@{WRITE}), *e* (@{ERROR}),
+ and *h* (@{HANGUP}) are expected to indicate the events to watch.
+ @tparam func handler The watch handler that's called when a timeout expires.
+ @tparam ?any userToken User data that will be passed to the Watch
+ handler when it's called. Can be any Lua value.
+ @treturn userdata The userdata object representing the Watch.
+ */
 int
 l2dbus_newWatch
     (
@@ -285,6 +391,14 @@ l2dbus_newWatch
 
 
 
+/**
+ * @brief Called by Lua VM to GC/reclaim the Watch userdata.
+ *
+ * This method is called by the Lua VM to reclaim the Watch userdata.
+ *
+ * @return nil
+ *
+ */
 static int
 l2dbus_watchDispose
     (
@@ -315,6 +429,20 @@ l2dbus_watchDispose
 }
 
 
+/**
+ * The L2DBUS Watch class.
+ * @type Watch
+ */
+
+/**
+ @function getDescriptor
+ @within Watch
+
+ Returns the underlying file descriptor being watched.
+
+ @tparam userdata watch The watch monitoring the file descriptor.
+ @treturn number Returns the underlying OS file descriptor being monitored.
+ */
 static int
 l2dbus_watchGetDescriptor
     (
@@ -333,6 +461,16 @@ l2dbus_watchGetDescriptor
 }
 
 
+/**
+ @function events
+ @within Watch
+
+ Returns the events being monitored on the file descriptor.
+
+ @tparam userdata watch The watch for which the events are returned.
+ @treturn table Returns an @{EventTable} indicating the events that
+ are being monitored.
+ */
 static int
 l2dbus_watchEvents
     (
@@ -350,6 +488,20 @@ l2dbus_watchEvents
     return 1;
 }
 
+
+/**
+ @function setEvents
+ @within Watch
+
+ Sets the events that the Watch should monitor.
+
+ @tparam userdata watch The watch to set the events to monitor.
+ @tparam number|string events The events (@{READ}, @{WRITE}, @{ERROR},
+ @{HANGUP}) which should be monitored. If the parameter is a Lua number then
+ it is assumed to be a bitmask of the previous constants **OR**'ed together. If
+ it is a string then the letters *r* (@{READ}), *w* (@{WRITE}), *e* (@{ERROR}),
+ and *h* (@{HANGUP}) are expected to indicate the events to watch.
+ */
 static int
 l2dbus_watchSetEvents
     (
@@ -377,6 +529,15 @@ l2dbus_watchSetEvents
 }
 
 
+/**
+ @function isEnabled
+ @within Watch
+
+ Returns whether the specified watch is enabled to monitor events.
+
+ @tparam userdata watch The watch to see if it's enabled.
+ @treturn bool Returns **true** if it's enabled, **false** otherwise.
+ */
 static int
 l2dbus_watchIsEnabled
     (
@@ -394,6 +555,17 @@ l2dbus_watchIsEnabled
 }
 
 
+/**
+ @function setEnable
+ @within Watch
+
+ Sets whether the watch should be enabled or disabled from monitoring the
+ associated file descriptor.
+
+ @tparam userdata watch The watch to configure.
+ @tparam bool option Set to **true** to enable the watch, **false** to
+ disable it.
+ */
 static int
 l2dbus_watchSetEnable
     (
@@ -421,6 +593,15 @@ l2dbus_watchSetEnable
 }
 
 
+/**
+ @function data
+ @within Watch
+
+ Returns the user specified data associated with the watch.
+
+ @tparam userdata watch The watch to get the user data.
+ @treturn any Returns the user data associated with the watch.
+ */
 static int
 l2dbus_watchData
     (
@@ -438,6 +619,15 @@ l2dbus_watchData
 }
 
 
+/**
+ @function setData
+ @within Watch
+
+ Sets the user specific data passed to the watch handler.
+
+ @tparam userdata watch The watch to set the user data.
+ @tparam any userToken The user specific data to associate with the watch.
+ */
 static int
 l2dbus_watchSetData
     (
@@ -464,6 +654,19 @@ l2dbus_watchSetData
 }
 
 
+/**
+ @function clearPending
+ @within Watch
+
+ Retrieves any signaled/pending events for a descriptor and then clears them.
+
+ If the watch has pending events it will return these pending events. If an
+ event was signaled/pending the associated flag is cleared (and therefore this
+ watch event will not trigger the handler function).
+
+ @tparam userdata watch The watch to clear the events.
+ @tparam table events Returns an @{EventTable} of signaled/pending events.
+ */
 static int
 l2dbus_watchClearPending
     (
@@ -482,6 +685,9 @@ l2dbus_watchClearPending
 }
 
 
+/*
+ * Define the methods of the Watch class
+ */
 static const luaL_Reg l2dbus_watchMetaTable[] = {
     {"isEnabled", l2dbus_watchIsEnabled},
     {"setEnable", l2dbus_watchSetEnable},
@@ -496,6 +702,14 @@ static const luaL_Reg l2dbus_watchMetaTable[] = {
 };
 
 
+/**
+ * @brief Creates the Watch sub-module.
+ *
+ * This function creates a metatable entry for the Watch userdata
+ * and simulates opening the Watch sub-module.
+ *
+ * @return A table defining the Watch sub-module.
+ */
 void
 l2dbus_openWatch
     (
@@ -508,18 +722,34 @@ l2dbus_openWatch
     lua_pushcfunction(L, l2dbus_newWatch);
     lua_setfield(L, -2, "new");
 
+/**
+ @constant READ
+ The bitmask for file-descriptor *read* event.
+ */
     lua_pushstring(L, "READ");
     lua_pushinteger(L, DBUS_WATCH_READABLE);
     lua_rawset(L, -3);
 
+/**
+ @constant WRITE
+ The bitmask for file-descriptor *write* event.
+ */
     lua_pushstring(L, "WRITE");
     lua_pushinteger(L, DBUS_WATCH_WRITABLE);
     lua_rawset(L, -3);
 
+/**
+ @constant ERROR
+ The bitmask for file-descriptor *error* event.
+ */
     lua_pushstring(L, "ERROR");
     lua_pushinteger(L, DBUS_WATCH_ERROR);
     lua_rawset(L, -3);
 
+/**
+ @constant HANGUP
+ The bitmask for file-descriptor *hangup* event.
+ */
     lua_pushstring(L, "HANGUP");
     lua_pushinteger(L, DBUS_WATCH_HANGUP);
     lua_rawset(L, -3);
