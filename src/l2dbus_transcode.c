@@ -43,6 +43,18 @@
 #include "l2dbus_debug.h"
 #include "l2dbus_alloc.h"
 
+/**
+ The L2DBUS DbusTypes module.
+
+ This module provides wrapper classes for the D-Bus types. The D-Bus type
+ wrappers provide a *hint* to the marshalling code that converts between
+ native Lua types and D-Bus types. Without any hint or a D-Bus introspective
+ signature a heuristic approach is used to convert between the two type systems.
+ Most of the time these conversions will be correct but the Lua/D-Bus wrapper
+ types and message signatures help avoid potential conversion ambiguity.
+ @module l2dbus.DbusTypes
+ */
+
 
 #define L2DBUS_DEFAULT_SIGNATURE_LENGTH (32)
 
@@ -72,6 +84,23 @@ static void l2dbus_transcodeMarshallAsType(lua_State* L, int argIdx,
                                 DBusMessageIter* msgIt, DBusSignatureIter* sigIt);
 
 
+/**
+ * @brief Called to create a Lua userdata proxy for a D-Bus type.
+ *
+ * This method create a custom Lua userdata type that contains the metadata
+ * necessary to describe an associated D-Bus type so that the conversion
+ * from the Lua type to D-Bus type is simple.
+ *
+ * @param [in]  L           The Lua state
+ * @param [in]  metaTypeId  The L2DBUS type identifier associated with this
+ * userdata.
+ * @param [in]  signature   An (optional) D-Bus signature to associate with
+ * this type. This is typically assigned for the more complex D-Bus types. It
+ * can be NULL if no signature is provided.
+ *
+ * @return A pointer to the Lua userdata with the actually userdata left at
+ * the top of the Lua stack.
+ */
 static l2dbus_DbusValue*
 l2dbus_dbusNewUserdata
     (
@@ -139,6 +168,19 @@ l2dbus_dbusNewUserdata
 }
 
 
+/**
+ * @brief Gets a cached D-Bus signature if it's available.
+ *
+ * This method attempts to retrieve a cached D-Bus signature from a Lua
+ * userdata type that wraps a value to be converted to a specific D-Bus
+ * type.
+ *
+ * @param [in]  L       The Lua state
+ * @param [in]  argIdx  The index on the Lua stack where the userdata is
+ * located.
+ *
+ * @return A pointer to the cached D-Bus signature or NULL if none exists.
+ */
 static const char*
 l2dbus_dbusGetCachedSignature
     (
@@ -160,6 +202,25 @@ l2dbus_dbusGetCachedSignature
 }
 
 
+/**
+ * @brief Attaches a Lua value to a Lua D-Bus userdata wrapper.
+ *
+ * This method associates any Lua value to a Lua userdata type that is
+ * being used to provide metadata information for an associated D-Bus type.
+ * The value is anchored in a table that is associated with the userdata
+ * type.
+ *
+ * @param [in]      L           The Lua state.
+ * @param [in,out]  ud          Pointer to a structure that will be initialized
+ * to reference the stored value value.
+ * @param [in]      udIdx       The reference to the Lua stack location where
+ * the Lua userdata wrapper is stored.
+ * @param [in]      valudIdx    The reference to the Lua stack location where
+ * the value is stored.
+ *
+ * @return The Lua stack remains the same on exit as it did on entry. Returns
+ * one (1) as a convenience to the constructor functions that call this.
+ */
 static int
 l2dbus_dbusAttachValue
     (
@@ -180,12 +241,16 @@ l2dbus_dbusAttachValue
     lua_getuservalue(L, udIdx);
     if ( LUA_TNIL == lua_type(L, -1) )
     {
+        /* No table exists - we need to create a new table
+         * to hold the references to the "value".
+         */
         lua_pop(L, 1);
         lua_newtable(L);
         lua_pushvalue(L, valueIdx);
         ud->valueRef = luaL_ref(L, -2);
         lua_setuservalue(L, udIdx);
     }
+    /* Else the userdata already has a table associated with it */
     else
     {
         lua_pushvalue(L, valueIdx);
@@ -196,6 +261,20 @@ l2dbus_dbusAttachValue
 }
 
 
+/**
+ * @brief Gets the D-Bus type ID for the Lua userdata wrapper object.
+ *
+ * This is a helper function to return the corresponding D-Bus type
+ * identifier assigned to the Lua userdata wrapper object.
+ *
+ * @param [in]      L       The Lua state.
+ * @param [in]      idx     The index to the Lua userdata object.
+ * @param [in,out]  typeId  Pointer to the value that will be assigned the
+ * D-Bus type identifier.
+ *
+ * @return Return true if the referenced object is a valid D-Bus userdata
+ * object, false otherwise.
+ */
 static l2dbus_Bool
 l2dbus_dbusQueryDbusTypeId
     (
@@ -250,6 +329,21 @@ l2dbus_dbusQueryDbusTypeId
 }
 
 
+/**
+ * @brief Gets the value of the indexed object.
+ *
+ * This helper function returns the value of the referenced object. If it's
+ * a Lua D-Bus userdata object then it's "value" is looked up. For a standard
+ * Lua type a copy of the value is just pushed on the top of the Lua stack.
+ * The top of the Lua stack will either have the value or 'nil' if nothing can
+ * be retrieved.
+ *
+ * @param [in]      L       The Lua state.
+ * @param [in]      idx     The index to the Lua object on the stack.
+ *
+ * @return Returns with the associated object value or 'nil' on the top of
+ * the Lua stack.
+ */
 static void
 l2dbus_transcodeGetValue
     (
@@ -281,6 +375,22 @@ l2dbus_transcodeGetValue
 }
 
 
+/**
+ * @brief Computes the D-Bus signature of the specified argument.
+ *
+ * This (potentially) recursive function computes the D-Bus signature
+ * of the specified Lua argument. Both heuristics and hints are used to
+ * complete this conversion from a Lua object to a D-Bus signature.
+ *
+ * @param [in]      L       The Lua state.
+ * @param [in]      argIdx  The index to the argument on the Lua stack.
+ * @param [in,out]  sigBuf  The buffer which holds the signature.
+ * @param [in]      level   The recursive "level" at which this is being
+ * called. Starts a zero (0).
+ *
+ * @return Returns true if the siguature was computed successfully, false
+ * otherwise. The returned signature is in the sigBuf on success.
+ */
 l2dbus_Bool
 l2dbus_dbusComputeSignature
     (
@@ -379,14 +489,15 @@ l2dbus_dbusComputeSignature
                 else
                 {
                     if ( strlen(DBUS_TYPE_ARRAY_AS_STRING) !=
-                        cdbus_stringBufferAppend(sigBuf, DBUS_TYPE_ARRAY_AS_STRING) )
+                        cdbus_stringBufferAppend(sigBuf,
+                            DBUS_TYPE_ARRAY_AS_STRING) )
                     {
                         isValid = L2DBUS_FALSE;
                     }
                     else
                     {
-                        /* Push a copy of the actual Lua type that is associated with the
-                         * D-Bus value on the stack
+                        /* Push a copy of the actual Lua type that is
+                         * associated with the D-Bus value on the stack
                          */
                         l2dbus_transcodeGetValue(L, argIdx);
 
@@ -398,14 +509,15 @@ l2dbus_dbusComputeSignature
                         }
                         else
                         {
-                            /* Use the first element of the array as the template for
-                             * the signature of *every* element. This may not be a great
-                             * assumption but looping over every element and validating
-                             * it incurs a lot of overhead for the general case.
+                            /* Use the first element of the array as the
+                             * template for the signature of *every* element.
+                             * This may not be a great assumption but looping
+                             * over every element and validating it incurs a
+                             * lot of overhead for the general case.
                              */
                             lua_rawgeti(L, -1, 1);
                             isValid = l2dbus_dbusComputeSignature(L, -1,
-                                                                sigBuf, level + 1);
+                                                            sigBuf, level + 1);
                         }
 
                         /* Pop off the D-Bus value we pushed earlier */
@@ -428,14 +540,14 @@ l2dbus_dbusComputeSignature
                 {
                     if ( strlen(DBUS_STRUCT_BEGIN_CHAR_AS_STRING) !=
                         cdbus_stringBufferAppend(sigBuf,
-                        DBUS_STRUCT_BEGIN_CHAR_AS_STRING) )
+                                DBUS_STRUCT_BEGIN_CHAR_AS_STRING) )
                     {
                         isValid = L2DBUS_FALSE;
                     }
                     else
                     {
-                        /* Push a copy of the actual Lua type that is associated with the
-                         * D-Bus value on the stack
+                        /* Push a copy of the actual Lua type that is
+                         * associated with the D-Bus value on the stack
                          */
                         l2dbus_transcodeGetValue(L, argIdx);
                         arrayLen = lua_rawlen(L, -1);
@@ -478,17 +590,19 @@ l2dbus_dbusComputeSignature
                 else
                 {
                     if ( strlen(DBUS_TYPE_VARIANT_AS_STRING) !=
-                        cdbus_stringBufferAppend(sigBuf, DBUS_TYPE_VARIANT_AS_STRING) )
+                        cdbus_stringBufferAppend(sigBuf,
+                        DBUS_TYPE_VARIANT_AS_STRING) )
                     {
                         isValid = L2DBUS_FALSE;
                     }
                     else
                     {
-                        /* Push a copy of the actual Lua type that is associated with the
-                         * D-Bus value on the stack
+                        /* Push a copy of the actual Lua type that is
+                         * associated with the D-Bus value on the stack
                          */
                         l2dbus_transcodeGetValue(L, argIdx);
-                        isValid = l2dbus_dbusComputeSignature(L, -1, sigBuf, level + 1);
+                        isValid = l2dbus_dbusComputeSignature(L, -1, sigBuf,
+                                                            level + 1);
 
                         /* Pop off the D-Bus value we pushed earlier */
                         lua_pop(L, 1);
@@ -518,24 +632,26 @@ l2dbus_dbusComputeSignature
                     }
                     else
                     {
-                        /* Push a copy of the actual Lua type that is associated with the
-                         * D-Bus value on the stack
+                        /* Push a copy of the actual Lua type that is
+                         * associated with the D-Bus value on the stack
                          */
                         l2dbus_transcodeGetValue(L, argIdx);
 
 
-                        /* The key and value signatures are determined by the first element
-                         * of the Lua table.
+                        /* The key and value signatures are determined by the
+                         * first element of the Lua table.
                          */
                         lua_pushnil(L);
                         while ( lua_next(L, -2) )
                         {
                             /* Compute the key based on the first element */
-                            isValid = l2dbus_dbusComputeSignature(L, -2, sigBuf, level + 1);
+                            isValid = l2dbus_dbusComputeSignature(L, -2, sigBuf,
+                                                                level + 1);
                             if ( isValid )
                             {
-                                /* For Lua tables we'll assume the value may vary in type. As a
-                                 * result we always consider it a variant type unless explicitly
+                                /* For Lua tables we'll assume the value may
+                                 * vary in type. As a result we always consider
+                                 * it a variant type unless explicitly
                                  * indicated otherwise.
                                  */
                                 if ( strlen(DBUS_TYPE_VARIANT_AS_STRING) !=
@@ -592,6 +708,17 @@ l2dbus_dbusComputeSignature
 }
 
 
+/**
+ * @brief Gets the value of the associated D-Bus Lua userdata object.
+ *
+ * This function is called directly from Lua to retrieve the "value"
+ * associated with the D-Bus userdata object. It is assumed this userdata
+ * object sits on the top of the Lua stack.
+ *
+ * @param [in]      L       The Lua state.
+ *
+ * @return Returns the Lua value on the top of the Lua stack.
+ */
 static int
 l2dbus_dbusGetLuaValue
     (
@@ -603,6 +730,17 @@ l2dbus_dbusGetLuaValue
 }
 
 
+/**
+ * @brief Gets the D-Bus type ID of the associated D-Bus Lua userdata object.
+ *
+ * This function is called directly from Lua to retrieve the D-Bus type
+ * identifier associated with the D-Bus userdata object. It is assumed this
+ * userdata object sits on the top of the Lua stack.
+ *
+ * @param [in]      L       The Lua state.
+ *
+ * @return Returns the D-Bus type identifier on the top of the Lua stack.
+ */
 static int
 l2dbus_dbusGetTypeId
     (
@@ -611,12 +749,26 @@ l2dbus_dbusGetTypeId
 {
     int typeId = DBUS_TYPE_INVALID;
 
-    luaL_argcheck(L, l2dbus_dbusQueryDbusTypeId(L, 1, &typeId), 1, "Unknown type");
+    luaL_argcheck(L, l2dbus_dbusQueryDbusTypeId(L, 1, &typeId), 1,
+                   "Unknown type");
     lua_pushinteger(L, typeId);
     return 1;
 }
 
 
+/**
+ * @brief Converts the D-Bus Lua userdata object to a string.
+ *
+ * This function is called directly from Lua to convert the value associated
+ * with the D-Bus Lua userdata to its string representation. It is assumed
+ * the userdata object sits on the top of the Lua stack when the function
+ * is called by the VM.
+ *
+ * @param [in]      L       The Lua state.
+ *
+ * @return Returns the string representation of Lua value associated with
+ * the D-Bus Lua userdata. This string is returned on the top of the Lua stack.
+ */
 static int
 l2dbus_dbusToString
     (
@@ -631,6 +783,20 @@ l2dbus_dbusToString
 }
 
 
+/**
+ * @brief Tests to see if a Lua table can be converted to a D-Bus dictionary.
+ *
+ * This function is used to determine whether a Lua table can be encoded as
+ * a D-Bus dictionary (e.g. an array of dictionary entries). A D-Bus dictionary
+ * is the least restrictive data structure that D-Bus permits.
+ *
+ * @param [in]      L       The Lua state.
+ * @param [in]      idx     Index on the Lua stack where the Lua table is
+ * located.
+ *
+ * @return Returns true if the table could be converted to a D-Bus dictionary,
+ * otherwise false.
+ */
 static l2dbus_Bool
 l2dbus_dbusIsTableDictionary
     (
@@ -703,12 +869,13 @@ l2dbus_dbusIsTableDictionary
                         break;
 
                     case LUA_TTABLE:
-                        /* A Lua table can either be mapped to a D-Bus dictionary,
-                         * structure, or array. Since the criteria for a D-Bus dictionary
-                         * is the loosest representation and if it can be represented as
-                         * a D-Bus dictionary then a sufficient mapping exists. It
-                         * would be redundant to verify that it can be mapped to
-                         * other types.
+                        /* A Lua table can either be mapped to a D-Bus
+                         * dictionary, structure, or array. Since the criteria
+                         * for a D-Bus dictionary is the loosest representation
+                         * and if it can be represented as a D-Bus dictionary
+                         * then a sufficient mapping exists. It would be
+                         * redundant to verify that it can be mapped to other
+                         * types.
                          */
                         if ( !l2dbus_dbusIsTableDictionary(L, -1) )
                         {
@@ -764,6 +931,20 @@ l2dbus_dbusIsTableDictionary
 }
 
 
+/**
+ * @brief Tests to see if a Lua table can be converted to a D-Bus array.
+ *
+ * This function is used to determine whether a Lua table can be encoded as
+ * a D-Bus array. A D-Bus array requires the Lua table to have consecutively
+ * number elements (no holes) all of the same homogeneous type.
+ *
+ * @param [in]      L       The Lua state.
+ * @param [in]      idx     Index on the Lua stack where the Lua table is
+ * located.
+ *
+ * @return Returns true if the table could be converted to a D-Bus array,
+ * otherwise false.
+ */
 static l2dbus_Bool
 l2dbus_dbusIsTableArray
     (
@@ -921,6 +1102,21 @@ l2dbus_dbusIsTableArray
 }
 
 
+/**
+ * @brief Tests to see if a Lua table can be converted to a D-Bus structure.
+ *
+ * This function is used to determine whether a Lua table can be encoded as
+ * a D-Bus structure. A D-Bus structure has the same requirements as a D-Bus
+ * array with the exception that the types do not need to be of the same
+ * homogeneous type.
+ *
+ * @param [in]      L       The Lua state.
+ * @param [in]      idx     Index on the Lua stack where the Lua table is
+ * located.
+ *
+ * @return Returns true if the table could be converted to a D-Bus structure,
+ * otherwise false.
+ */
 static l2dbus_Bool
 l2dbus_dbusIsTableStructure
     (
@@ -1040,6 +1236,15 @@ l2dbus_dbusIsTableStructure
 }
 
 
+/**
+ * @brief Called by Lua VM to GC/reclaim the wrappted D-Bus userdata objects.
+ *
+ * This method is called by the Lua VM to reclaim the Lua userdata that
+ * wraps D-Bus values.
+ *
+ * @return nil
+ *
+ */
 static int
 l2dbus_dbusTypeDispose
     (
@@ -1057,6 +1262,45 @@ l2dbus_dbusTypeDispose
     return 0;
 }
 
+/**
+ The L2DBUS D-Bus *Invalid* class.
+ @section Invalid
+ */
+
+/**
+ The L2DBUS wrapper class for the D-Bus *Invalid* type.
+ @type Invalid
+ */
+
+/**
+ @function value
+ @within Invalid
+
+ Returns the value associated with the *Invalid* type.
+
+ @treturn nil Returns **nil** for the *Invalid* type.
+ */
+
+/**
+ @function dbusTypeId
+ @within Invalid
+
+ Returns the D-Bus type identifier associated with the *Invalid* type.
+
+ @treturn number Returns the integral value for the associated D-Bus type.
+ */
+
+/**
+ * @section end
+ */
+
+/**
+ @function l2dbus.DbusTypes.Invalid.new
+
+ Creates a new D-Bus *Invalid* wrapper object.
+
+ @treturn userdata A Lua userdata wrapper around a D-Bus *Invalid* typed object.
+ */
 static int
 l2dbus_dbusNewInvalid
     (
@@ -1069,6 +1313,48 @@ l2dbus_dbusNewInvalid
     return l2dbus_dbusAttachValue(L, ud, -1, -2);
 }
 
+
+/**
+ The L2DBUS D-Bus *Byte* class.
+ @section Byte
+ */
+
+/**
+ The L2DBUS wrapper class for the D-Bus *Byte* type.
+ @type Byte
+ */
+
+/**
+ @function value
+ @within Byte
+
+ Returns the value associated with the *Byte* type.
+
+ @treturn number Returns the value associated with the *Byte* type.
+ */
+
+/**
+ @function dbusTypeId
+ @within Byte
+
+ Returns the D-Bus type identifier associated with the *Byte* type.
+
+ @treturn number Returns the integral value for the associated D-Bus type.
+ */
+
+/**
+ * @section end
+ */
+
+/**
+ @function l2dbus.DbusTypes.Byte.new
+
+ Creates a new D-Bus *Byte* wrapper object.
+
+ @tparam number value The Lua value to associated and wrapped by the D-Bus
+ *Byte* type.
+ @treturn userdata A Lua userdata wrapper around a D-Bus *Byte* typed object.
+ */
 static int
 l2dbus_dbusNewByte
     (
@@ -1082,6 +1368,47 @@ l2dbus_dbusNewByte
 }
 
 
+/**
+ The L2DBUS D-Bus *Boolean* type class.
+ @section Boolean
+ */
+
+/**
+ The L2DBUS wrapper class for the D-Bus *Boolean* type.
+ @type Boolean
+ */
+
+/**
+ @function value
+ @within Boolean
+
+ Returns the value associated with the *Boolean* type.
+
+ @treturn bool Returns the value associated with the *Boolean* type.
+ */
+
+/**
+ @function dbusTypeId
+ @within Boolean
+
+ Returns the D-Bus type identifier associated with the *Boolean* type.
+
+ @treturn number Returns the integral value for the associated D-Bus type.
+ */
+
+/**
+ * @section end
+ */
+
+/**
+ @function l2dbus.DbusTypes.Boolean.new
+
+ Creates a new D-Bus *Boolean* wrapper object.
+
+ @tparam bool value The Lua value to associated and wrapped by the D-Bus
+ *Boolean* type.
+ @treturn userdata A Lua userdata wrapper around a D-Bus *Boolean* typed object.
+ */
 static int
 l2dbus_dbusNewBoolean
     (
