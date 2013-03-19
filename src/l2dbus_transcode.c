@@ -1351,7 +1351,7 @@ l2dbus_dbusNewInvalid
 
  Creates a new D-Bus *Byte* wrapper object.
 
- @tparam number value The Lua value to associated and wrapped by the D-Bus
+ @tparam number value The Lua value associated and wrapped by the D-Bus
  *Byte* type.
  @treturn userdata A Lua userdata wrapper around a D-Bus *Byte* typed object.
  */
@@ -1405,7 +1405,7 @@ l2dbus_dbusNewByte
 
  Creates a new D-Bus *Boolean* wrapper object.
 
- @tparam bool value The Lua value to associated and wrapped by the D-Bus
+ @tparam bool value The Lua value associated and wrapped by the D-Bus
  *Boolean* type.
  @treturn userdata A Lua userdata wrapper around a D-Bus *Boolean* typed object.
  */
@@ -1422,6 +1422,47 @@ l2dbus_dbusNewBoolean
 }
 
 
+/**
+ The L2DBUS D-Bus *Int16* class.
+ @section Int16
+ */
+
+/**
+ The L2DBUS wrapper class for the D-Bus *Int16* type.
+ @type Int16
+ */
+
+/**
+ @function value
+ @within Int16
+
+ Returns the value associated with the *Int16* type.
+
+ @treturn number Returns the value associated with the *Int16* type.
+ */
+
+/**
+ @function dbusTypeId
+ @within Int16
+
+ Returns the D-Bus type identifier associated with the *Int16* type.
+
+ @treturn number Returns the integral value for the associated D-Bus type.
+ */
+
+/**
+ * @section end
+ */
+
+/**
+ @function l2dbus.DbusTypes.Int16.new
+
+ Creates a new D-Bus *Int16* wrapper object.
+
+ @tparam number value The Lua value associated and wrapped by the D-Bus
+ *Int16* type.
+ @treturn userdata A Lua userdata wrapper around a D-Bus *Int16* typed object.
+ */
 static int
 l2dbus_dbusNewInt16
     (
@@ -1435,6 +1476,47 @@ l2dbus_dbusNewInt16
 }
 
 
+/**
+ The L2DBUS D-Bus *Uint16* class.
+ @section Uint16
+ */
+
+/**
+ The L2DBUS wrapper class for the D-Bus *Uint16* type.
+ @type Uint16
+ */
+
+/**
+ @function value
+ @within Uint16
+
+ Returns the value associated with the *Uint16* type.
+
+ @treturn number Returns the value associated with the *Uint16* type.
+ */
+
+/**
+ @function dbusTypeId
+ @within Uint16
+
+ Returns the D-Bus type identifier associated with the *Uint16* type.
+
+ @treturn number Returns the integral value for the associated D-Bus type.
+ */
+
+/**
+ * @section end
+ */
+
+/**
+ @function l2dbus.DbusTypes.Uint16.new
+
+ Creates a new D-Bus *Uint16* wrapper object.
+
+ @tparam number value The Lua value associated and wrapped by the D-Bus
+ *Uint16* type.
+ @treturn userdata A Lua userdata wrapper around a D-Bus *Uint16* typed object.
+ */
 static int
 l2dbus_dbusNewUint16
     (
@@ -1448,6 +1530,47 @@ l2dbus_dbusNewUint16
 }
 
 
+/**
+ The L2DBUS D-Bus *Int32* class.
+ @section Int32
+ */
+
+/**
+ The L2DBUS wrapper class for the D-Bus *Int32* type.
+ @type Int32
+ */
+
+/**
+ @function value
+ @within Int32
+
+ Returns the value associated with the *Int32* type.
+
+ @treturn number Returns the value associated with the *Int32* type.
+ */
+
+/**
+ @function dbusTypeId
+ @within Int32
+
+ Returns the D-Bus type identifier associated with the *Int32* type.
+
+ @treturn number Returns the integral value for the associated D-Bus type.
+ */
+
+/**
+ * @section end
+ */
+
+/**
+ @function l2dbus.DbusTypes.Int32.new
+
+ Creates a new D-Bus *Int32* wrapper object.
+
+ @tparam number value The Lua value associated and wrapped by the D-Bus
+ *Int32* type.
+ @treturn userdata A Lua userdata wrapper around a D-Bus *Int32* typed object.
+ */
 static int
 l2dbus_dbusNewInt32
     (
@@ -1461,6 +1584,47 @@ l2dbus_dbusNewInt32
 }
 
 
+/**
+ The L2DBUS D-Bus *Uint32* class.
+ @section Uint32
+ */
+
+/**
+ The L2DBUS wrapper class for the D-Bus *Uint32* type.
+ @type Uint32
+ */
+
+/**
+ @function value
+ @within Uint32
+
+ Returns the value associated with the *Uint32* type.
+
+ @treturn number Returns the value associated with the *Uint32* type.
+ */
+
+/**
+ @function dbusTypeId
+ @within Uint32
+
+ Returns the D-Bus type identifier associated with the *Uint32* type.
+
+ @treturn number Returns the integral value for the associated D-Bus type.
+ */
+
+/**
+ * @section end
+ */
+
+/**
+ @function l2dbus.DbusTypes.Uint32.new
+
+ Creates a new D-Bus *Uint32* wrapper object.
+
+ @tparam number value The Lua value associated and wrapped by the D-Bus
+ *Uint32* type.
+ @treturn userdata A Lua userdata wrapper around a D-Bus *Uint32* typed object.
+ */
 static int
 l2dbus_dbusNewUint32
     (
@@ -1474,6 +1638,50 @@ l2dbus_dbusNewUint32
 }
 
 
+/**
+ The L2DBUS D-Bus *Int64* class.
+ @section Int64
+ */
+
+/**
+ The L2DBUS wrapper class for the D-Bus *Int64* type.
+ @type Int64
+ */
+
+/**
+ @function value
+ @within Int64
+
+ Returns the value associated with the *Int64* type.
+
+ @treturn number Returns the value associated with the *Int64* type.
+ */
+
+/**
+ @function dbusTypeId
+ @within Int64
+
+ Returns the D-Bus type identifier associated with the *Int64* type.
+
+ @treturn number Returns the integral value for the associated D-Bus type.
+ */
+
+/**
+ * @section end
+ */
+
+/**
+ @function l2dbus.DbusTypes.Int64.new
+
+ Creates a new D-Bus *Int64* wrapper object.
+
+ @tparam ?number|userdata value The Lua value associated and wrapped by
+ the D-Bus *Int64* type. Besides the basic Lua *number* type the constructor
+ also accepts the @{l2dbus.Int64|Int64}/@{l2dbus.Uint64|Uint64} extended Lua
+ types provided by this module.
+
+ @treturn userdata A Lua userdata wrapper around a D-Bus *Int64* typed object.
+ */
 static int
 l2dbus_dbusNewInt64
     (
@@ -1488,6 +1696,50 @@ l2dbus_dbusNewInt64
 }
 
 
+/**
+ The L2DBUS D-Bus *Uint64* class.
+ @section Uint64
+ */
+
+/**
+ The L2DBUS wrapper class for the D-Bus *Uint64* type.
+ @type Uint64
+ */
+
+/**
+ @function value
+ @within Uint64
+
+ Returns the value associated with the *Uint64* type.
+
+ @treturn number Returns the value associated with the *Uint64* type.
+ */
+
+/**
+ @function dbusTypeId
+ @within Uint64
+
+ Returns the D-Bus type identifier associated with the *Uint64* type.
+
+ @treturn number Returns the integral value for the associated D-Bus type.
+ */
+
+/**
+ * @section end
+ */
+
+/**
+ @function l2dbus.DbusTypes.Uint64.new
+
+ Creates a new D-Bus *Uint64* wrapper object.
+
+ @tparam ?number|userdata value The Lua value associated and wrapped by
+ the D-Bus *Uint64* type. Besides the basic Lua *number* type the constructor
+ also accepts the @{l2dbus.Int64|Int64}/@{l2dbus.Uint64|Uint64} extended Lua
+ types provided by this module.
+
+ @treturn userdata A Lua userdata wrapper around a D-Bus *Uint64* typed object.
+ */
 static int
 l2dbus_dbusNewUint64
     (
@@ -1501,6 +1753,47 @@ l2dbus_dbusNewUint64
 }
 
 
+/**
+ The L2DBUS D-Bus *Double* class.
+ @section Double
+ */
+
+/**
+ The L2DBUS wrapper class for the D-Bus *Double* type.
+ @type Double
+ */
+
+/**
+ @function value
+ @within Double
+
+ Returns the value associated with the *Double* type.
+
+ @treturn number Returns the value associated with the *Double* type.
+ */
+
+/**
+ @function dbusTypeId
+ @within Double
+
+ Returns the D-Bus type identifier associated with the *Double* type.
+
+ @treturn number Returns the integral value for the associated D-Bus type.
+ */
+
+/**
+ * @section end
+ */
+
+/**
+ @function l2dbus.DbusTypes.Double.new
+
+ Creates a new D-Bus *Double* wrapper object.
+
+ @tparam number value The Lua value associated and wrapped by the D-Bus
+ *Double* type.
+ @treturn userdata A Lua userdata wrapper around a D-Bus *Double* typed object.
+ */
 static int
 l2dbus_dbusNewDouble
     (
@@ -1514,6 +1807,47 @@ l2dbus_dbusNewDouble
 }
 
 
+/**
+ The L2DBUS D-Bus *String* class.
+ @section String
+ */
+
+/**
+ The L2DBUS wrapper class for the D-Bus *String* type.
+ @type String
+ */
+
+/**
+ @function value
+ @within String
+
+ Returns the value associated with the *String* type.
+
+ @treturn string Returns the value associated with the *String* type.
+ */
+
+/**
+ @function dbusTypeId
+ @within String
+
+ Returns the D-Bus type identifier associated with the *String* type.
+
+ @treturn number Returns the integral value for the associated D-Bus type.
+ */
+
+/**
+ * @section end
+ */
+
+/**
+ @function l2dbus.DbusTypes.String.new
+
+ Creates a new D-Bus *String* wrapper object.
+
+ @tparam string value The Lua value associated and wrapped by the D-Bus
+ *String* type.
+ @treturn userdata A Lua userdata wrapper around a D-Bus *String* typed object.
+ */
 static int
 l2dbus_dbusNewString
     (
@@ -1527,6 +1861,50 @@ l2dbus_dbusNewString
 }
 
 
+/**
+ The L2DBUS D-Bus *ObjectPath* class.
+ @section ObjectPath
+ */
+
+/**
+ The L2DBUS wrapper class for the D-Bus *ObjectPath* type.
+ @type ObjectPath
+ */
+
+/**
+ @function value
+ @within ObjectPath
+
+ Returns the value associated with the *ObjectPath* type.
+
+ @treturn string Returns the value associated with the *ObjectPath* type.
+ */
+
+/**
+ @function dbusTypeId
+ @within ObjectPath
+
+ Returns the D-Bus type identifier associated with the *ObjectPath* type.
+
+ @treturn number Returns the integral value for the associated D-Bus type.
+ */
+
+/**
+ * @section end
+ */
+
+/**
+ @function l2dbus.DbusTypes.ObjectPath.new
+
+ Creates a new D-Bus *ObjectPath* wrapper object. This function does **not**
+ validate the supplied D-Bus object path and assumes it meets the D-Bus
+ specification requirements for such a path.
+
+ @tparam string value The Lua value associated and wrapped by the D-Bus
+ *ObjectPath* type.
+ @treturn userdata A Lua userdata wrapper around a D-Bus *ObjectPath* typed
+ object.
+ */
 static int
 l2dbus_dbusNewObjectPath
     (
@@ -1540,6 +1918,50 @@ l2dbus_dbusNewObjectPath
 }
 
 
+/**
+ The L2DBUS D-Bus *Signature* class.
+ @section Signature
+ */
+
+/**
+ The L2DBUS wrapper class for the D-Bus *Signature* type.
+ @type Signature
+ */
+
+/**
+ @function value
+ @within Signature
+
+ Returns the value associated with the *Signature* type.
+
+ @treturn string Returns the value associated with the *Signature* type.
+ */
+
+/**
+ @function dbusTypeId
+ @within Signature
+
+ Returns the D-Bus type identifier associated with the *Signature* type.
+
+ @treturn number Returns the integral value for the associated D-Bus type.
+ */
+
+/**
+ * @section end
+ */
+
+/**
+ @function l2dbus.DbusTypes.Signature.new
+
+ Creates a new D-Bus *Signature* wrapper object. This function does **not**
+ validate the supplied D-Bus type signature and assumes it meets the D-Bus
+ specification requirements for such a signature.
+
+ @tparam string value The Lua value associated and wrapped by the D-Bus
+ *Signature* type.
+ @treturn userdata A Lua userdata wrapper around a D-Bus *Signature* typed
+ object.
+ */
 static int
 l2dbus_dbusNewSignature
     (
@@ -1552,6 +1974,52 @@ l2dbus_dbusNewSignature
     return l2dbus_dbusAttachValue(L, ud, -1, -2);
 }
 
+
+/**
+ The L2DBUS D-Bus *Array* class.
+ @section Array
+ */
+
+/**
+ The L2DBUS wrapper class for the D-Bus *Array* type.
+ @type Array
+ */
+
+/**
+ @function value
+ @within Array
+
+ Returns the value associated with the *Array* type.
+
+ @treturn table Returns the value associated with the *Array* type.
+ */
+
+/**
+ @function dbusTypeId
+ @within Array
+
+ Returns the D-Bus type identifier associated with the *Array* type.
+
+ @treturn number Returns the integral value for the associated D-Bus type.
+ */
+
+/**
+ * @section end
+ */
+
+/**
+ @function l2dbus.DbusTypes.Array.new
+
+ Creates a new D-Bus *Array* wrapper object. This constructor only minimally
+ validates the provided Lua table to verify that it meets the basic
+ restrictions of a D-Bus array. At a minimum, the elements of the table must
+ be consecutively indexed and be of the same (homogeneous) type.
+
+ @tparam table value The Lua table associated and wrapped by the D-Bus
+ *Array* type.
+ @treturn userdata A Lua userdata wrapper around a D-Bus *Array* typed
+ object.
+ */
 static int
 l2dbus_dbusNewArray
     (
@@ -1569,6 +2037,52 @@ l2dbus_dbusNewArray
 }
 
 
+/**
+ The L2DBUS D-Bus *Dictionary* class.
+ @section Dictionary
+ */
+
+/**
+ The L2DBUS wrapper class for the D-Bus *Dictionary* type.
+ @type Dictionary
+ */
+
+/**
+ @function value
+ @within Dictionary
+
+ Returns the value associated with the *Dictionary* type.
+
+ @treturn table Returns the value associated with the *Dictionary* type.
+ */
+
+/**
+ @function dbusTypeId
+ @within Dictionary
+
+ Returns the D-Bus type identifier associated with the *Dictionary* type.
+
+ @treturn number Returns the integral value for the associated D-Bus type.
+ */
+
+/**
+ * @section end
+ */
+
+/**
+ @function l2dbus.DbusTypes.Dictionary.new
+
+ Creates a new D-Bus *Dictionary* wrapper object. In D-Bus terms a dictionary
+ is an array of DICT_ENTRY structures whereby the key is a *basic* D-Bus type
+ and the associated value is any valid D-Bus type. The constructor only
+ minimally validates the provided Lua table to verify that it meets the basic
+ restrictions of a D-Bus DICT_ENTRY array.
+
+ @tparam table value The Lua table associated and wrapped by the D-Bus
+ *Dictionary* type.
+ @treturn userdata A Lua userdata wrapper around a D-Bus *Dictionary* typed
+ object.
+ */
 static int
 l2dbus_dbusNewDictionary
     (
@@ -1586,6 +2100,53 @@ l2dbus_dbusNewDictionary
 }
 
 
+/**
+ The L2DBUS D-Bus *Structure* class.
+ @section Structure
+ */
+
+/**
+ The L2DBUS wrapper class for the D-Bus *Structure* type.
+ @type Structure
+ */
+
+/**
+ @function value
+ @within Structure
+
+ Returns the value associated with the *Structure* type.
+
+ @treturn table Returns the value associated with the *Structure* type.
+ */
+
+/**
+ @function dbusTypeId
+ @within Structure
+
+ Returns the D-Bus type identifier associated with the *Structure* type.
+
+ @treturn number Returns the integral value for the associated D-Bus type.
+ */
+
+/**
+ * @section end
+ */
+
+/**
+ @function l2dbus.DbusTypes.Structure.new
+
+ Creates a new D-Bus *Structure* wrapper object. In Lua terms this is an
+ array containing non-homogeneous types. This differs from a D-Bus array
+ where all the elements of the array must be the same time. The *fields* of
+ the structure are ordered by increasing index. The constructor does
+ minimal checking to verify the Lua table passed into it meets these minimal
+ requirements.
+
+ @tparam table value The Lua table associated and wrapped by the D-Bus
+ *Structure* type.
+ @treturn userdata A Lua userdata wrapper around a D-Bus *Structure* typed
+ object.
+ */
 static int
 l2dbus_dbusNewStructure
     (
@@ -1603,6 +2164,55 @@ l2dbus_dbusNewStructure
 }
 
 
+/**
+ The L2DBUS D-Bus *Variant* class.
+ @section Variant
+ */
+
+/**
+ The L2DBUS wrapper class for the D-Bus *Variant* type.
+ @type Variant
+ */
+
+/**
+ @function value
+ @within Variant
+
+ Returns the value associated with the *Variant* type.
+
+ @treturn table Returns the value associated with the *Variant* type.
+ */
+
+/**
+ @function dbusTypeId
+ @within Variant
+
+ Returns the D-Bus type identifier associated with the *Variant* type.
+
+ @treturn number Returns the integral value for the associated D-Bus type.
+ */
+
+/**
+ * @section end
+ */
+
+/**
+ @function l2dbus.DbusTypes.Variant.new
+
+ Creates a new D-Bus *Variant* wrapper object. A variant can hold any D-Bus
+ type whether it is a basic or container type. This means it can be used
+ to hold any Lua type **excluding** functions, threads (coroutines), nil, and
+ external userdata (or lightuserdata) objects.
+
+ @tparam any value The Lua value (any type) associated and wrapped by the D-Bus
+ *Variant* type. This type **excludes** functions, threads, nil, and external
+ userdata or lightuserdata.
+ @tparam ?string signature The optional D-Bus signature describing the
+ variant type. **Note:** it's necessary to prefix the signature with the
+ D-Bus '*v*' (variant) type code in order to be parsed as a variant.
+ @treturn userdata A Lua userdata wrapper around a D-Bus *Variant* typed
+ object.
+ */
 static int
 l2dbus_dbusNewVariant
     (
@@ -1674,6 +2284,49 @@ l2dbus_dbusNewVariant
 }
 
 
+/**
+ The L2DBUS D-Bus *UnixFd* class.
+ @section UnixFd
+ */
+
+/**
+ The L2DBUS wrapper class for the D-Bus *UnixFd* type.
+ @type UnixFd
+ */
+
+/**
+ @function value
+ @within UnixFd
+
+ Returns the value associated with the *UnixFd* type.
+
+ @treturn number Returns the value associated with the *UnixFd* type.
+ */
+
+/**
+ @function dbusTypeId
+ @within UnixFd
+
+ Returns the D-Bus type identifier associated with the *UnixFd* type.
+
+ @treturn number Returns the integral value for the associated D-Bus type.
+ */
+
+/**
+ * @section end
+ */
+
+/**
+ @function l2dbus.DbusTypes.UnixFd.new
+
+ Creates a new D-Bus *UnixFd* wrapper object.
+
+ @tparam number fd A Unix file descriptor to wrap. The application must
+ verify that the version of D-Bus being used supports passing file descriptors
+ since not all versions of the library support it.
+
+ @treturn userdata A Lua userdata wrapper around a D-Bus *UnixFd* typed object.
+ */
 static int
 l2dbus_dbusNewUnixFd
     (
@@ -1687,6 +2340,9 @@ l2dbus_dbusNewUnixFd
 }
 
 
+/*
+ * Local structure used to create D-Bus type wrapper objects.
+ */
 typedef struct l2dbus_DbusTypeItem
 {
     const char*         name;
@@ -1696,6 +2352,9 @@ typedef struct l2dbus_DbusTypeItem
     lua_CFunction       ctor;
 } l2dbus_DbusTypeItem;
 
+/*
+ * The methods of the l2dbus.DbusTypes.XXXX type.
+ */
 const luaL_Reg l2dbus_dbusTypeBasicMeta[] = {
     {"value", l2dbus_dbusGetLuaValue},
     {"dbusTypeId", l2dbus_dbusGetTypeId},
@@ -1727,6 +2386,16 @@ static const l2dbus_DbusTypeItem gDbusTypeRegistry[] = {
 };
 
 
+/**
+ * @brief Calculates the best D-Bus type to represent a Lua number.
+ *
+ * The "best" D-Bus type to represent a Lua number is one that (ideally) does
+ * not truncate it's value while providing an efficient and predictable
+ * mapping between the two representations.
+ *
+ * @param [in] value    The Lua number to represent as a D-Bus type.
+ * @return The D-Bus type best suited to represent a Lua number.
+ */
 static int
 l2dbus_calcDbusNumType
     (
@@ -1797,6 +2466,16 @@ l2dbus_calcDbusNumType
 }
 
 
+/**
+ * @brief Maps a Lua type to an equivalent D-Bus type.
+ *
+ * Tries to map a Lua type to an equivalent D-Bus type. If an error
+ * is detected then a Lua error will be generated.
+ *
+ * @param [in] L    The Lua number to represent as a D-Bus type.
+ * @param [in] idx  The index of the Lua value on the Lua stack.
+ * @return The D-Bus type best suited to represent the Lua type.
+ */
 static int
 l2dbus_transcodeMapLuaToDbusType
     (
@@ -1861,6 +2540,17 @@ l2dbus_transcodeMapLuaToDbusType
 }
 
 
+/**
+ * @brief A "shim" function that allows a Lua protected call to be made.
+ *
+ * This shim function wraps the l2dbus_transcodeMarshallAsType() function so
+ * that it can recursively called via a Lua pcall. Any Lua errors can be
+ * "caught" before being propagated to the user application. On entry to the
+ * function the Lua stack must hold the argument to marshall as well as
+ * lightuserdata for the message and signature iterators.
+ *
+ * @param [in] L    The Lua number to represent as a D-Bus type.
+ */
 static int
 l2dbus_transcodeMarshallAsTypeShim
     (
@@ -1879,6 +2569,19 @@ l2dbus_transcodeMarshallAsTypeShim
 }
 
 
+/**
+ * @brief Marshalls a Lua argument into a D-Bus message.
+ *
+ * This function takes an arbitrary Lua argument and encodes/marshalls it
+ * into a D-Bus message using the D-Bus signature as a guide for converting
+ * the types correctly. Any errors encountered while encoding the argument
+ * will result in a Lua error being thrown.
+ *
+ * @param [in] L        The Lua state.
+ * @param [in] argIdx   The Lua stack index of the argument.
+ * @param [in] msgIt    Pointer to a D-Bus message iterator.
+ * @param [in] sigIt    Pointer to a D-Bus signature iterator.
+ */
 static void
 l2dbus_transcodeMarshallAsType
     (
@@ -2070,7 +2773,8 @@ l2dbus_transcodeMarshallAsType
                 luaL_error(L, "cannot convert %s to a DBUS_TYPE_UINT32",
                     lua_typename(L, lua_type(L, argIdx)));
             }
-            if ( !dbus_message_iter_append_basic(msgIt, dbusType, &uint32Value) )
+            if ( !dbus_message_iter_append_basic(msgIt, dbusType,
+                &uint32Value) )
             {
                 luaL_error(L, "could not append DBUS_TYPE_UINT32");
             }
@@ -2122,7 +2826,8 @@ l2dbus_transcodeMarshallAsType
                 luaL_error(L, "cannot convert %s to a DBUS_TYPE_UINT64",
                     lua_typename(L, lua_type(L, argIdx)));
             }
-            if ( !dbus_message_iter_append_basic(msgIt, dbusType, &uint64Value) )
+            if ( !dbus_message_iter_append_basic(msgIt, dbusType,
+                &uint64Value) )
             {
                 luaL_error(L, "could not append DBUS_TYPE_UINT64");
             }
@@ -2148,7 +2853,8 @@ l2dbus_transcodeMarshallAsType
                 luaL_error(L, "cannot convert %s to a DBUS_TYPE_DOUBLE",
                     lua_typename(L, lua_type(L, argIdx)));
             }
-            if ( !dbus_message_iter_append_basic(msgIt, dbusType, &doubleValue) )
+            if ( !dbus_message_iter_append_basic(msgIt, dbusType,
+                &doubleValue) )
             {
                 luaL_error(L, "could not append DBUS_TYPE_DOUBLE");
             }
@@ -2182,14 +2888,16 @@ l2dbus_transcodeMarshallAsType
             luaL_checktype(L, argIdx, LUA_TTABLE);
             dbus_signature_iter_recurse(sigIt, &sigSubIt);
             signature = dbus_signature_iter_get_signature(&sigSubIt);
-            if ( !dbus_message_iter_open_container(msgIt, dbusType, signature, &msgSubIt) )
+            if ( !dbus_message_iter_open_container(msgIt, dbusType, signature,
+                &msgSubIt) )
             {
                 dbus_free(signature);
                 luaL_error(L, "could not open D-Bus container for array");
             }
             dbus_free(signature);
 
-            if ( DBUS_TYPE_DICT_ENTRY == dbus_signature_iter_get_current_type(&sigSubIt) )
+            if ( DBUS_TYPE_DICT_ENTRY ==
+                dbus_signature_iter_get_current_type(&sigSubIt) )
             {
                 l2dbus_transcodeMarshallAsType(L, argIdx, &msgSubIt, &sigSubIt);
             }
@@ -2198,7 +2906,8 @@ l2dbus_transcodeMarshallAsType
                 arrayLen = lua_rawlen(L, argIdx);
                 for ( idx = 1;
                     (idx <= arrayLen) &&
-                    (DBUS_TYPE_INVALID != dbus_signature_iter_get_current_type(&sigSubIt));
+                    (DBUS_TYPE_INVALID !=
+                        dbus_signature_iter_get_current_type(&sigSubIt));
                     ++idx )
                 {
                     lua_rawgeti(L, argIdx, idx);
@@ -2221,7 +2930,8 @@ l2dbus_transcodeMarshallAsType
         case DBUS_TYPE_STRUCT:
             luaL_checktype(L, argIdx, LUA_TTABLE);
             dbus_signature_iter_recurse(sigIt, &sigSubIt);
-            if ( !dbus_message_iter_open_container(msgIt, dbusType, NULL, &msgSubIt) )
+            if ( !dbus_message_iter_open_container(msgIt, dbusType, NULL,
+                &msgSubIt) )
             {
                 luaL_error(L, "could not open D-Bus container for structure");
             }
@@ -2229,7 +2939,8 @@ l2dbus_transcodeMarshallAsType
             arrayLen = lua_rawlen(L, argIdx);
             for ( idx = 1;
                 (idx <= arrayLen) &&
-                (DBUS_TYPE_INVALID != dbus_signature_iter_get_current_type(&sigSubIt));
+                (DBUS_TYPE_INVALID !=
+                    dbus_signature_iter_get_current_type(&sigSubIt));
                 ++idx )
             {
                 lua_rawgeti(L, argIdx, idx);
@@ -2271,14 +2982,17 @@ l2dbus_transcodeMarshallAsType
             if ( NULL == cachedSig )
             {
                 if ( !l2dbus_dbusComputeSignature(L, argIdx, sigBuf, 0) ||
-                    !dbus_signature_validate(cdbus_stringBufferRaw(sigBuf), NULL) )
+                    !dbus_signature_validate(cdbus_stringBufferRaw(sigBuf),
+                    NULL) )
                 {
                     cdbus_stringBufferUnref(sigBuf);
-                    luaL_error(L, "failed to compute signature of variant type");
+                    luaL_error(L,
+                        "failed to compute signature of variant type");
                 }
             }
 
-            if ( !dbus_message_iter_open_container(msgIt, dbusType, cdbus_stringBufferRaw(sigBuf), &msgSubIt) )
+            if ( !dbus_message_iter_open_container(msgIt, dbusType,
+                cdbus_stringBufferRaw(sigBuf), &msgSubIt) )
             {
                 cdbus_stringBufferUnref(sigBuf);
                 luaL_error(L, "could not open D-Bus container for variant");
@@ -2320,9 +3034,11 @@ l2dbus_transcodeMarshallAsType
             while ( lua_next(L, argIdx) )
             {
                 dbus_signature_iter_recurse(sigIt, &sigSubIt);
-                if ( !dbus_message_iter_open_container(msgIt, dbusType, NULL, &msgSubIt) )
+                if ( !dbus_message_iter_open_container(msgIt, dbusType, NULL,
+                    &msgSubIt) )
                 {
-                    luaL_error(L, "could not open D-Bus container for dictionary");
+                    luaL_error(L,
+                        "could not open D-Bus container for dictionary");
                 }
 
                 /* Encode the key */
@@ -2339,7 +3055,8 @@ l2dbus_transcodeMarshallAsType
 
                 if ( !dbus_message_iter_close_container(msgIt, &msgSubIt) )
                 {
-                    luaL_error(L, "could not close D-Bus container for dictionary");
+                    luaL_error(L,
+                        "could not close D-Bus container for dictionary");
                 }
 
                 /* Pop off the value for the next go-around */
@@ -2382,6 +3099,19 @@ l2dbus_transcodeMarshallAsType
 }
 
 
+/**
+ * @brief Unmarshalls the D-Bus message parameters into a Lua argument array.
+ *
+ * This function takes a D-Bus message and decodes/unmarshalls the parameters
+ * into their corresponding Lua argument types that are appended to an array.
+ * If an error is encountered unmarshalling the parameters then a Lua error
+ * is thrown.
+ *
+ * @param [in] L        The Lua state.
+ * @param [in] iter     Pointer to a D-Bus message iterator.
+ * @param [in] tableIdx The Lua stack index of the returned Lua table/array.
+ * @param [in] arrIdx   The current index into the Lua table/array.
+ */
 static void
 l2dbus_transcodeUnmarshall
     (
@@ -2441,12 +3171,14 @@ l2dbus_transcodeUnmarshall
                 break;
 
             case DBUS_TYPE_INT64:
-                int64Ud = l2dbus_objectNew(L, sizeof(*int64Ud), L2DBUS_INT64_TYPE_ID);
+                int64Ud = l2dbus_objectNew(L, sizeof(*int64Ud),
+                                            L2DBUS_INT64_TYPE_ID);
                 dbus_message_iter_get_basic(iter, &int64Ud->value);
                 break;
 
             case DBUS_TYPE_UINT64:
-                uint64Ud = l2dbus_objectNew(L, sizeof(*uint64Ud), L2DBUS_UINT64_TYPE_ID);
+                uint64Ud = l2dbus_objectNew(L, sizeof(*uint64Ud),
+                                            L2DBUS_UINT64_TYPE_ID);
                 dbus_message_iter_get_basic(iter, &uint64Ud->value);
                 break;
 
@@ -2474,7 +3206,8 @@ l2dbus_transcodeUnmarshall
                 lua_newtable(L);
                 subIdx = 1;
                 dbus_message_iter_recurse(iter, &subIter);
-                while ( DBUS_TYPE_INVALID != dbus_message_iter_get_arg_type(&subIter) )
+                while ( DBUS_TYPE_INVALID !=
+                    dbus_message_iter_get_arg_type(&subIter) )
                 {
                     l2dbus_transcodeUnmarshall(L, &subIter, -1, &subIdx);
                     dbus_message_iter_next(&subIter);
@@ -2485,7 +3218,8 @@ l2dbus_transcodeUnmarshall
                 lua_newtable(L);
                 subIdx = 1;
                 dbus_message_iter_recurse(iter, &subIter);
-                while ( DBUS_TYPE_INVALID != dbus_message_iter_get_arg_type(&subIter) )
+                while ( DBUS_TYPE_INVALID !=
+                    dbus_message_iter_get_arg_type(&subIter) )
                 {
                     l2dbus_transcodeUnmarshall(L, &subIter, -1, &subIdx);
                     dbus_message_iter_next(&subIter);
@@ -2509,7 +3243,8 @@ l2dbus_transcodeUnmarshall
                 l2dbus_transcodeUnmarshall(L, &subIter, -1, &subIdx);
                 if ( !dbus_message_iter_next(&subIter) )
                 {
-                    luaL_error(L, "missing value in D-Bus dictionary signature");
+                    luaL_error(L,
+                        "missing value in D-Bus dictionary signature");
                 }
                 /* Demarshall the value */
                 l2dbus_transcodeUnmarshall(L, &subIter, -1, &subIdx);
@@ -2544,6 +3279,22 @@ l2dbus_transcodeUnmarshall
 }
 
 
+/**
+ * @brief Appends Lua arguments to a D-Bus message using a signature.
+ *
+ * This function takes arguments on the Lua stack and marshalls them into
+ * a D-Bus message using a D-Bus type signature as a guide on how the types
+ * should be converted from Lua to D-Bus. If an error is encountered then
+ * this function will throw an Lua error.
+ *
+ * @param [in] L            The Lua state.
+ * @param [in] msg          The message the arguments will be appended to.
+ * @param [in] argIdx       The Lua stack index where the arguments start.
+ * @param [in] nArgs        The number of arguments on the Lua stack to
+ * marshall.
+ * @param [in] signature    The D-Bus message signature used to encode the
+ * arguments.
+ */
 void
 l2dbus_transcodeLuaArgsToDbusBySignature
     (
@@ -2595,6 +3346,21 @@ l2dbus_transcodeLuaArgsToDbusBySignature
 }
 
 
+
+/**
+ * @brief Appends Lua arguments to a D-Bus message without a signature.
+ *
+ * This function takes arguments on the Lua stack and marshalls them into
+ * a D-Bus message without a provide signature. The signature is computed
+ * using a heuristic technique to map Lua types to suitable D-Bus types. If
+ * an error is encountered then this function will throw an Lua error.
+ *
+ * @param [in] L            The Lua state.
+ * @param [in] msg          The message the arguments will be appended to.
+ * @param [in] argIdx       The Lua stack index where the arguments start.
+ * @param [in] nArgs        The number of arguments on the Lua stack to
+ * marshall.
+ */
 void
 l2dbus_transcodeLuaArgsToDbus
     (
@@ -2660,7 +3426,17 @@ l2dbus_transcodeLuaArgsToDbus
 }
 
 
-
+/**
+ * @brief Converts D-Bus message arguments to equivalent Lua arguments.
+ *
+ * This function unmarshalls D-Bus message arguments into Lua arguments which
+ * are appended to a Lua array. If an error is encountered then this function
+ * will throw an Lua error. A Lua array is returned on the Lua stack containing
+ * all the decoded D-Bus arguments.
+ *
+ * @param [in] L            The Lua state.
+ * @param [in] msg          The message containing the D-Bus arguments.
+ */
 int
 l2dbus_transcodeDbusArgsToLuaArray
     (
@@ -2692,6 +3468,17 @@ l2dbus_transcodeDbusArgsToLuaArray
 }
 
 
+/**
+ * @brief Converts D-Bus message arguments to equivalent Lua arguments and
+ * leaves them on the Lua stack.
+ *
+ * This function unmarshalls D-Bus message arguments into Lua arguments which
+ * are pushed on the Lua stack. If an error is encountered then this function
+ * will throw an Lua error.
+ *
+ * @param [in] L            The Lua state.
+ * @param [in] msg          The message containing the D-Bus arguments.
+ */
 int
 l2dbus_transcodeDbusArgsToLua
     (
@@ -2710,7 +3497,8 @@ l2dbus_transcodeDbusArgsToLua
         arrLen = lua_rawlen(L, tableIdx);
         if ( !lua_checkstack(L, arrLen) )
         {
-            luaL_error(L, "cannot grow Lua stack to hold D-Bus message arguments");
+            luaL_error(L,
+                "cannot grow Lua stack to hold D-Bus message arguments");
         }
 
         /* Push all the elements on the stack */
@@ -2724,6 +3512,9 @@ l2dbus_transcodeDbusArgsToLua
 }
 
 
+/**
+ * @brief Creates a metatable for a D-Bus type wrapper class.
+ */
 int
 l2dbus_transcodeCreateMetatable
     (
@@ -2741,6 +3532,13 @@ l2dbus_transcodeCreateMetatable
 }
 
 
+/**
+ * @brief Creates the DbusTypes sub-module.
+ *
+ * This function simulates opening the DbusTypes sub-module.
+ *
+ * @return Returns one Lua element on the Lua stack - the sub-module table.
+ */
 int
 l2dbus_openTranscode
     (

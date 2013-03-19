@@ -24,13 +24,26 @@ limitations under the License.
 *****************************************************************************
 --]]
 
+--- Validation Module.
+-- This module contains several useful functions for validating arguments to
+-- ensure they're the correct types or formatted according to the D-Bus
+-- specification.
+-- @module l2dbus.validate
+-- @alias M
+
 local MAX_DBUS_NAME_LEN = 255
 
 
 local M = { }
 
+--- Set to **true** to enable validation, **false** to skip the calls to
+-- do validation or check argument types.
+-- This provides a convenient global property that can turn real validation
+-- on or off based on possible performance needs or debugging options. By
+-- default validation is **enabled** (true).
 M.doValidation = true
 
+-- Dummy function that does not validation.
 local function noValidation(...)
 end
 
@@ -115,10 +128,13 @@ local function doVerifyTypesWithMsg(pattern, msg, ...)
 end
 
 
--- A simple UTF-8 validator in Lua. (Tested only with texlua.)
+--- A simple UTF-8 validator in Lua.
+-- Tested only with texlua.
 -- Manuel Pégourié-Gonnard, 2009, WTFPL v2.
--- See http://www.wtfpl.net/about/ for license details
--- returns true if s is a valid utf-8 sequence according to rfc3629
+-- See <a href="http://www.wtfpl.net/about/">license</a> for details on WTFPL v2.
+-- @tparam string str The string to check to see if it's valid UTF-8 text.
+-- @treturn bool Returns true if *str* is a valid utf-8 sequence according
+-- to rfc3629.
 function M.isValidUtf8(str)
 	local len = string.len(str)
 	local not_cont = function(b) return b == nil or b < 128 or b >= 192 end

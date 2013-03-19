@@ -125,7 +125,6 @@ l2dbus_createDbusMetatable
  * and simulates opening the D-Bus sub-module.
  *
  * @return nil
- *
  */
 void
 l2dbus_openDbus
