@@ -24,6 +24,13 @@ limitations under the License.
 *****************************************************************************
 --]]
 
+--- D-Bus Message Bus Module.
+-- This module exports the D-Bus controller.
+-- 
+-- @module l2dbus.dbus
+-- @alias M
+
+
 local l2dbus = require("l2dbus_core")
 local xml = require("l2dbus.xml")
 local validate = require("l2dbus.validate")
@@ -136,8 +143,8 @@ local DBUS_INTROSPECT_AS_XML =
 function M.new(conn)
 	verify(type(conn) == "userdata", "invalid connection")
 	local dbusCtrl = {
-				ctrl = proxy.new(conn, l2dbus.Dbus.SERVICE_DBUS, l2dbus.Dbus.PATH_DBUS)
-				}
+		ctrl = proxy.new(conn, l2dbus.Dbus.SERVICE_DBUS, l2dbus.Dbus.PATH_DBUS)
+		}
 					
 	return setmetatable(dbusCtrl, DbusController)
 end

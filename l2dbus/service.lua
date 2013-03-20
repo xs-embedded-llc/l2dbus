@@ -496,6 +496,11 @@ function ReplyContext:getConnection()
 end
 
 
+function ReplyContext:getMessage()
+	return self.msg
+end
+
+
 function ReplyContext:needsReply()
 	return self.msg:getNoReply()
 end

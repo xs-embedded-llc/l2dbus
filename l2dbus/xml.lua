@@ -22,12 +22,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
 OR OTHER DEALINGS IN THE SOFTWARE.
 ]]
 
---[[
-Original classic (software-only) XML parser by Roberto Ierusalimschy.
-Modifications to parser by Steve Donovan with additional helper functions
-taken from Penlight's XML module:
-https://github.com/stevedonovan/Penlight/blob/master/lua/pl/xml.lua
-]]
+
+--- XML Module.
+-- The original classic (software-only) XML parser by Roberto Ierusalimschy.
+-- Modifications to parser by Steve Donovan with additional helper functions
+-- taken from Penlight's XML <a href="https://github.com/stevedonovan/Penlight/blob/master/lua/pl/xml.lua">module</a>.
+-- 
+-- **Known Limitations:**
+-- <ul>
+-- <li>Does not support embedded XML comments.</li>
+-- </ul>
+-- @module l2dbus.xml
+-- @alias M
 
 
 local t_insert = table.insert;
@@ -78,6 +84,17 @@ local function parseargs(s)
 	return arg
 end
 
+
+--- XML Document class.
+--- @type Doc
+
+--- Returns the child tags of the XML document.
+--- 
+--- The returned child tags themselves are XML (Doc) documents that can
+--- themselves be queried for child tags.
+--- @within Doc
+--- @treturn table An array of child tags which are themselves documents.
+--- @function childtags  
 function Doc:childtags()
 	local i = 0;
 	return function (a)
@@ -90,6 +107,20 @@ function Doc:childtags()
 	end, self[1], i;
 end
 
+
+--- @section end
+
+
+--- Parses an XML string and builds a document tree containing child tags.
+---
+--- A *very* basic XML parser that can be used to parse D-Bus XML
+--- introspection data for services. The returned *Doc* object only provides
+--- the APIs necessary to extract the child tags from the document object.
+--- 
+--- @tparam string s The XML string to parse.
+--- @tparam bool all_text If **true** it preserves all whitespace otherwise
+--- only text containing non-whitespace is included. Default value is **false**.
+--- @treturn table A *Doc* object with a method to retrieve the document tags.
 function M.parse(s, all_text)
 	local html = M.parsehtml
 	local t_insert,t_remove = table.insert,table.remove
