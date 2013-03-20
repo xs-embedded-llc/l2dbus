@@ -1,1 +1,1 @@
-ldoc -a -c config.ld .
+ldoc -c config.ld .

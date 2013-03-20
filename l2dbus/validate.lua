@@ -53,6 +53,12 @@ local function strip(text)
 end
 
 
+-- Extracts the tokens from a string separated by '|'.
+-- Looks for words separated by the delimiter '|' and returns these
+-- words in a Lua table structured as a "Set" container (e.g. words are the
+-- keys, values set to **true**).
+-- @tparam string text The text to extract the tokens from.
+-- @treturn table A table containing the extracted tokens as keys of the table.
 local function extractTokens(text)
 	local tokens = {}
 	local startIdx = 1
@@ -75,6 +81,21 @@ local function extractTokens(text)
 end
 
 
+--- Checks the argument types according to the specified pattern.
+--  A pattern has the form of:
+--  	type1|type2|...
+--  Where type*N* is a Lua type or the '\*' wildcard character which matches
+--  any type. The '|' character functions as a type name delimiter and
+--  separates alternate types that can match (e.g. like a logical *OR*).
+--  
+--  @tparam string pattern The acceptable "types" pattern to match.
+--  @tparam any ... The arguments to check against the pattern.
+--  @treturn bool Returns **true** if the arguments match the pattern or
+--  **false** if there is no match (e.g. the argument is not one of the
+--  specified types).
+--  @treturn nil|number If all the arguments match the acceptable types then
+--  return *nil* otherwise return the argument index of the first argument that
+--  doesn't match the type pattern.
 function M.checkTypes(pattern, ...)
 	local params = {...}
 	local tokens = extractTokens(pattern)
@@ -98,7 +119,12 @@ function M.checkTypes(pattern, ...)
     return true, nil
 end
 
-
+-- Verifies *v* is true and if not throw a Lua error with *msg* as the string.
+-- @tparam bool v Value to verify whether it evaluates to **true** or **false*.
+-- @tparam string msg The message to emit in the Lua error if *v* evaluates to
+-- **false**.
+-- @treturn nil	Returns **nil** if **v** evaluates to **true**, otherwise a
+-- Lua error is thrown with **msg** as the error text.
 local function doVerify(v, msg)
 	if not v then
 	    return error(msg, 2)
@@ -108,6 +134,12 @@ local function doVerify(v, msg)
 end
 
 
+-- Verify the arguments match the acceptable pattern of types.
+-- @tparam string pattern Types pattern of the form:
+-- 		type1|type2|typeN|...
+-- @tparam any ... Argument list to test against the pattern.
+-- @treturn nil Returns **nil** if all the arguments match the types pattern.
+-- A Lua error is thrown if an unexpected type is found.
 local function doVerifyTypes(pattern, ...)
 	local result, idx = M.checkTypes(pattern, ...)
 	if not result then
@@ -129,12 +161,12 @@ end
 
 
 --- A simple UTF-8 validator in Lua.
--- Tested only with texlua.
--- Manuel Pégourié-Gonnard, 2009, WTFPL v2.
+-- Tested only with texlua. </br>
+-- Manuel Pégourié-Gonnard, 2009, WTFPL v2.</br>
 -- See <a href="http://www.wtfpl.net/about/">license</a> for details on WTFPL v2.
 -- @tparam string str The string to check to see if it's valid UTF-8 text.
 -- @treturn bool Returns true if *str* is a valid utf-8 sequence according
--- to rfc3629.
+-- to RFC 3629.
 function M.isValidUtf8(str)
 	local len = string.len(str)
 	local not_cont = function(b) return b == nil or b < 128 or b >= 192 end
