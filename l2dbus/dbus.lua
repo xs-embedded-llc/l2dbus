@@ -18,16 +18,20 @@ limitations under the License.
 
 *****************************************************************************
 *****************************************************************************
-@file           dbus.lua
+@file           msgbus.lua
 @author         Glenn Schmottlach
 @brief          Provides a proxy interface to the D-Bus daemon.
 *****************************************************************************
 --]]
 
 --- D-Bus Message Bus Module.
--- This module exports the D-Bus controller.
+-- This module provides a controller for the D-Bus Message Bus which implements
+-- the <a href="http://dbus.freedesktop.org/doc/dbus-specification.html#message-bus">
+-- org.freedesktop.DBus</a> interface. The controller provides methods to gain
+-- access to the proxy interface of the Message Bus where methods can be called
+-- and signals received from the service.
 -- 
--- @module l2dbus.dbus
+-- @module l2dbus.msgbus
 -- @alias M
 
 
@@ -41,10 +45,10 @@ local verifyTypesWithMsg	=	validate.verifyTypesWithMsg
 local verify				=	validate.verify
 
 local M = { }
-local DbusController = { __type = "l2dbus.dbus_controller" }
-DbusController.__index = DbusController
+local MsgBusController = { __type = "l2dbus.msg_bus_controller" }
+MsgBusController.__index = MsgBusController
 
-local DBUS_INTROSPECT_AS_XML =
+local MSGBUS_INTROSPECT_AS_XML =
 [[
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
 "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
@@ -146,64 +150,64 @@ function M.new(conn)
 		ctrl = proxy.new(conn, l2dbus.Dbus.SERVICE_DBUS, l2dbus.Dbus.PATH_DBUS)
 		}
 					
-	return setmetatable(dbusCtrl, DbusController)
+	return setmetatable(dbusCtrl, MsgBusController)
 end
 
 
-function DbusController:bind(doIntrospect)
+function MsgBusController:bind(doIntrospect)
 	if doIntrospect then
 		return self.ctrl:bind()
 	else
-		return self.ctrl:bindNoIntrospect(DBUS_INTROSPECT_AS_XML, true)
+		return self.ctrl:bindNoIntrospect(MSGBUS_INTROSPECT_AS_XML, true)
 	end
 end
 
 
-function DbusController:unbind()
+function MsgBusController:unbind()
 	self.ctrl:unbind()
 end
 
 
-function DbusController:getIntrospectionData()
+function MsgBusController:getIntrospectionData()
 	return self.ctrl:getIntrospectionData()
 end
 
 
-function DbusController:getProxy(interface)
+function MsgBusController:getProxy()
 	return self.ctrl:getProxy(l2dbus.Dbus.INTERFACE_DBUS)	
 end
 
 
-function DbusController:setTimeout(timeout)
+function MsgBusController:setTimeout(timeout)
 	self.ctrl:setTimeout(timeout)
 end
 
 
-function DbusController:getTimeout()
+function MsgBusController:getTimeout()
 	return self.ctrl:getTimeout()
 end
 
 
-function DbusController:setBlockingMode(mode)
+function MsgBusController:setBlockingMode(mode)
 	self.ctrl:setBlockingMode(mode)
 end
 
 
-function DbusController:getBlockingMode()
+function MsgBusController:getBlockingMode()
 	return self.ctrl:getBlockingMode()
 end
 
-function DbusController:connectSignal(sigName, handler)
+function MsgBusController:connectSignal(sigName, handler)
 	return self.ctrl:connectSignal(l2dbus.Dbus.INTERFACE_DBUS, sigName, handler)
 end
 
 
-function DbusController:disconnectSignal(hnd)	
+function MsgBusController:disconnectSignal(hnd)	
 	return self.ctrl:disconnnectSignal(hnd)
 end
 
 
-function DbusController:disconnectAllSignals()
+function MsgBusController:disconnectAllSignals()
 	self.ctrl:disconnectAllSignals()
 end
 
