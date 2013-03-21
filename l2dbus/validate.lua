@@ -135,6 +135,7 @@ end
 
 
 -- Verify the arguments match the acceptable pattern of types.
+--
 -- @tparam string pattern Types pattern of the form:
 -- 		type1|type2|typeN|...
 -- @tparam any ... Argument list to test against the pattern.
@@ -150,6 +151,17 @@ local function doVerifyTypes(pattern, ...)
 end
 
 
+-- Check argument types and emit Lua error with message if invalid.
+--
+-- Similar to @{doVerifyTypes} except the Lua error that is emitted if
+-- the types aren't valid with include the specified message.
+--
+-- @tparam string pattern Types pattern of the form:
+-- 		type1|type2|typeN|...
+-- @tparam string msg The message to include with any Lua error emitted.
+-- @tparam any ... Argument list to test against the pattern.
+-- @treturn nil Returns **nil** if all the arguments match the types pattern.
+-- A Lua error is thrown if an unexpected type is found.
 local function doVerifyTypesWithMsg(pattern, msg, ...)
 	local result, idx = M.checkTypes(pattern, ...)
 	if not result then
@@ -225,8 +237,13 @@ end
 
 
 --- Verifies the given name is a valid D-Bus bus name.
--- @tparam string name bus name to check
--- @treturn boolean True if bus name is valid, false otherwise.
+-- 
+-- Checks to see whether the provided name meets the
+-- <a href="http://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-names">requirements</a>
+-- for a valid D-Bus bus name.
+-- 
+-- @tparam string name D-Bus bus name to validate.
+-- @treturn bool Returns **true** if bus name is valid, **false** otherwise.
 function M.isValidBusName(name)
     local isValid = true
     if type(name) ~= "string" then
@@ -267,8 +284,13 @@ end -- isValidWellKnownBusName
 
 
 --- Verifies the given name is a valid D-Bus object path.
--- @tparam string name The object path to check
--- @treturn boolean True if the object name is valid, false otherwise.
+-- 
+-- Checks to see whether the provided path name meets the
+-- <a href="http://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-names">requirements</a>
+-- for a valid D-Bus object path.
+-- 
+-- @tparam string name D-Bus object path to validate.
+-- @treturn bool Returns **true** if object path is valid, **false** otherwise.
 function M.isValidObjectPath(name)
     local isValid = true
     if type(name) ~= "string" then
@@ -295,6 +317,16 @@ function M.isValidObjectPath(name)
 end -- isValidObjectPath
 
 
+--- Verifies the given name is a valid D-Bus member name.
+-- 
+-- Checks to see whether the provided name meets the
+-- <a href="http://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-names">requirements</a>
+-- for a valid D-Bus member name. Member names are D-Bus member or signal
+-- names.
+-- 
+-- @tparam string name D-Bus member name to validate.
+-- @treturn bool Returns **true** if the member name is valid,
+-- **false** otherwise.
 function M.isValidMember(name)
     local isValid = true
     if type(name) ~= "string" then
@@ -317,6 +349,15 @@ function M.isValidMember(name)
 end
 
 
+--- Verifies the given name is a valid D-Bus interface name.
+-- 
+-- Checks to see whether the provided name meets the
+-- <a href="http://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-names">requirements</a>
+-- for a valid D-Bus interface name.
+-- 
+-- @tparam string name D-Bus interface name to validate.
+-- @treturn bool Returns **true** if the interface name is valid,
+-- **false** otherwise.
 function M.isValidInterface(name)
     local isValid = true
     if type(name) ~= "string" then
@@ -344,10 +385,54 @@ function M.isValidInterface(name)
     return isValid
 end
 
+
+
+--- Verifies the given name is a valid D-Bus error name.
+-- Checks to see whether the provided name meets the
+-- <a href="http://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-names">requirements</a>
+-- for a valid D-Bus error name. This requirements are identical to the
+-- requirements for a D-Bus interface name.
+-- @see isValidInterface
+-- @tparam string name D-Bus error name to validate.
+-- @treturn bool Returns **true** if the error name is valid,
+-- **false** otherwise.
+--- @function isValidErrorName
 M.isValidErrorName = M.isValidInterface
 
+
+--- Verifies *v* is true and if not throw a Lua error with *msg* as the string.
+-- 
+-- @tparam bool v Value to verify whether it evaluates to **true** or **false*.
+-- @tparam string msg The message to emit in the Lua error if *v* evaluates to
+-- **false**.
+-- @treturn nil	Returns **nil** if **v** evaluates to **true**, otherwise a
+-- Lua error is thrown with **msg** as the error text.
+--- @function verify 
 M.verify = M.doValidation and doVerify or noValidation
+
+--- Verify the arguments match the acceptable pattern of types.
+--
+-- @tparam string pattern Types pattern of the form:
+-- 		type1|type2|typeN|...
+-- @tparam any ... Argument list to test against the pattern.
+-- @treturn nil Returns **nil** if all the arguments match the types pattern.
+-- A Lua error is thrown if an unexpected type is found.
+--- @function verifyTypes
 M.verifyTypes = M.doValidation and doVerifyTypes or noValidation
+
+
+--- Check argument types and emit Lua error with message if invalid.
+--
+-- Similar to @{verifyTypes} except the Lua error that is emitted if
+-- the types aren't valid with include the specified message.
+--
+-- @tparam string pattern Types pattern of the form:
+-- 		type1|type2|typeN|...
+-- @tparam string msg The message to include with any Lua error emitted.
+-- @tparam any ... Argument list to test against the pattern.
+-- @treturn nil Returns **nil** if all the arguments match the types pattern.
+-- A Lua error is thrown if an unexpected type is found.
+--- @function verifyTypesWithMsg
 M.verifyTypesWithMsg = M.doValidation and doVerifyTypesWithMsg or noValidation
 
 

@@ -66,6 +66,8 @@
  When the connection is no longer referenced the Lua garbage collector will either
  close the connection (if opened privately) or unreference the connection (if opened as shared).
 
+ @tparam userdata The @{l2dbus.Dispatcher|Dispatcher} to associate with the
+ connection.
  @tparam string address Remote D-Bus address to open
  @tparam ?bool privateConn Optional flag indicating whether this
  is a private (**true**) or shared (**false**) connection. Defaults to a shared connection (**false**)
@@ -172,6 +174,8 @@ l2dbus_openConnection
  When the connection is no longer referenced the Lua garbage collector will either
  close the connection (if opened privately) or unreference the connection (if opened as shared).
 
+ @tparam userdata The @{l2dbus.Dispatcher|Dispatcher} to associate with the
+ connection.
  @tparam number busId The constant bus identifier: @{l2dbus.Dbus.BUS_SYSTEM|BUS_SYSTEM},
  @{l2dbus.Dbus.BUS_SESSION|BUS_SESSION}, or  @{l2dbus.Dbus.BUS_STARTER|BUS_STARTER}
  @tparam ?bool privateConn Optional flag indicating whether this
@@ -455,6 +459,55 @@ l2dbus_connectionGetBusId
     {
         lua_pushstring(L, busId);
         dbus_free(busId);
+    }
+
+    return 1;
+}
+
+
+/**
+ @function getDescriptor
+ @within Connection
+
+ Retrieves the underlying file descriptor for the connection.
+
+ If the underlying file descriptor is not available then *nil* will be
+ returned. **DO NOT** read or write to this file descriptor or try to
+ *select()* on it if already utilizing a D-Bus @{l2dbus.Watch|Watch} for
+ main loop integration. Exceptions *may* exist if attempting to integrate
+ external main loops with the L2DBUS @{l2dbus.Dispatcher|Dispatcher}. In this
+ scenario the @{l2dbus.Dispatcher.run|run} method should **only** be called
+ when the external loop detects write activity on this descriptor. The
+ @{l2dbus.Dispatcher.run|run} method should be called with the
+ @{l2dbus.Dispatcher.DISPATCH_NO_WAIT} option followed by a call to
+ @{flush|Connection:flush} to dispatch any queued messages.
+
+ @tparam userdata conn The D-Bus connection object.
+ @treturn number|nil Returns the file descriptor or **nil** if none is
+ available.
+ */
+static int
+l2dbus_connectionGetDescriptor
+    (
+    lua_State*  L
+    )
+{
+    l2dbus_Connection* connUd;
+    cdbus_Descriptor descr;
+
+    /* Make sure the module is initialized */
+    l2dbus_checkModuleInitialized(L);
+
+    connUd = (l2dbus_Connection*)luaL_checkudata(L, 1,
+                                                L2DBUS_CONNECTION_MTBL_NAME);
+
+    if ( cdbus_connectionGetDescriptor(connUd->conn, &descr) )
+    {
+        lua_pushinteger(L, descr);
+    }
+    else
+    {
+        lua_pushnil(L);
     }
 
     return 1;
@@ -1041,6 +1094,7 @@ static const luaL_Reg l2dbus_connMetaTable[] = {
     {"isAnonymous", l2dbus_connectionIsAnonymous},
     {"getServerId", l2dbus_connectionGetServerId},
     {"getBusId", l2dbus_connectionGetBusId},
+    {"getDescriptor", l2dbus_connectionGetDescriptor},
     {"canSendType", l2dbus_connectionCanSendType},
     {"flush", l2dbus_connectionFlush},
     {"hasMessagesToSend", l2dbus_connectionHasMessagesToSend},
