@@ -66,6 +66,8 @@
  When the connection is no longer referenced the Lua garbage collector will either
  close the connection (if opened privately) or unreference the connection (if opened as shared).
 
+ @tparam userdata The @{l2dbus.Dispatcher|Dispatcher} to associate with the
+ connection.
  @tparam string address Remote D-Bus address to open
  @tparam ?bool privateConn Optional flag indicating whether this
  is a private (**true**) or shared (**false**) connection. Defaults to a shared connection (**false**)
@@ -172,6 +174,8 @@ l2dbus_openConnection
  When the connection is no longer referenced the Lua garbage collector will either
  close the connection (if opened privately) or unreference the connection (if opened as shared).
 
+ @tparam userdata The @{l2dbus.Dispatcher|Dispatcher} to associate with the
+ connection.
  @tparam number busId The constant bus identifier: @{l2dbus.Dbus.BUS_SYSTEM|BUS_SYSTEM},
  @{l2dbus.Dbus.BUS_SESSION|BUS_SESSION}, or  @{l2dbus.Dbus.BUS_STARTER|BUS_STARTER}
  @tparam ?bool privateConn Optional flag indicating whether this

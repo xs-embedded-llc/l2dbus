@@ -139,21 +139,45 @@ local MSGBUS_INTROSPECT_AS_XML =
 </node>
 ]]
 
---
--- Forward method declarations
---
 
 
+--- Constructs a new Message Bus Controller instance.
+-- 
+-- The constructor for a Message Bus Controller is used to call methods
+-- and receive signals from the D-Bus Message Bus service.
+-- @tparam userdata conn The @{l2dbus.Connection|Connection} to attach
+-- the controller to.
+-- @treturn table A Message Bus Controller instance.
 function M.new(conn)
 	verify(type(conn) == "userdata", "invalid connection")
-	local dbusCtrl = {
+	local msgBusCtrl = {
 		ctrl = proxy.new(conn, l2dbus.Dbus.SERVICE_DBUS, l2dbus.Dbus.PATH_DBUS)
 		}
 					
-	return setmetatable(dbusCtrl, MsgBusController)
+	return setmetatable(msgBusCtrl, MsgBusController)
 end
 
 
+--- Message Bus Controller
+-- @type MsgBusController
+
+--- Binds the controller to the Message Bus.
+-- 
+-- This method may throw a Lua error if an exceptional (unexpected) error
+-- occurs.
+-- 
+-- @within MsgBusController
+-- @tparam bool doIntrospect If set to **true** the controller will make an
+-- introspection call on the Message Bus service. If set to **false**
+-- (the default) the controller will use cached introspection data
+-- to generate the proxy interface.
+-- @treturn true|nil Returns **true** if the binding operation succeeds
+-- or **nil** on failure.
+-- @treturn ?string|nil Returns an error name or **nil** if a name is
+-- unavailable and the binding operation fails.
+-- @treturn ?string|nil Returns an error message or **nil** if a message is
+-- unavailable and the binding operation fails.
+-- @function bind
 function MsgBusController:bind(doIntrospect)
 	if doIntrospect then
 		return self.ctrl:bind()
@@ -163,11 +187,24 @@ function MsgBusController:bind(doIntrospect)
 end
 
 
+--- Unbinds the controller from the Message Bus.
+-- 
+-- Once unbound, methods on the Message Bus proxy should no longer be called.
+-- 
+-- @within MsgBusController
+-- @function unbind
 function MsgBusController:unbind()
 	self.ctrl:unbind()
 end
 
 
+--- Returns the properly parsed introspection data for the Message Bus.
+-- 
+-- @treturn table A Lua table containing the parsed introspection data for
+-- the Message Bus.
+-- 
+-- @within MsgBusController
+-- @function getIntrospectionData
 function MsgBusController:getIntrospectionData()
 	return self.ctrl:getIntrospectionData()
 end
