@@ -46,7 +46,7 @@ get_property(inc_dirs DIRECTORY PROPERTY INCLUDE_DIRECTORIES)
 message("Include dirs = ${inc_dirs}")
 
 IF(NOT DEFINED INSTALL_LIBS)
-	SET(INSTALL_LIBS "/usr/lib")
+	SET(INSTALL_LIBS "/usr/local/lib/lua/5.1/")
 ENDIF(NOT DEFINED INSTALL_LIBS)
 
 install(TARGETS l2dbus DESTINATION ${INSTALL_LIBS})
