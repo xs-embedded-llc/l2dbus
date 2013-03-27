@@ -24,6 +24,17 @@ limitations under the License.
 *****************************************************************************
 --]]
 
+--- Proxy Module.
+-- This module provides an abstract controller/proxy client class library
+-- for communicating with a remote D-Bus service. Based on either the D-Bus
+-- XML introspection data for a service or an explicit description in Lua, the
+-- class provides a mechanism to dynamically generate a true proxy interface
+-- for the methods and properties exposed by the remote D-Bus service.
+-- 
+-- @module l2dbus.proxy
+-- @alias M
+
+
 local l2dbus = require("l2dbus_core")
 local xml = require("l2dbus.xml")
 local validate = require("l2dbus.validate")
@@ -43,6 +54,23 @@ local newMethodProxy
 local newPropertyProxy
 
 
+--- Constructs a new ProxyController instance.
+-- 
+-- The constructor creates a ProxyController instance. As its name implies
+-- the object controls the behavior and configuration of a proxy. Things like
+-- the timeout used by the proxy, blocking mode, and the actual dynamic
+-- generation of the proxy itself based on metadata gleaned from the remote
+-- object (via D-Bus introspection) or provided directly. The ProxyController
+-- exposes the actual remote service proxy including methods and
+-- properties via separate objects that eliminate namespace collisions between
+-- the controller's methods and those of the remote service.
+-- 
+-- @tparam userdata conn The @{l2dbus.Connection|Connection} to attach
+-- the controller to.
+-- @tparam string busName The D-Bus bus name on which the remote service is
+-- offered.
+-- @tparam string objPath The remote service's object path.
+-- @treturn table A proxy controller instance.
 function M.new(conn, busName, objPath)
 	verify(type(conn) == "userdata", "invalid connection")
 	verify(validate.isValidBusName(busName), "invalid D-Bus bus name")
@@ -62,6 +90,26 @@ function M.new(conn, busName, objPath)
 end
 
 
+--- ProxyController
+-- @type ProxyController
+
+--- Binds the controller to the remote service using D-Bus introspection.
+-- 
+-- This method will attempt to introspect the remote service associated with
+-- this ProxyController. This implies that the @{l2dbus.Connection|Connection}
+-- associated with the controller must be connected and the remote service
+-- must support introspection. The method may throw a Lua error if an
+-- exceptional (unexpected) error occurs.
+-- 
+-- @within ProxyController
+-- @tparam table ctrl The ProxyController instance.
+-- @treturn true|nil Returns **true** if the binding operation succeeds
+-- or **nil** on failure.
+-- @treturn ?string|nil Returns an error name or **nil** if a name is
+-- unavailable and the binding operation fails.
+-- @treturn ?string|nil Returns an error message or **nil** if a message is
+-- unavailable and the binding operation fails.
+-- @function bind
 function ProxyController:bind()
 	if not self.introspectData then
 		verify(self.conn:isConnected(), "not connected to the D-Bus bus")
@@ -85,29 +133,191 @@ function ProxyController:bind()
 end
 
 
-function ProxyController:bindNoIntrospect(introspectData, asXml)
-	verifyTypesWithMsg("string|table", "unexpected type for arg #2", introspectData)
-	verifyTypesWithMsg("nil|boolean", "unexpected type for arg #3", asXml)
+--- Binds the controller to the remote service **without** D-Bus introspection.
+-- 
+-- This method uses the provided introspection data (either formatted as
+-- D-Bus introspection XML or a Lua introspection table) to *bind* with the
+-- remote service. This method makes **no** attempt to contact the remote
+-- service for this data by sending messages on the bus. If the data is
+-- provided as D-Bus introspection XML then it will internally be parsed
+-- and converted into a Lua introspection table. The structure of a Lua
+-- introspection table takes the following form:
+-- 
+-- 		{
+-- 			["interface_name_1"] = {
+-- 			
+-- 				interface = "interface_name_1",
+-- 					
+-- 				properties = {
+-- 					prop_name_1 = {
+-- 						sig = "i",
+-- 						access = "r"
+-- 					},
+-- 					prop_name_2 = {
+-- 						sig = "s",
+-- 						access = "rw"
+-- 					},
+-- 					...
+-- 					prop_name_N = {
+-- 						sig = "u",
+-- 						access = "w"
+-- 					},
+-- 				},
+-- 					
+-- 				signals = {
+-- 					sig_name_1 = {
+-- 						{
+-- 							sig = "s",
+-- 							dir = "out"
+-- 						}
+-- 					}, 						
+-- 					sig_name_2 = {
+-- 						{
+-- 							sig = "i",
+-- 							dir = "out"
+-- 						},
+-- 						{
+-- 							sig = "as",
+-- 							dir = "out"
+-- 						}
+-- 					},
+-- 					...
+-- 					sig_name_N = {
+-- 						{
+-- 							sig = "t",
+-- 							dir = "out"
+-- 						},
+-- 						{
+-- 							sig = "i",
+-- 							dir = "out"
+-- 						}
+-- 					}
+-- 				},
+-- 					
+-- 				methods = {
+-- 					method_name_1 = {
+-- 						{
+-- 							sig = "as",
+-- 							dir = "out"
+-- 						}
+-- 					},
+-- 					
+-- 					method_name_2 = {
+-- 						{
+-- 							sig = "s",
+-- 							dir = "in"
+-- 						},
+-- 						{
+-- 							sig = "i",
+-- 							dir = "out"
+-- 						}
+-- 					},
+-- 					...
+-- 					method_name_N = {
+-- 						{
+-- 							sig = "u",
+-- 							dir = "in"
+-- 						}
+-- 					}
+-- 				},
+-- 			},
+-- 			...
+-- 			["interface_name_N"] = {
+-- 				...
+-- 			}
+-- 
+-- Introspection data that is **not** formatted as D-Bus XML introspection
+-- data must adhere to the structure of the Lua introspection table above. This
+-- table is comprised of one or more interface tables. Each interface table
+-- has a properties, signals, and methods table. It also has a (seemingly)
+-- redundant entry for the interface name which helps speed up interface
+-- lookups. The method, signal, and property tables themselves can have
+-- multiple entries with individual methods and signals having zero or more
+-- arguments. When fed an XML formatted D-Bus interface description a similar
+-- table is generated and stored internally.
+-- 
+-- **WARNING:** Validation is **not** done on a Lua introspectionData table
+-- passed into this function. It is assumed to be structured correctly.
+-- Minimal validation is done if this introspection data is passed in as XML.
+-- 
+-- @within ProxyController
+-- @tparam table ctrl The ProxyController instance.
+-- @tparam string|table introspectionData The introspection data either
+-- expressed as the D-Bus XML introspection string or a Lua introspection
+-- table as above. 
+-- @treturn true Returns **true** if the binding operation succeeds. If the
+-- introspection data cannot be parsed then a Lua error may be thrown.
+-- @function bindNoIntrospect
+function ProxyController:bindNoIntrospect(introspectData)
+	verifyTypesWithMsg("string|table", "unexpected type for arg #2",
+						introspectData)
 		
-	if asXml then
+	if type(introspectData) == "string" then
 		self.introspectData = self:parseXml(introspectData)
-	else
+	elseif type(introspectData) == "table" then
 		self.introspectData = introspectData
+	else
+		error("D-Bus XML string or Lua introspection table expected")
 	end	
 	return true
 end
 
 
+--- Unbinds the controller from the remote service.
+-- 
+-- This method unbinds or disconnects the ProxyController from the
+-- remote service by effectively erasing any previous introspection
+-- data. The call the @{bind} or @{bindNoIntrospect} must be executed again
+-- in order to interact with the remote D-Bus service.
+-- 
+-- @within ProxyController
+-- @tparam table ctrl The ProxyController instance.
+-- @function unbind
 function ProxyController:unbind()
 	self.introspectionData = nil
 end
 
 
+--- Retrieves the introspection data from the ProxyController.
+-- 
+-- This method returns the D-Bus introspection data as a Lua table
+-- described in the documentation for @{bindNoIntrospect}. This can be
+-- useful to understand how D-Bus XML introspection data is converted to
+-- a Lua table representation.
+-- 
+-- @within ProxyController
+-- @tparam table ctrl The ProxyController instance.
+-- @function getIntrospectionData()
 function ProxyController:getIntrospectionData()
 	return self.introspectData
 end
 
 
+--- Retrieves the actual proxy for the remote D-Bus service.
+-- 
+-- This method returns a proxy for the name interface. The actual
+-- proxy has to sub-objects named *p* and *m*. This sub-objects split
+-- the interface namespace into properties (*p*) and methods (*m*) avoiding
+-- the possibility of collision. Before you can get the proxy the
+-- ProxyController must be @{bind|bound} to a remote service. An example
+-- of how to access methods or properties on a remote service is shown below
+-- in a blocking manner.
+-- 
+-- 		local proxyCtrl = proxy.new(conn, "org.freedesktop.NetworkManager",
+--											"/org/freedesktop/NetworkManager")
+-- 		proxyCtrl:bind()
+-- 		local proxy = proxyCtrl:getProxy("org.freedesktop.NetworkManager")
+-- 		local names = proxy.m.GetDevices()
+-- 		local enabled = proxy.p.get.WirelessEnabled()
+--		proxy.p.set.WirelessEnabled(enable, true)
+-- 		
+-- 
+-- @within ProxyController
+-- @tparam table ctrl The ProxyController instance.
+-- @tparam string interface The D-Bus interface name for which to retrieve
+-- the proxy. This interface **must** be an element of the introspection
+-- data.
+-- @treturn table The actual proxy for the remote service.
 function ProxyController:getProxy(interface)
 	verify(validate.isValidInterface(interface), "invalid D-Bus interface")
 	verify( self.introspectData, "controller is not bound to service object")

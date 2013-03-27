@@ -182,7 +182,7 @@ function MsgBusController:bind(doIntrospect)
 	if doIntrospect then
 		return self.ctrl:bind()
 	else
-		return self.ctrl:bindNoIntrospect(MSGBUS_INTROSPECT_AS_XML, true)
+		return self.ctrl:bindNoIntrospect(MSGBUS_INTROSPECT_AS_XML)
 	end
 end
 
@@ -198,7 +198,11 @@ function MsgBusController:unbind()
 end
 
 
---- Returns the properly parsed introspection data for the Message Bus.
+--- Returns the parsed introspection data for the Message Bus.
+-- 
+-- The returned Lua table is a representation of the D-Bus XML data in a
+-- format that is understood by the proxy. Internally the proxy does **not**
+-- maintain the original D-Bus XML description.
 -- 
 -- @treturn table A Lua table containing the parsed introspection data for
 -- the Message Bus.
@@ -210,40 +214,142 @@ function MsgBusController:getIntrospectionData()
 end
 
 
+--- Returns the actual proxy for the Message Bus.
+-- 
+-- The Message Bus Controller controls the configuration and behavior of
+-- the actual proxy implementation. The proxy object contains both the
+-- method signatures and properties of the Message Bus service itself and
+-- can be used to directly call methods or interrogate properties on the
+-- remote service.
+-- 
+-- @treturn table Returns the Message Bus proxy instance.
+-- 
+-- @within MsgBusController
+-- @function getProxy
 function MsgBusController:getProxy()
 	return self.ctrl:getProxy(l2dbus.Dbus.INTERFACE_DBUS)	
 end
 
 
+--- Sets the timeout for accessing method/properties of the Message Bus.
+-- 
+-- The timeout (in milliseconds) controls how long the proxy will wait to
+-- hear from the Message Bus service before timing out. All calls through
+-- the proxy interface will use this *global* timeout when a D-Bus request
+-- message is issued on the bus. The controller does not offer a per
+-- method/property timeout but instead applies the timeout to all
+-- future requests.
+-- 
+-- The timeout value may be set to two well-know *special*
+-- values: @{l2dbus.Dbus.TIMEOUT_USE_DEFAULT|TIMEOUT_USE_DEFAULT} or
+-- @{l2dbus.Dbus.TIMEOUT_INFINITE|TIMEOUT_INFINITE}
+-- 
+-- @tparam number timeout The time in milliseconds to set as the timeout
+-- for future calls to the Message Bus. This value applies globally to all
+-- method/property calls. The timeout value must be non-negative.
+-- 
+-- @within MsgBusController
+-- @function setTimeout
 function MsgBusController:setTimeout(timeout)
 	self.ctrl:setTimeout(timeout)
 end
 
 
+--- Gets the global timeout value used by the Message Bus proxy.
+-- 
+-- Returns the timeout value used by the proxy when making method calls or
+-- manipulating properties.
+-- 
+-- @treturn number The timeout (in milliseconds) used by the proxy. It
+-- may be one of the *special* values: @{l2dbus.Dbus.TIMEOUT_USE_DEFAULT|TIMEOUT_USE_DEFAULT}
+-- or @{l2dbus.Dbus.TIMEOUT_INFINITE|TIMEOUT_INFINITE}.
+-- 
+-- @within MsgBusController
+-- @function getTimeout
 function MsgBusController:getTimeout()
 	return self.ctrl:getTimeout()
 end
 
 
+--- Sets whether proxy calls to the Message Bus are blocking or unblocking.
+-- 
+-- This option determines whether calls made through the proxy are blocking
+-- (synchronous) or non-blocking (asynchronous) calls. A blocking call will
+-- block waiting for the reply or a timeout error before returning. A
+-- non-blocking call will return a @{l2dbus.PendingCall|PendingCall} object
+-- which can be used to wait for a reply or for registering a handler that will
+-- be called when the reply or error is returned. Once set this option applies
+-- globally to all methods/properties of the Message Bus proxy.
+-- 
+-- 
+-- @tparam bool mode Set to **true** if proxy calls should be blocking and
+-- **false** for non-blocking (asynchronous) calls. 
+-- @within MsgBusController
+-- @function setBlockingMode
 function MsgBusController:setBlockingMode(mode)
 	self.ctrl:setBlockingMode(mode)
 end
 
 
+--- Retrieves whether proxy calls are blocking or non-blocking.
+-- 
+-- Returns the current option for call to methods/properties of the
+-- Message Bus service.
+-- 
+-- @treturn bool Returns **true** for blocking mode and **false** for
+-- non-blocking mode. 
+-- @within MsgBusController
+-- @function getBlockingMode
 function MsgBusController:getBlockingMode()
 	return self.ctrl:getBlockingMode()
 end
 
+
+--- Connects a handler for a specific Message Bus signal.
+-- 
+-- This method registers a signal handler for the specified Message Bus
+-- signal name. When a matching signal is emitted by the Message Bus the
+-- handler function will be called as a result. The signature of the handler
+-- function should match the signature specified by the D-Bus XML signal
+-- description for the Message Bus. 
+-- 
+-- @tparam string sigName The name of the Message Bus signal to receive.
+-- @tparam func handler The signal handler function which is called with the
+-- same arguments as specified for the signal in the D-Bus XML description
+-- for the *org.freedesktop.DBus* interface. 
+-- @treturn ?lightuserdata|nil Returns an opaque handle that can be used to
+-- @{disconnectSignal|disconnect} the handler. Can be **nil** if there was an
+-- error connecting to the signal.
+-- @within MsgBusController
+-- @function connectSignal
 function MsgBusController:connectSignal(sigName, handler)
 	return self.ctrl:connectSignal(l2dbus.Dbus.INTERFACE_DBUS, sigName, handler)
 end
 
 
+--- Disconnects a handler from a specific Message Bus signal.
+-- 
+-- This method disconnects the signal handler with the specified handle
+-- returned by @{connectSignal}. 
+-- 
+-- @tparam lightuserdata hnd The opaque handle originally returned by the call
+-- to @{connectSignal}. 
+-- @treturn bool Returns **true** if the handler was disconnected successfully
+-- otherwise **false**.
+-- @within MsgBusController
+-- @function disconnectSignal
 function MsgBusController:disconnectSignal(hnd)	
 	return self.ctrl:disconnnectSignal(hnd)
 end
 
 
+--- Disconnects from **all** signals of the Message Bus.
+-- 
+-- This method makes a best effort to disconnects all the signal handlers for
+-- all Message Bus signals. 
+--
+-- @within MsgBusController
+-- @function disconnectAllSignals
 function MsgBusController:disconnectAllSignals()
 	self.ctrl:disconnectAllSignals()
 end
