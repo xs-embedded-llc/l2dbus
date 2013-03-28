@@ -685,7 +685,10 @@ l2dbus_connectionSendWithReply
  This function does **not** re-enter the main loop. This means messages
  other than the reply (e.g. other requests, signals, etc...) are queued
  but not processed. This function is used to invoke method calls on a
- remote object.
+ remote object. If a normal reply is received then the reply message is
+ returned. If an error is encountered or a D-Bus error message is received
+ then **nil** is returned as the first return parameter followed by an optional
+ error name and error message.
 
  @tparam userdata conn The D-Bus connection object
  @tparam userdata msg The D-Bus message to send
@@ -694,11 +697,14 @@ l2dbus_connectionSendWithReply
  @{l2dbus.Dbus.TIMEOUT_USE_DEFAULT|TIMEOUT_USE_DEFAULT}
  and @{l2dbus.Dbus.TIMEOUT_INFINITE|TIMEOUT_INFINITE}. The default
  value (if none is specified) is @{l2dbus.Dbus.TIMEOUT_USE_DEFAULT|TIMEOUT_USE_DEFAULT}.
- @treturn userdata|nil The reply message or **nil** if there was an error
- @treturn string|nil If there was an error then a string indicating the error
- *may* be returned or **nil**
- @treturn string|nil If there was an error then an error message *may*
- be returned or **nil**
+ @treturn userdata|nil The reply message or **nil** if there was an error. If
+ a D-Bus error message is received then **nil** is returned here and the
+ error name and message are returned in the next two parameters.
+ @treturn string|nil If there was an error **or** a D-Bus error message was
+ returned then a string indicating the error name *may* be returned or **nil**
+ @treturn string|nil If there was an error **or** a D-Bus error message was
+ returned then a string containing an optional error message *may* be returned
+ or **nil** (if there is no message).
  */
 static int
 l2dbus_connectionSendWithReplyAndBlock

@@ -18,20 +18,20 @@ limitations under the License.
 
 *****************************************************************************
 *****************************************************************************
-@file           proxy.lua
+@file           proxyctrl.lua
 @author         Glenn Schmottlach
 @brief          Provides a proxy interface D-Bus services.
 *****************************************************************************
 --]]
 
---- Proxy Module.
+--- Proxy Controller Module.
 -- This module provides an abstract controller/proxy client class library
 -- for communicating with a remote D-Bus service. Based on either the D-Bus
 -- XML introspection data for a service or an explicit description in Lua, the
 -- class provides a mechanism to dynamically generate a true proxy interface
 -- for the methods and properties exposed by the remote D-Bus service.
 -- 
--- @module l2dbus.proxy
+-- @module l2dbus.proxyctrl
 -- @alias M
 
 
@@ -302,22 +302,54 @@ end
 -- ProxyController must be @{bind|bound} to a remote service. An example
 -- of how to access methods or properties on a remote service is shown below
 -- in a blocking manner.
--- 
--- 		local proxyCtrl = proxy.new(conn, "org.freedesktop.NetworkManager",
+--
+--		-- Example of making a BLOCKING call on a proxy 
+-- 		local proxyCtrl, proxy, status, pending, reply, enabled
+-- 		proxyCtrl = proxy.new(conn, "org.freedesktop.NetworkManager",
 --											"/org/freedesktop/NetworkManager")
 -- 		proxyCtrl:bind()
--- 		local proxy = proxyCtrl:getProxy("org.freedesktop.NetworkManager")
--- 		local names = proxy.m.GetDevices()
--- 		local enabled = proxy.p.get.WirelessEnabled()
---		proxy.p.set.WirelessEnabled(enable, true)
+-- 		proxyCtrl:setBlockingMode(true)
+-- 		proxy = proxyCtrl:getProxy("org.freedesktop.NetworkManager")
+-- 		status, names = proxy.m.GetDevices()
+-- 		if status then
+-- 			print("We got device names")
+-- 		end
+-- 		status, enabled = proxy.p.get.WirelessEnabled()
+-- 		if status then
+--			proxy.p.set.WirelessEnabled(not enabled, true)
+--		end
 -- 		
--- 
+--
+--		-- Example of making a NON-BLOCKING call on a proxy
+-- 		local proxyCtrl, proxy, status, pending, reply, enabled 
+-- 		proxyCtrl = proxy.new(conn, "org.freedesktop.NetworkManager",
+--											"/org/freedesktop/NetworkManager")
+-- 		proxyCtrl:bind()
+-- 		proxyCtrl:setBlockingMode(false)
+-- 		proxy = proxyCtrl:getProxy("org.freedesktop.NetworkManager")
+-- 		status, pending = proxy.m.GetDevices()
+-- 		if status then
+-- 			status, reply = proxyCtrl:waitForReply(pending)
+-- 			if status then
+-- 				print("We got device names")
+-- 			end
+-- 		end
+-- 		status, pending = proxy.p.get.WirelessEnabled()
+-- 		if status then
+-- 			status, enabled = proxyCtrl:waitForReply(pending)
+-- 			if status then
+-- 				print("We got the Wireless state")
+-- 				proxy.p.set.WirelessEnabled(enabled, true)
+-- 			end
+-- 		end
+--		 
 -- @within ProxyController
 -- @tparam table ctrl The ProxyController instance.
 -- @tparam string interface The D-Bus interface name for which to retrieve
 -- the proxy. This interface **must** be an element of the introspection
 -- data.
 -- @treturn table The actual proxy for the remote service.
+-- @function getProxy()
 function ProxyController:getProxy(interface)
 	verify(validate.isValidInterface(interface), "invalid D-Bus interface")
 	verify( self.introspectData, "controller is not bound to service object")
@@ -396,6 +428,29 @@ function ProxyController:disconnectAllSignals()
 end
 
 
+--- Sends a D-Bus message depending on the blocking mode.
+-- 
+-- This method returns the D-Bus introspection data as a Lua table
+-- described in the documentation for @{bindNoIntrospect}. This can be
+-- useful to understand how D-Bus XML introspection data is converted to
+-- a Lua table representation.
+-- 
+-- @within ProxyController
+-- @tparam table ctrl The ProxyController instance.
+-- @tparam userdata msg The D-Bus message to send.
+-- @treturn userdata|nil If the controller is configuring in a *non-blocking*
+-- mode then return a @{l2dbus.PendingCall|PendingCall} object if the message
+-- is sent successfully otherwise return **nil**. If the controller is
+-- configured in a *blocking* mode then either return the reply D-Bus message
+-- (type = @{l2dbus.Message.METHOD_RETURN|METHOD_RETURN}) or **nil** if a
+-- D-Bus error message is returned or another error is detected.
+-- @treturn string|nil If the first return argument is **nil** then return
+-- the D-Bus error name associated with the error. If there was no error
+-- or an error name was not provided then return **nil**.
+-- @treturn string|nil If the first return argument is **nil** then return
+-- an optional error message associated with the error. If there was no error
+-- or a message was not provided then return **nil**.
+-- @function sendMessage()
 function ProxyController:sendMessage(msg)
 	verifyTypesWithMsg("userdata", "unexpected type for arg #1", msg)
 	
@@ -403,22 +458,41 @@ function ProxyController:sendMessage(msg)
 	local errName = nil
 	local errMsg = nil
 	
-	if not self.blockingMode then
+	-- If we're making a blocking call (no matter which coroutine
+	-- thread) then ...
+	if self.blockingMode then
+		-- We completely block the Lua VM making this call
+		reply, errName, errMsg = self.conn:sendWithReplyAndBlock(msg, self.timeout)
+	-- Else this is a non-blocking call
+	else
 		local status, pending = self.conn:sendWithReply(msg, self.timeout)
 		if not status then
 			reply, errName, errMsg = nil, l2dbus.Dbus.ERROR_FAILED, "failed to send message"
 		else
 			reply, errName, errMsg = pending, nil, nil
 		end
-	-- Else we're making blocking calls
-	else
-		reply, errName, errMsg = self.conn:sendWithReplyAndBlock(msg, self.timeout)
 	end
 	
 	return reply, errName, errMsg
 end
 
 
+--- Sends a D-Bus message and indicates it does not expect a reply.
+-- 
+-- This method provides an optimization for the called service indicating
+-- the client is not waiting for a reply. The called service may either
+-- chose not to send a reply, or if it does, the reply will be ignored and
+-- discarded by the client. It's intent is to minimize the amount of round-trip
+-- traffic when it's not needed.
+-- 
+-- @within ProxyController
+-- @tparam table ctrl The ProxyController instance.
+-- @tparam userdata msg The D-Bus message to send.
+-- @treturn bool Returns **true** if the message is sent successfully or
+-- **false** if there was an error.
+-- @treturn number|nil Returns the D-Bus serial number of the message if
+-- sent successfully or **nil** if it could not be sent.
+-- @function sendMessageNoReply()
 function ProxyController:sendMessageNoReply(msg)
 	verifyTypesWithMsg("userdata", "unexpected type for arg #1", msg)
 	msg:setNoReply(true)	
@@ -426,6 +500,34 @@ function ProxyController:sendMessageNoReply(msg)
 end
 
 
+--- Waits for a reply from a pending call.
+-- 
+-- This method is called with a @{l2dbus.PendingCall|PendingCall} object
+-- and uses it to wait for a reply from a remote service. How it
+-- waits is largely dependent on whether or not this method was called
+-- from the "main" Lua coroutine or a different one. Since the "main" Lua
+-- coroutine cannot yield this call will translate into a purely blocking
+-- call that will block the Lua VM. If it is **not** the main Lua
+-- coroutine (or thread) then the coroutine will yield waiting for a
+-- reply. When the reply or a timeout occurs the thread will be resumed
+-- and the reply message returned. If this method is called from a secondary
+-- coroutine then it **MUST NOT** be called via a Lua *pcall* (or 
+-- protected call) since this *waitForReply* may yield and under Lua 5.1
+-- yielding within a protected call is not allowed.
+-- 
+-- @within ProxyController
+-- @tparam table ctrl The ProxyController instance.
+-- @tparam userdata pendingCall The @{l2dbus.PendingCall|PendingCall} object.
+-- @treturn userdata|nil The reply message of type
+-- @{l2dbus.Message.METHOD_RETURN|METHOD_RETURN} or **nil** if a D-Bus
+-- error message was returned or another error detected.
+-- @treturn string|nil If the first return argument is **nil** then return
+-- the D-Bus error name associated with the error. If there was no error
+-- or an error name was not provided then return **nil**.
+-- @treturn string|nil If the first return argument is **nil** then return
+-- an optional error message associated with the error. If there was no error
+-- or a message was not provided then return **nil**.
+-- @function waitForReply()
 function ProxyController:waitForReply(pendingCall)
 	verify("userdata" == type(pendingCall))
 	
@@ -436,17 +538,21 @@ function ProxyController:waitForReply(pendingCall)
 	local reply = nil
 	local errName = nil
 	local errMsg = nil
-	local co = coroutine.running()
-	if not co then
-		error("cannot wait(yield) for a reply from the main thread")
-	end
 	
-	if not pendingCall:isCompleted() then
-		pendingCall:setNotify(onNotifyReply, co)
-		reply = coroutine.yield()
-		assert( pendingCall:isCompleted() )
-	else
+	if pendingCall:isCompleted() then
 		reply = pendingCall:stealReply()
+	else
+		-- See if we're calling from the main thread
+		local co = coroutine.running()
+		if not co then
+			-- The main thread cannot yield so we must explicity block
+			pendingCall:block()
+			reply = pendingCall:stealReply()
+		else
+			pendingCall:setNotify(onNotifyReply, co)
+			reply = coroutine.yield()
+		end
+		assert( pendingCall:isCompleted() )
 	end
 	
 	if not reply then
@@ -542,13 +648,13 @@ newMethodProxy = function (proxyCtrl, metadata)
 			end
 			local reply, errName, errMsg = ctrl:sendMessage(msg)
 			if not reply then
-				error(string.format("%s : %s", tostring(errName), tostring(errMsg)))
-			end
-			if coroutine.running() == nil then
-				return reply:getArgs()
+				-- We failed to send the message or received an error in response
+				return false, errName, errMsg
+			elseif "l2dbus.message" == reply.__type then
+				return true, reply:getArgs()
 			-- Else return the pending call
 			else
-				return reply	-- PendingCall object
+				return true, reply	-- PendingCall object
 			end
 		end
 		
@@ -593,15 +699,12 @@ newPropertyProxy = function(proxyCtrl, metadata)
 			msg:addArgsBySignature("s", propName)
 			local reply, errName, errMsg = ctrl:sendMessage(msg)
 			if not reply then
-				error(string.format("%s : %s", tostring(errName), tostring(errMsg)))
-			end
-			
-			-- If we're running in the main thread then ...
-			if coroutine.running() == nil then
-				return reply:getArgs()
+				return false, errName, errMsg
+			elseif "l2dbus.message" == reply.__type then
+				return true, reply:getArgs()
 			-- Else return the pending call
 			else
-				return reply	-- PendingCall object
+				return true, reply	-- PendingCall object
 			end
 		end
 		
@@ -644,14 +747,12 @@ newPropertyProxy = function(proxyCtrl, metadata)
 			else
 				reply, errName, errMsg = ctrl:sendMessage(msg)
 				if not reply then
-					error(string.format("%s : %s", tostring(errName), tostring(errMsg)))
-				end
-				-- If we're running in the main thread then ...
-				if coroutine.running() == nil then
-					return reply:getArgs()
+					return false, errName, errMsg
+				elseif "l2dbus.message" == reply.__type then
+					return true, reply:getArgs()
 				-- Else return the pending call
 				else
-					return reply	-- PendingCall object
+					return true, reply	-- PendingCall object
 				end
 			end
 		end

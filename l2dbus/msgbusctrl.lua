@@ -18,27 +18,27 @@ limitations under the License.
 
 *****************************************************************************
 *****************************************************************************
-@file           msgbus.lua
+@file           msgbusctrl.lua
 @author         Glenn Schmottlach
 @brief          Provides a proxy interface to the D-Bus daemon.
 *****************************************************************************
 --]]
 
---- D-Bus Message Bus Module.
+--- Message Bus Controller Module.
 -- This module provides a controller for the D-Bus Message Bus which implements
 -- the <a href="http://dbus.freedesktop.org/doc/dbus-specification.html#message-bus">
 -- org.freedesktop.DBus</a> interface. The controller provides methods to gain
 -- access to the proxy interface of the Message Bus where methods can be called
 -- and signals received from the service.
 -- 
--- @module l2dbus.msgbus
+-- @module l2dbus.msgbusctrl
 -- @alias M
 
 
 local l2dbus = require("l2dbus_core")
 local xml = require("l2dbus.xml")
 local validate = require("l2dbus.validate")
-local proxy = require("l2dbus.proxy")
+local proxyCtrl = require("l2dbus.proxyctrl")
 
 local verifyTypes			=	validate.verifyTypes
 local verifyTypesWithMsg	=	validate.verifyTypesWithMsg
@@ -141,24 +141,24 @@ local MSGBUS_INTROSPECT_AS_XML =
 
 
 
---- Constructs a new Message Bus Controller instance.
+--- Constructs a new Message Bus Controller (MsgBusController) instance.
 -- 
 -- The constructor for a Message Bus Controller is used to call methods
 -- and receive signals from the D-Bus Message Bus service.
 -- @tparam userdata conn The @{l2dbus.Connection|Connection} to attach
 -- the controller to.
--- @treturn table A Message Bus Controller instance.
+-- @treturn table A MsgBusController instance.
 function M.new(conn)
 	verify(type(conn) == "userdata", "invalid connection")
 	local msgBusCtrl = {
-		ctrl = proxy.new(conn, l2dbus.Dbus.SERVICE_DBUS, l2dbus.Dbus.PATH_DBUS)
+		ctrl = proxyCtrl.new(conn, l2dbus.Dbus.SERVICE_DBUS, l2dbus.Dbus.PATH_DBUS)
 		}
 					
 	return setmetatable(msgBusCtrl, MsgBusController)
 end
 
 
---- Message Bus Controller
+--- Message Bus Controller (MsgBusController)
 -- @type MsgBusController
 
 --- Binds the controller to the Message Bus.
