@@ -30,6 +30,10 @@ limitations under the License.
 -- XML introspection data for a service or an explicit description in Lua, the
 -- class provides a mechanism to dynamically generate a true proxy interface
 -- for the methods and properties exposed by the remote D-Bus service.
+-- </br></br>
+-- See the description of the @{getProxy} method for a better understanding
+-- on how to use the proxied interfaces to call methods or get/set properties
+-- of an interface.
 -- 
 -- @module l2dbus.proxyctrl
 -- @alias M
@@ -287,7 +291,7 @@ end
 -- 
 -- @within ProxyController
 -- @tparam table ctrl The ProxyController instance.
--- @function getIntrospectionData()
+-- @function getIntrospectionData
 function ProxyController:getIntrospectionData()
 	return self.introspectData
 end
@@ -296,26 +300,31 @@ end
 --- Retrieves the actual proxy for the remote D-Bus service.
 -- 
 -- This method returns a proxy for the name interface. The actual
--- proxy has to sub-objects named *p* and *m*. This sub-objects split
+-- proxy has two sub-objects named *p* and *m*. These sub-objects split
 -- the interface namespace into properties (*p*) and methods (*m*) avoiding
--- the possibility of collision. Before you can get the proxy the
+-- the possibility of name collisions. Before you can get the proxy the
 -- ProxyController must be @{bind|bound} to a remote service. An example
--- of how to access methods or properties on a remote service is shown below
--- in a blocking manner.
+-- of how to access methods or properties on a remote service is shown below:
 --
 --		-- Example of making a BLOCKING call on a proxy 
 -- 		local proxyCtrl, proxy, status, pending, reply, enabled
 -- 		proxyCtrl = proxy.new(conn, "org.freedesktop.NetworkManager",
---											"/org/freedesktop/NetworkManager")
+--							/org/freedesktop/NetworkManager")
+--		-- Bind to the remote service
 -- 		proxyCtrl:bind()
+-- 		-- Put the controller in blocking mode
 -- 		proxyCtrl:setBlockingMode(true)
+-- 		-- Get the actual proxy for the interface we're interested in
 -- 		proxy = proxyCtrl:getProxy("org.freedesktop.NetworkManager")
 -- 		status, names = proxy.m.GetDevices()
 -- 		if status then
 -- 			print("We got device names")
 -- 		end
+-- 		-- Use the "getter" sub-object to read the value of a property
 -- 		status, enabled = proxy.p.get.WirelessEnabled()
 -- 		if status then
+-- 			-- Set the property but indicated we're not interested
+-- 			-- in the response ('true' == no response needed)
 --			proxy.p.set.WirelessEnabled(not enabled, true)
 --		end
 -- 		
@@ -323,33 +332,75 @@ end
 --		-- Example of making a NON-BLOCKING call on a proxy
 -- 		local proxyCtrl, proxy, status, pending, reply, enabled 
 -- 		proxyCtrl = proxy.new(conn, "org.freedesktop.NetworkManager",
---											"/org/freedesktop/NetworkManager")
+--							"/org/freedesktop/NetworkManager")
 -- 		proxyCtrl:bind()
+-- 		-- The proxy calls to the remote service are non-blocking now
 -- 		proxyCtrl:setBlockingMode(false)
+-- 		-- Get the proxy for the interface we're interested in
 -- 		proxy = proxyCtrl:getProxy("org.freedesktop.NetworkManager")
+-- 		-- If everyone goes smoothly (status == true) the 'pending' is
+-- 		-- a PendingCall object.
 -- 		status, pending = proxy.m.GetDevices()
 -- 		if status then
+-- 			-- Wait to get a reply. Will yield if called from a coroutine
+-- 			-- other than the "main" one.
 -- 			status, reply = proxyCtrl:waitForReply(pending)
 -- 			if status then
 -- 				print("We got device names")
 -- 			end
 -- 		end
+-- 		-- Properties are retrieved in the same way as before
 -- 		status, pending = proxy.p.get.WirelessEnabled()
 -- 		if status then
+-- 			-- Wait for the property "get" request to complete
 -- 			status, enabled = proxyCtrl:waitForReply(pending)
 -- 			if status then
 -- 				print("We got the Wireless state")
+-- 				-- Again, set the property but indicate (true) that no
+-- 				-- reply is needed.
 -- 				proxy.p.set.WirelessEnabled(enabled, true)
 -- 			end
 -- 		end
---		 
+--
+-- The method and property sub-objects expose the remote methods and properties
+-- of a bound service interface. The *property* sub-object (p) is further
+-- split into properties that are writable (e.g. can be *set*) and those that
+-- can only be read (e.g. *get*). So the *p* sub-object of a proxy has two
+-- sub-objects called *set* and *get*. Beneath these sub-objects are the names
+-- of all the properties for that interface split across these two set/get
+-- boundaries. For properties that are read/write the identical name may appear
+-- under both *set* and *get*.
+-- </br></br>
+-- Methods or properties that called will typically return two (or more)
+-- parameters at a minimum.
+-- <ul>
+-- <li>**status** (bool) **True** if the call completed without error, **false**
+-- otherwise.</li>
+-- <li>**arg1..argN|PendingCall|errName** (any|userdata|string) If **status**
+-- is **true** and the ProxyController is configured to be blocking, the remote
+-- service return values (arg1..argN) are returned. A non-blocking call will
+-- result in a @{l2dbus.PendingCall|PendingCall} being returned. If the
+-- **status** is **false** then generally a D-Bus error name is returned.</li>
+-- <li>**errMsg** (string|nil) If **status** were **false** then the third
+-- parameter would be an optional error message or **nil** if one
+-- is not available.</li>
+-- </ul>
+-- </br></br>
+-- Method and property calls can also result in a Lua error being thrown.
+-- Generally these are reserved for truly exceptional conditions or programming
+-- errors (e.g. wrong parameters, types, etc...). D-Bus error messages returned
+-- by a remote service **do not** generate Lua errors but rather the error
+-- name and message are returned with **status** set to **false**. In general
+-- the calls on the proxy should not be made with a Lua protected
+-- call (pcall) unless every possible exception needs to be caught.
+-- 
 -- @within ProxyController
 -- @tparam table ctrl The ProxyController instance.
 -- @tparam string interface The D-Bus interface name for which to retrieve
 -- the proxy. This interface **must** be an element of the introspection
 -- data.
 -- @treturn table The actual proxy for the remote service.
--- @function getProxy()
+-- @function getProxy
 function ProxyController:getProxy(interface)
 	verify(validate.isValidInterface(interface), "invalid D-Bus interface")
 	verify( self.introspectData, "controller is not bound to service object")
@@ -363,27 +414,98 @@ function ProxyController:getProxy(interface)
 end
 
 
+--- Sets the timeout to use for all proxy requests.
+-- 
+-- This method sets the timeout used by all subsequent proxied calls on the
+-- remote service. The timeout is specified in milliseconds. It is not possible
+-- to set the timeout individually for each proxy method/property call unless
+-- this method is called prior to the method/property invocation.
+-- 
+-- @within ProxyController
+-- @tparam table ctrl The ProxyController instance.
+-- @tparam number timeout The timeout (in milliseconds) to use for subsequent
+-- proxy requests. Two special values are allowed as well:
+-- @{l2dbus.Dbus.TIMEOUT_USE_DEFAULT|TIMEOUT_USE_DEFAULT}
+-- and @{l2dbus.Dbus.TIMEOUT_INFINITE|TIMEOUT_INFINITE}. The default
+-- value (if none is specified) is @{l2dbus.Dbus.TIMEOUT_USE_DEFAULT|TIMEOUT_USE_DEFAULT}.
+-- @function setTimeout
 function ProxyController:setTimeout(timeout)
 	verify("number" == type(timeout), "timeout must be a number")
 	self.timeout = timeout
 end
 
 
+--- Gets the timeout used for all proxy requests.
+-- 
+-- This method gets the timeout used by all proxied calls on the remote
+-- service. The timeout is specified in milliseconds but may have two
+-- special values: @{l2dbus.Dbus.TIMEOUT_USE_DEFAULT|TIMEOUT_USE_DEFAULT}
+-- and @{l2dbus.Dbus.TIMEOUT_INFINITE|TIMEOUT_INFINITE}.
+--
+-- @within ProxyController
+-- @tparam table ctrl The ProxyController instance.
+-- @treturn number The proxy-wide timeout value in milliseconds.
+-- @function getTimeout
 function ProxyController:getTimeout()
 	return self.timeout
 end
 
 
+--- Sets the blocking mode used by the ProxyController to make calls.
+-- 
+-- This method sets the blocking mode (**true** == blocking, **false** ==
+-- non-blocking) used by proxied calls to a remote service. Blocking calls
+-- will in fact block the thread of Lua execution. Non-blocking calls will
+-- return a @{l2dbus.PendingCall|PendingCall} object which the caller can use
+-- to either block waiting for an answer or be notified later that a reply
+-- has arrived.
+-- 
+-- @within ProxyController
+-- @tparam table ctrl The ProxyController instance.
+-- @tparam bool mode Set to **true** for blocking mode,
+-- **false** for non-blocking mode.
+-- @function setBlockingMode
 function ProxyController:setBlockingMode(mode)
 	self.blockingMode = mode and true or false
 end
 
 
+--- Gets the blocking mode used by the ProxyController to make calls.
+-- 
+-- This method returns the blocking mode of the ProxyController. If it returns
+-- **true** then it will make *blocking* proxy calls. If it returns **false**
+-- then it's configured to make *non-blocking* calls.
+-- 
+-- @within ProxyController
+-- @tparam table ctrl The ProxyController instance.
+-- @treturn bool The blocking mode where **true** == blocking,
+-- **false** == non-blocking.
+-- @function getBlockingMode
 function ProxyController:getBlockingMode()
 	return self.blockingMode
 end
 
 
+--- Connects a handler to an interface's signal.
+-- 
+-- This method registers a D-Bus *Match* handler for a signal on a specific
+-- interface.
+-- 
+-- @within ProxyController
+-- @tparam table ctrl The ProxyController instance.
+-- @tparam string interface A valid D-Bus interface name. This interface
+-- must be defined in the introspection data for this ProxyController.
+-- @tparam string sigName The name of the D-Bus signal to connect the handler.
+-- @tparam func handler The handler that is called when the signal is received.
+-- The signature of this handler is as follows:
+-- 		function onSignal(arg1, arg2, ..., argN)
+-- 			...
+-- 		end
+-- Where the arguments (argN) are defined the same as specified in the D-Bus
+-- introspection XML description for the signal.
+-- @treturn lightuserdata An opaque handle to the connection that can be used
+-- later to disconnect the handler.
+-- @function connectSignal
 function ProxyController:connectSignal(interface, sigName, handler)
 	verify(validate.isValidInterface(interface), "invalid D-Bus interface")
 	verify(validate.isValidMember(sigName), "invalid D-Bus signal name")
@@ -407,6 +529,17 @@ function ProxyController:connectSignal(interface, sigName, handler)
 end
 
 
+--- Disconnects the specified handler from the D-Bus signal.
+-- 
+-- Given the opaque handle returned by @{connectSignal} this method can
+-- be used to disconnect the handler from that signal.
+-- 
+-- @within ProxyController
+-- @tparam table ctrl The ProxyController instance.
+-- @tparam lightuserdata hnd The opaque handle returned by @{connectSignal}
+-- @treturn bool Returns **true** if disconnected successfully, **false**
+-- otherwise.
+-- @function disconnectSignal
 function ProxyController:disconnectSignal(hnd)
 	local disconnected = self.conn:unregisterMatch(hnd)
 	if disconnected then
@@ -417,6 +550,15 @@ function ProxyController:disconnectSignal(hnd)
 end
 
 
+--- Disconnects all the signal handlers from the ProxyController.
+-- 
+-- The method disconnects **all** the signal handlers that have been connected
+-- to all the interfaces. If a signal fails to be disconnected a Lua error
+-- may be thrown indicating the disconnect failed.
+-- 
+-- @within ProxyController
+-- @tparam table ctrl The ProxyController instance.
+-- @function disconnectAllSignals
 function ProxyController:disconnectAllSignals()
 	for hnd,_ in pairs(self.signalHnds) do
 		if not self.conn:unregisterMatch(hnd) then
@@ -428,12 +570,16 @@ function ProxyController:disconnectAllSignals()
 end
 
 
---- Sends a D-Bus message depending on the blocking mode.
+--- Sends a D-Bus message depending on the blocking mode of the ProxyController.
 -- 
--- This method returns the D-Bus introspection data as a Lua table
--- described in the documentation for @{bindNoIntrospect}. This can be
--- useful to understand how D-Bus XML introspection data is converted to
--- a Lua table representation.
+-- This method sends a D-Bus message depending on the blocking mode of the
+-- ProxyController. If the blocking mode is set to *blocking* then the call
+-- will wait on a reply (or timeout) and if everything is successful a
+-- D-Bus message of type @{l2dbus.Message.METHOD_RETURN|METHOD_RETURN} is
+-- returned. *Non-blocking* calls (on success) will return a
+-- @{l2dbus.PendingCall|PendingCall} object that the caller can use to
+-- @{waitForReply|wait} on or be notified of the reply. Proxy calls,
+-- internally use this method to execute calls to remote services.
 -- 
 -- @within ProxyController
 -- @tparam table ctrl The ProxyController instance.
@@ -450,7 +596,7 @@ end
 -- @treturn string|nil If the first return argument is **nil** then return
 -- an optional error message associated with the error. If there was no error
 -- or a message was not provided then return **nil**.
--- @function sendMessage()
+-- @function sendMessage
 function ProxyController:sendMessage(msg)
 	verifyTypesWithMsg("userdata", "unexpected type for arg #1", msg)
 	
@@ -477,13 +623,13 @@ function ProxyController:sendMessage(msg)
 end
 
 
---- Sends a D-Bus message and indicates it does not expect a reply.
+--- Sends a D-Bus message indicating it does not expect a reply.
 -- 
 -- This method provides an optimization for the called service indicating
 -- the client is not waiting for a reply. The called service may either
--- chose not to send a reply, or if it does, the reply will be ignored and
--- discarded by the client. It's intent is to minimize the amount of round-trip
--- traffic when it's not needed.
+-- choose not to send a reply, or if it does, the reply will be ignored and
+-- discarded by the client. It's intent is to reduce the amount of round-trip
+-- messaging to a minimum.
 -- 
 -- @within ProxyController
 -- @tparam table ctrl The ProxyController instance.
@@ -492,7 +638,7 @@ end
 -- **false** if there was an error.
 -- @treturn number|nil Returns the D-Bus serial number of the message if
 -- sent successfully or **nil** if it could not be sent.
--- @function sendMessageNoReply()
+-- @function sendMessageNoReply
 function ProxyController:sendMessageNoReply(msg)
 	verifyTypesWithMsg("userdata", "unexpected type for arg #1", msg)
 	msg:setNoReply(true)	
@@ -513,7 +659,7 @@ end
 -- and the reply message returned. If this method is called from a secondary
 -- coroutine then it **MUST NOT** be called via a Lua *pcall* (or 
 -- protected call) since this *waitForReply* may yield and under Lua 5.1
--- yielding within a protected call is not allowed.
+-- yielding across a protected call is not allowed.
 -- 
 -- @within ProxyController
 -- @tparam table ctrl The ProxyController instance.
@@ -527,7 +673,7 @@ end
 -- @treturn string|nil If the first return argument is **nil** then return
 -- an optional error message associated with the error. If there was no error
 -- or a message was not provided then return **nil**.
--- @function waitForReply()
+-- @function waitForReply
 function ProxyController:waitForReply(pendingCall)
 	verify("userdata" == type(pendingCall))
 	
@@ -565,6 +711,22 @@ function ProxyController:waitForReply(pendingCall)
 end
 
 
+--- Parses D-Bus introspection XML data a returns a Lua table equivalent.
+-- 
+-- This method parses D-Bus introspection data and converts it to an internal
+-- Lua table representation which is used to generate the necessary proxy
+-- objects. The XML parses used to parse this data is **not** a fully
+-- validating parser and has known limitations. See the @{l2dbus.xml} module
+-- for more details.
+-- 
+-- @within ProxyController
+-- @tparam table ctrl The ProxyController instance.
+-- @tparam string xmlStr A string containing valid D-Bus instrospection XML
+-- describing the interfaces exposed by a service object.
+-- @treturn table Returns a Lua table representation of the parsed XML
+-- introspection. See @{bindNoIntrospect} for a description of the layout
+-- of this table.
+-- @function parseXml
 function ProxyController:parseXml(xmlStr)
 	verifyTypes("string", xmlStr)	
 	local doc = xml.parse(xmlStr)
@@ -614,6 +776,9 @@ function ProxyController:parseXml(xmlStr)
 end
 
 
+--
+-- Constructor for the method (m) proxy.
+--
 newMethodProxy = function (proxyCtrl, metadata)
 	verifyTypesWithMsg("table", "unexpected type for arg #1", proxyCtrl)
 	verifyTypesWithMsg("table", "unexpected type for arg #2", metadata)
@@ -669,7 +834,9 @@ newMethodProxy = function (proxyCtrl, metadata)
 	return methodProxy 
 end
 
-
+--
+-- Constructor for the property (p) proxy.
+--
 newPropertyProxy = function(proxyCtrl, metadata)
 	verifyTypesWithMsg("table", "unexpected type for arg #1", proxyCtrl)
 	verifyTypesWithMsg("table", "unexpected type for arg #2", metadata)

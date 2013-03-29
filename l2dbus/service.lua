@@ -24,7 +24,16 @@ limitations under the License.
 *****************************************************************************
 --]]
 
-local l2dbus = require("l2dbus_core")
+--- Service Module.
+-- This module provides a higher-level abstraction over the low level
+-- @{l2dbus.ServiceObject|ServiceObject} class which makes it easier to
+-- implement a D-Bus service in Lua. This is the preferred method for
+-- developing D-Bus services in Lua. 
+-- 
+-- @module l2dbus.service
+-- @alias M
+
+local l2dbus = require("l2dbus")
 local xml = require("l2dbus.xml")
 local validate = require("l2dbus.validate")
 
@@ -33,8 +42,8 @@ local verifyTypesWithMsg	=	validate.verifyTypesWithMsg
 local verify				=	validate.verify
 
 local M = { }
-local ServiceObject = { __type = "l2dbus.lua.service_object" }
-ServiceObject.__index = ServiceObject
+local Service = { __type = "l2dbus.lua.service" }
+Service.__index = Service
 
 local L2DBUS_ERROR_PROCESSING_REQUEST = "org.l2dbus.error.ProcessingRequest"
 local DBUS_PROPERTIES_INTERFACE_NAME = "org.freedesktop.DBus.Properties"
@@ -127,6 +136,9 @@ local DBUS_PROPERTIES_INTERFACE_METADATA =
 local newReplyContext
 
 
+--
+-- Calculates the D-Bus signature of a method or signal.
+--
 local function calcSignatureFromMetadata(member, dir, metadata)
 	local nMethods = #metadata.methods
 	local signature = ""
@@ -149,6 +161,9 @@ local function calcSignatureFromMetadata(member, dir, metadata)
 end
 
 
+--
+-- Dispatches D-Bus requests to the appropriate handler.
+--
 local function globalHandler(lowLevelObj, conn, msg, svcObj)	
 	local intfName = msg:getInterface()
 	local member = msg:getMember()
@@ -193,7 +208,8 @@ local function globalHandler(lowLevelObj, conn, msg, svcObj)
 		if handler ~= nil then
 			status, result = pcall(handler, context, msg:getArgs())
 		else
-			status, result = pcall(svcObj.defHandler, context, intfName, member, msg:getArgsAsArray())
+			status, result = pcall(svcObj.defHandler, context, intfName, member,
+									msg:getArgsAsArray())
 		end
 		if not status then
 			context:error(L2DBUS_ERROR_PROCESSING_REQUEST, result) 
@@ -208,6 +224,22 @@ local function globalHandler(lowLevelObj, conn, msg, svcObj)
 end
 
 
+--- Constructs a new Service instance.
+-- 
+-- The constructor creates a Service instance. One or more D-Bus interfaces
+-- can be associated with Service.
+-- 
+-- @tparam string objPath The D-Bus object path this service is implementing.
+-- It must be a valid path.
+-- @tparam bool introspectable If set to **true** this service will support
+-- D-Bus introspection by implementing
+-- <a href="http://dbus.freedesktop.org/doc/dbus-specification.html#standard-interfaces-introspectable">
+-- org.freedesktop.DBus.Introspectable</a> on behalf of the service. If
+-- **false** then the resulting service will **not** be introspectable.
+-- @tparam func defaultHandler The default (global) handler for this object.
+-- This is called if none of the associated interface handlers can process
+-- a request. It is the request handler of *last resort*.
+-- @treturn table A Service instance.
 function M.new(objPath, introspectable, defaultHandler)
 	verify(validate.isValidObjectPath(objPath), "invalid D-Bus object path")
 	verifyTypesWithMsg("nil|function", "unexpected type for arg #3", defaultHandler)
@@ -226,7 +258,7 @@ function M.new(objPath, introspectable, defaultHandler)
 	if not svcObj.objInst then
 		svcObj = nil
 	else
-		svcObj = setmetatable(svcObj, ServiceObject)
+		svcObj = setmetatable(svcObj, Service)
 		if introspectable then
 			if not svcObj.objInst:addInterface(l2dbus.Introspection.new()) then
 				svcObj = nil
@@ -238,19 +270,23 @@ function M.new(objPath, introspectable, defaultHandler)
 end
 
 
-function ServiceObject:attach(conn)
+--- Service
+-- @type Service
+
+
+function Service:attach(conn)
 	verify("userdata" == type(conn))
 	return conn:registerServiceObject(self.objInst)
 end
 
 
-function ServiceObject:detach(conn)
+function Service:detach(conn)
 	verify("userdata" == type(conn))
 	return conn:unregisterServiceObject(self.objInst)
 end
 
 
-function ServiceObject:addInterface(name, metadata)
+function Service:addInterface(name, metadata)
 	verify(validate.isValidInterface(name), "invalid D-Bus interface name")
 	verify("table" == type(metadata))
 	local isAdded = false
@@ -308,7 +344,7 @@ function ServiceObject:addInterface(name, metadata)
 end
 
 
-function ServiceObject:removeInterface(name)
+function Service:removeInterface(name)
 	verify(validate.isValidInterface(name), "invalid D-Bus interface name")
 	local isRemoved = false
 	if self.interfaces[name] then
@@ -321,7 +357,7 @@ function ServiceObject:removeInterface(name)
 end
 
 
-function ServiceObject:registerMethodHandler(intfName, methodName, handler)
+function Service:registerMethodHandler(intfName, methodName, handler)
 	verify(validate.isValidInterface(intfName), "invalid D-Bus interface name")
 	verify(validate.isValidMember(methodName), "invalid D-Bus method name")
 	verify("function" == type(handler))
@@ -362,7 +398,7 @@ function ServiceObject:registerMethodHandler(intfName, methodName, handler)
 end
 
 
-function ServiceObject:unregisterMethodHandler(intfName, methodName)
+function Service:unregisterMethodHandler(intfName, methodName)
 	verify(validate.isValidInterface(intfName), "invalid D-Bus interface name")
 	verify(validate.isValidMember(methodName), "invalid D-Bus method name")
 	
@@ -379,7 +415,7 @@ function ServiceObject:unregisterMethodHandler(intfName, methodName)
 end
 
 
-function ServiceObject:emit(conn, intfName, signalName, ...)
+function Service:emit(conn, intfName, signalName, ...)
 	verify(validate.isValidInterface(intfName), "invalid D-Bus interface name")
 	verify(validate.isValidMember(signalName), "invalid D-Bus method name")
 	
@@ -412,7 +448,7 @@ function ServiceObject:emit(conn, intfName, signalName, ...)
 end
 
 
-function ServiceObject:convertXmlToIntfMeta(intfName, xmlStr)
+function Service:convertXmlToIntfMeta(intfName, xmlStr)
 	-- Take either a full or partial D-Bus Wire-protocol description and convert
 	-- it to a structure that the lower-level l2dbus interface object can
 	-- parse and interpret.
