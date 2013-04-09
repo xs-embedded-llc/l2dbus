@@ -26,9 +26,9 @@ limitations under the License.
 
 --- Service Module.
 -- This module provides a higher-level abstraction over the low level
--- @{l2dbus.ServiceObject|ServiceObject} class which makes it easier to
--- implement a D-Bus service in Lua. This is the preferred method for
--- developing D-Bus services in Lua. 
+-- @{l2dbus.ServiceObject|ServiceObject} class. This abstraction makes it
+-- easier to implement a D-Bus service in Lua and is consequently the preferred
+-- method for developing D-Bus services in Lua. 
 -- 
 -- @module l2dbus.service
 -- @alias M
@@ -235,7 +235,7 @@ end
 -- D-Bus introspection by implementing
 -- <a href="http://dbus.freedesktop.org/doc/dbus-specification.html#standard-interfaces-introspectable">
 -- org.freedesktop.DBus.Introspectable</a> on behalf of the service. If
--- **false** then the resulting service will **not** be introspectable.
+-- **false** then the resulting service **cannot** be introspected.
 -- @tparam func defaultHandler The default (global) handler for this object.
 -- This is called if none of the associated interface handlers can process
 -- a request. It is the request handler of *last resort*.
@@ -269,26 +269,156 @@ function M.new(objPath, introspectable, defaultHandler)
 	return svcObj
 end
 
+--- Converts a D-Bus XML description of an interface to a Lua equivalent.
+-- 
+-- This function takes a D-Bus XML introspection description of an interface
+-- and converts it to a Lua table representation that can be used to register
+-- the interface with a D-Bus service. If the D-Bus XML description lists
+-- multiple interfaces then **only** the interface with the specified
+-- name will be decoded into an equivalent Lua table.
+-- 
+-- @tparam string intfName The D-Bus interface name to be converted. The
+-- name should be defined in the XML description.
+-- @tparam string xmlStr The D-Bus introspection XML for the interface.
+-- @treturn table|nil A Lua table representation of the D-Bus XML interface
+-- description. Returns **nil** if the XML could not be converted or
+-- the interface name was not found.
+function M.convertXmlToIntfMeta(intfName, xmlStr)
+	-- Take either a full or partial D-Bus Wire-protocol description and convert
+	-- it to a structure that the lower-level l2dbus interface object can
+	-- parse and interpret.
+	local node = xml.parse(xmlStr)
+	local interfaces = {}
+    local intfNode = nil
+    for item in node:childtags() do
+        if item.tag ~= "interface" then
+            intfNode = node
+            break
+        end
+        if item.attr.name == intfName then
+            intfNode = item
+            break
+        end
+    end
+    
+    if intfNode then
+	    local methods = {}
+	    local signals = {}
+	    local properties = {}
+        for item in intfNode:childtags() do
+            if (item.tag == "method") or (item.tag == "signal") then
+                local args = {}
+                for arg in item:childtags() do
+                    if item.tag == "method" then
+                        table.insert(args, {name = arg.attr.name,
+                                            sig=arg.attr.type,
+                                            dir=arg.attr.direction})
+                    else
+                        table.insert(args, {name = arg.attr.name,
+                                            sig=arg.attr.type,
+                                            dir="out"})
+                    end
+                end
+                if item.tag == "method" then
+                    table.insert(methods, {name = item.attr.name, args = args})
+                else
+                    table.insert(signals, {name = item.attr.name, args = args})
+                end
+            elseif item.tag == "property" then
+                local access = nil
+                if "read" == item.attr.access then
+                    access = "r"
+                elseif "write" == item.attr.access then
+                    access = "w"
+                else
+                    access = "rw"
+                end
+                table.insert(properties, {name=item.attr.name,
+                						sig=item.attr.type,
+                						access=access})
+            end
+        end
+		table.insert(interfaces, { interface = intfName,
+										   methods = methods,
+			                               signals = signals,
+			                               properties = properties})
+	end
+	
+    return (#interfaces > 0) and interfaces[1] or nil
+end
+
 
 --- Service
 -- @type Service
 
 
+--- Attaches a D-Bus service with associated object path to the connection.
+-- 
+-- This method is used to attach and register the service's object path
+-- with the D-Bus connection. Once attached the service can receive
+-- messages sent to its object path.
+-- 
+-- @within Service
+-- @tparam userdata conn The D-Bus connection.
+-- @treturn bool Returns **true** if the service is attached and **false**
+-- otherwise.
+-- @function attach
 function Service:attach(conn)
 	verify("userdata" == type(conn))
 	return conn:registerServiceObject(self.objInst)
 end
 
 
+--- Detach a D-Bus service with associated object path from the connection.
+-- 
+-- This method is used to detach and unregister the service's object path
+-- from the D-Bus connection. Once detached the service will no longer receive
+-- messages sent to its object path.
+-- 
+-- @within Service
+-- @tparam userdata svc The Service instance.
+-- @tparam userdata conn The D-Bus connection.
+-- @treturn bool Returns **true** if the service is detached and **false**
+-- otherwise.
+-- @function detach
 function Service:detach(conn)
 	verify("userdata" == type(conn))
 	return conn:unregisterServiceObject(self.objInst)
 end
 
 
+--- Adds an interface to the D-Bus service.
+-- 
+-- This method is used to add the interface described by the provided
+-- metadata to the service. If this service is introspectable then the
+-- interface will appear to be implemented by the service with the associated
+-- object path. The metadata can be in one of two formats: D-Bus 
+-- introspection XML or a Lua table equivalent. The function
+-- @{convertXmlToIntfMeta} can be used to convert XML to the Lua equivalent
+-- but is typically unnecessary for this method.
+-- </br>
+-- If the interface that is being added contains D-Bus properties then
+-- the D-Bus property interface <a href="http://dbus.freedesktop.org/doc/dbus-specification.html#standard-interfaces-properties">
+-- org.freedesktop.DBus.Properties</a> will automatically be added to this
+-- service. It is required that handlers for the **Get**, **Set**, and
+-- **GetAll** methods will be registered to handle inquires on the object
+-- properties.
+-- 
+-- @within Service
+-- @tparam userdata svc The Service instance.
+-- @tparam userdata conn The D-Bus connection.
+-- @treturn bool Returns **true** if the service is detached and **false**
+-- otherwise.
+-- @function addInterface
 function Service:addInterface(name, metadata)
 	verify(validate.isValidInterface(name), "invalid D-Bus interface name")
+	-- If the metadata is a string then we'll assume it's D-Bus XML formatted
+	-- data that can be converted to an equivalent Lua table.
+	if "string" == type(metadata) then
+		metadata = M.convertXmlToIntfMeta(name, metadata)
+	end
 	verify("table" == type(metadata))
+	
 	local isAdded = false
 	local status = true
 	-- Create a lower level interface
@@ -344,6 +474,16 @@ function Service:addInterface(name, metadata)
 end
 
 
+--- Removes an interface from the D-Bus service.
+-- 
+-- This method removes the named D-Bus interface from the service. 
+-- 
+-- @within Service
+-- @tparam userdata svc The Service instance.
+-- @tparam string name The D-Bus interface name to remove.
+-- @treturn bool Returns **true** if the interface is removed and **false**
+-- otherwise.
+-- @function removeInterface
 function Service:removeInterface(name)
 	verify(validate.isValidInterface(name), "invalid D-Bus interface name")
 	local isRemoved = false
@@ -357,6 +497,30 @@ function Service:removeInterface(name)
 end
 
 
+--- Registers a handler for a D-Bus interface/method combination.
+-- 
+-- This method registers a handler that will be called when a service
+-- request directed to a given object path/interface/method combination is
+-- received.
+-- </br>
+-- The signature of the handler function will be of the form:
+-- 
+-- 		function onRequest(ctx, arg1, arg2, ..., argN)
+-- 
+-- Where the first argument of the handler will **always** be a context
+-- instance that can used to reply either immediately or at some point
+-- int the  future (outside the scope of the handler if a reference to
+-- the context is maintained). A Lua error may be thrown if an error is
+-- encountered registering a handler. 
+-- 
+-- @within Service
+-- @tparam userdata svc The Service instance.
+-- @tparam string intfName The D-Bus interface name to associate the handler.
+-- @tparam string methodName The D-Bus method name assocated with the handler.
+-- @tparam func handler The handler function which will receive the message. If
+-- a handler for this interface/method combination was already specified then
+-- it will be replaced by this handler.
+-- @function registerMethodHandler
 function Service:registerMethodHandler(intfName, methodName, handler)
 	verify(validate.isValidInterface(intfName), "invalid D-Bus interface name")
 	verify(validate.isValidMember(methodName), "invalid D-Bus method name")
@@ -445,71 +609,6 @@ function Service:emit(conn, intfName, signalName, ...)
 	-- Add the arguments to the message
 	return conn:send(msg)
 	
-end
-
-
-function Service:convertXmlToIntfMeta(intfName, xmlStr)
-	-- Take either a full or partial D-Bus Wire-protocol description and convert
-	-- it to a structure that the lower-level l2dbus interface object can
-	-- parse and interpret.
-	local node = xml.parse(xmlStr)
-	local interfaces = {}
-    local intfNode = nil
-    for item in node:childtags() do
-        if item.tag ~= "interface" then
-            intfNode = node
-            break
-        end
-        if item.attr.name == intfName then
-            intfNode = item
-            break
-        end
-    end
-    
-    if intfNode then
-	    local methods = {}
-	    local signals = {}
-	    local properties = {}
-        for item in intfNode:childtags() do
-            if (item.tag == "method") or (item.tag == "signal") then
-                local args = {}
-                for arg in item:childtags() do
-                    if item.tag == "method" then
-                        table.insert(args, {name = arg.attr.name,
-                                            sig=arg.attr.type,
-                                            dir=arg.attr.direction})
-                    else
-                        table.insert(args, {name = arg.attr.name,
-                                            sig=arg.attr.type,
-                                            dir="out"})
-                    end
-                end
-                if item.tag == "method" then
-                    table.insert(methods, {name = item.attr.name, args = args})
-                else
-                    table.insert(signals, {name = item.attr.name, args = args})
-                end
-            elseif item.tag == "property" then
-                local access = nil
-                if "read" == item.attr.access then
-                    access = "r"
-                elseif "write" == item.attr.access then
-                    access = "w"
-                else
-                    access = "rw"
-                end
-                table.insert(properties, {name=item.attr.name,
-                						sig=item.attr.type,
-                						access=access})
-            end
-        end
-		table.insert(interfaces, { interface = intfName,
-										   methods = methods,
-			                               signals = signals,
-			                               properties = properties})
-	end
-	
-    return (#interfaces > 0) and interfaces[1] or nil
 end
 
 
