@@ -69,7 +69,7 @@
  is found then an appropriate error message is returned to the client
  application.
 
- @module l2dbus.ServiceObject
+ @namespace l2dbus.ServiceObject
  */
 
 

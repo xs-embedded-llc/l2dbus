@@ -46,9 +46,10 @@
 /**
  L2DBUS Message
 
- This section describes the Message class which is used to encapsulate D-Bus messages.
+ This section describes the Message class which is used to encapsulate D-Bus
+ messages in Lua.
 
- @module l2dbus.Message
+ @namespace l2dbus.Message
  */
 
 
@@ -619,7 +620,7 @@ l2dbus_messageSetNoReply
  Returns **true** if the message does not expect a reply.
 
  @tparam userdata msg The D-Bus message to get the flag status.
- @return bool Returns **true** if the message does not expect a
+ @treturn bool Returns **true** if the message does not expect a
  reply or **false** if a reply is expected.
  */
 static int

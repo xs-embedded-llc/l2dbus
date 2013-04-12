@@ -48,7 +48,7 @@
  explicitly enabled (or turned *on*}. Treat these *levels* as individual flags
  that can be selectively enabled or disabled.
 
- @module l2dbus.Trace
+ @namespace l2dbus.Trace
  */
 
 

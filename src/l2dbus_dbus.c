@@ -38,13 +38,13 @@
 /**
  L2DBUS Shared D-Bus constants
 
- This module defines shared D-Bus constants that are typically utilized by
- related L2DBUS sub-modules.
+ This namespace defines shared D-Bus constants that are typically utilized by
+ related L2DBUS components.
 
  These constants directly correspond to their 'C' D-Bus reference library
  <a href="http://dbus.freedesktop.org/doc/api/html/group__DBusShared.html">equivalents</a>
  and protocol <a href="http://dbus.freedesktop.org/doc/api/html/group__DBusProtocol.html">definitions</a>.
- @module l2dbus.Dbus
+ @namespace l2dbus.Dbus
  */
 
 const char L2DBUS_DBUS_MTBL_NAME[] = "l2dbus.dbus";

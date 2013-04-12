@@ -476,7 +476,8 @@ end
 
 --- Removes an interface from the D-Bus service.
 -- 
--- This method removes the named D-Bus interface from the service. 
+-- This method removes the named D-Bus interface from the service. Handlers
+-- for this interface will no longer be called. 
 -- 
 -- @within Service
 -- @tparam userdata svc The Service instance.
@@ -562,6 +563,21 @@ function Service:registerMethodHandler(intfName, methodName, handler)
 end
 
 
+--- Unregisters a handler for D-Bus interface/method handler combination.
+-- 
+-- This method disassociates the method handler from the method so that
+-- it will no longer be called when a matching method request is received
+-- by the service. If the D-Bus interface name is unknown a Lua error
+-- will be thrown.
+-- 
+-- @within Service
+-- @tparam userdata svc The Service instance.
+-- @tparam string intfName The D-Bus interface name owning the method.
+-- @tparam string methodName The name of the D-Bus method to unregister
+-- the handler.
+-- @treturn bool Returns **true** if the handler is removed and **false**
+-- otherwise.
+-- @function unregisterMethodHandler
 function Service:unregisterMethodHandler(intfName, methodName)
 	verify(validate.isValidInterface(intfName), "invalid D-Bus interface name")
 	verify(validate.isValidMember(methodName), "invalid D-Bus method name")
@@ -579,6 +595,36 @@ function Service:unregisterMethodHandler(intfName, methodName)
 end
 
 
+--- Provides a method to emit a signal on a specific connection.
+-- 
+-- This method provides a means to send a D-Bus signal with the given
+-- interface name and signal name over the provided connection. Since a
+-- service can exist on more than one connection (or D-Bus bus) the
+-- actual connection on which the signal should be sent needs to be
+-- specified explicitly. Connections *host* services and not vice-versa.
+-- This method can throw Lua errors if the parameters are invalid or problems
+-- occur encoding parameters or sending the signal.
+-- </br>
+-- **Note:** The interface specified by this method must be implemented
+-- by this service. It is an error if the interface is unknown (e.g. an
+-- arbitrary interface name cannot be specified). Also, signals are only
+-- queued to be sent and are not immediately delivered. Call the
+-- @{l2dbus.Connection.flush|flush} method on the connection to block until the
+-- message has been sent. 
+-- 
+-- @within Service
+-- @tparam userdata svc The Service instance.
+-- @tparam userdata conn The D-Bus connection on which to emit the signal.
+-- @tparam string intfName The D-Bus interface name owning the signal.
+-- @tparam string signalName The name of the D-Bus signal.
+-- @tparam any ... The list of arguments associated with the signal being
+-- sent. The signature of the signal (as specified in the D-Bus interface
+-- description) is used to map the Lua types to their underlying D-Bus types.
+-- @treturn bool Returns **true** if the signal is enqueued to be sent and
+-- **false** otherwise.
+-- @treturn number Returns the serial number of the enqueued signal or
+-- zero (0) if it cannot be queued.
+-- @function emit
 function Service:emit(conn, intfName, signalName, ...)
 	verify(validate.isValidInterface(intfName), "invalid D-Bus interface name")
 	verify(validate.isValidMember(signalName), "invalid D-Bus method name")
@@ -603,18 +649,37 @@ function Service:emit(conn, intfName, signalName, ...)
 		end
 	end
 		
-	local msg = l2dbus.Message.newSignal(self.objInst:path(), intfName, signalName)
+	local msg = l2dbus.Message.newSignal(self.objInst:path(), intfName,
+										signalName)
 	msg:addArgsBySignature(signature, ...)
 	
 	-- Add the arguments to the message
-	return conn:send(msg)
-	
+	return conn:send(msg)	
 end
 
 
+--- ReplyContext
+-- @type ReplyContext
+
+
+--
+-- Set up the metadata information for the ReplyContext class
+--
 local ReplyContext = { __type = "l2dbus.lua.reply_context" }
 ReplyContext.__index = ReplyContext
 
+-- Constructor for a ReplyContext.
+--
+-- Creates a new reply context which can be used to reply to a request
+-- at a later time. This is a "private" function that should only
+-- be called (internally) by the Service's request dispatcher.
+--
+-- @within ReplyContext
+-- @tparam string outSig The output/reply signature.
+-- @tparam userdata conn The L2DBUS connection.
+-- @tparam userdata msg The request message.
+-- @treturn table The reply context.
+-- @function newReplyContext
 newReplyContext = function(outSig, conn, msg)
 	local context = {
 					outSignature = outSig,
@@ -626,21 +691,75 @@ newReplyContext = function(outSig, conn, msg)
 end
 
 
+--- Returns the D-Bus connection associated with the context.
+--
+-- Returns the D-Bus connection on which the original request message
+-- arrived. This will be the connection on which the response is sent.
+--
+-- @within ReplyContext
+-- @tparam table ctx The reply context.
+-- @treturn userdata The D-Bus connection associated with the context.
+-- @function getConnection
 function ReplyContext:getConnection()
 	return self.conn
 end
 
 
+--- Returns the request message associated with the context.
+--
+-- Returns the original D-Bus request message for which there should
+-- be a reply.
+--
+-- @within ReplyContext
+-- @tparam table ctx The reply context.
+-- @treturn userdata The D-Bus request message associated with the context.
+-- @function getMessage
 function ReplyContext:getMessage()
 	return self.msg
 end
 
 
+--- Returns an indication of whether the request expects a reply message.
+--
+-- The method returns a boolean value indicating whether or not the
+-- original request expects a reply (or not). If no reply is needed/expected
+-- then message traffic can be reduced by not sending a reply. Typically
+-- most requests expect a reply. Technically, even if a reply is not needed
+-- it is not an error to send one anyway. The client will likely ignore the
+-- reply.
+--
+-- @within ReplyContext
+-- @tparam table ctx The reply context.
+-- @treturn bool Returns **true** if the request expects a reply, **false**
+-- if a reply is **not** needed.
+-- @function needsReply
 function ReplyContext:needsReply()
-	return self.msg:getNoReply()
+	return not self.msg:getNoReply()
 end
 
 
+--- Returns a response to the associated method request.
+--
+-- The method queues the response to a request associated with the context.
+-- The parameters are marshalled into a response message which is then
+-- enqueued into the out-going message queue. If it's critical that the
+-- response is delivered immediately (rather than during the next iteration
+-- of the dispatch loop) call the @{l2dbus.Connection.flush|flush} method on
+-- the connection to block until the response message has been sent. It is
+-- considered an error to respond to the same request more than once. An
+-- @{error} reply is considered a response as well.
+--
+-- @within ReplyContext
+-- @tparam table ctx The reply context.
+-- @tparam any ... The list of arguments associated with the response. The
+-- signature of these arguments is taken from the D-Bus interface specification
+-- for the return (out) parameters. This signature is used to guide the
+-- conversion from Lua types to D-Bus types.
+-- @treturn bool Returns **true** if the response is enqueued to be sent and
+-- **false** otherwise.
+-- @treturn number Returns the serial number of the enqueued response message
+-- or zero (0) if it cannot be queued.
+-- @function reply
 function ReplyContext:reply(...)
 	local replyMsg = l2dbus.Message.newMethodReturn(self.msg)
 	local intfName = self.msg:getInterface()
@@ -658,6 +777,27 @@ function ReplyContext:reply(...)
 end
 
 
+--- Returns an error response to the associated method request.
+--
+-- The method queues an error response to the request associated with the
+-- context. The error is enqueued into the out-going message queue. If it's
+-- critical that the D-Bus error is delivered immediately (rather than during
+-- the next iteration of the dispatch loop) call the
+-- @{l2dbus.Connection.flush|flush} method on the connection to block until the
+-- response message has been sent. An
+-- @{error} reply is considered a valid
+-- response to a request and fullfills the request. An additional response is
+-- unnecessary.
+--
+-- @within ReplyContext
+-- @tparam table ctx The reply context.
+-- @tparam string errName The D-Bus error name.
+-- @tparam string|nil errMsg An optional error message.
+-- @treturn bool Returns **true** if the error is enqueued to be sent and
+-- **false** otherwise.
+-- @treturn number Returns the serial number of the enqueued error message
+-- or zero (0) if it cannot be queued.
+-- @function error
 function ReplyContext:error(errName, errMsg)
 	verify(validate.isValidInterface(errName), "invalid D-Bus error name")
 	local errorMsg = l2dbus.Message.newError(self.msg, errName, errMsg)

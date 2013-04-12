@@ -52,7 +52,8 @@
  signature a heuristic approach is used to convert between the two type systems.
  Most of the time these conversions will be correct but the Lua/D-Bus wrapper
  types and message signatures help avoid potential conversion ambiguity.
- @module l2dbus.DbusTypes
+
+ @namespace l2dbus.DbusTypes
  */
 
 

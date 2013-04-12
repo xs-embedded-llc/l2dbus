@@ -47,7 +47,7 @@
  This section defines the data structures associated with the
  representation of a match rule.
 
- @module l2dbus.Match
+ @namespace l2dbus.Match
  */
 
 

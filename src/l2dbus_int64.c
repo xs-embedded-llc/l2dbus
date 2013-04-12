@@ -72,7 +72,7 @@
  <li>Greater Than Equal (>=)</li>
  </ul>
 
- @module l2dbus.Int64
+ @namespace l2dbus.Int64
  */
 
 static int64_t

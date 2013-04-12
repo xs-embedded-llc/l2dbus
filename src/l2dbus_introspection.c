@@ -53,7 +53,7 @@
  with a service object makes the resulting service object *introspectable* in
  D-Bus terms.
 
- @module l2dbus.Introspection
+ @namespace l2dbus.Introspection
  */
 
 

@@ -69,7 +69,8 @@
  <li>Greater Than (>)</li>
  <li>Greater Than Equal (>=)</li>
  </ul>
- @module l2dbus.Uint64
+
+ @namespace l2dbus.Uint64
  */
 
 

@@ -49,7 +49,7 @@
  directly but instead is returned by a call to the Connection method
  @{l2dbus.Connection.sendWithReply|sendWithReply}.
 
- @module l2dbus.PendingCall
+ @namespace l2dbus.PendingCall
  */
 
 

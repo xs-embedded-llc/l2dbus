@@ -52,7 +52,7 @@
  available to be received. Client applications can use this same mechanism
  to monitor activity on various descriptors themselves.
 
- @module l2dbus.Watch
+ @namespace l2dbus.Watch
  */
 
 /**

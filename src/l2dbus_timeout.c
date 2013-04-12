@@ -53,7 +53,7 @@
  execution or the L2DBUS dispatch loop will block as well. Every effort should
  be made to exit the timeout handler quickly.
 
- @module l2dbus.Timeout
+ @namespace l2dbus.Timeout
  */
 
 

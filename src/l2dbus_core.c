@@ -52,11 +52,12 @@ The low-level L2DBUS core module.
 
 This module provides access to the low-level functions/methods
 that implement the binding to the D-Bus reference library. Loading this core
-library introduces the following *pseudo* modules into the *l2dbus* namespace.
-These are **not** true modules in the sense that a Lua program can explicitly
-*require* them but are rather loaded by default when *l2dbus* is required.
+library introduces the following namespaces into the *l2dbus* module.
+Since these are namespaces they are implicitly defined when the *l2dbus* is
+required.
 
-The following namespaces are created when the *L2DBUS* module is loaded:
+The following namespaces are created when the *l2dbus* module is loaded:
+</br>
 <ul>
 <li>l2dbus.Connection</li>
 <li>l2dbus.Dbus</li>
@@ -74,6 +75,7 @@ The following namespaces are created when the *L2DBUS* module is loaded:
 <li>l2dbus.Uint64</li>
 <li>l2dbus.Watch</li>
 </ul>
+
  @module l2dbus
  */
 

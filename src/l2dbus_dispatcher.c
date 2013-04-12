@@ -38,11 +38,11 @@
 /**
  The L2DBUS Event Dispatcher Object
 
- This module provides a constructor and methods for manipulating the
+ This namespace provides a constructor and methods for manipulating the
  D-Bus event Dispatcher object. A Dispatcher is responsible for
  running the event loop that detects incoming D-Bus messages and
  timeouts and also dispatches outgoing messages and signals.
- @module l2dbus.Dispatcher
+ @namespace l2dbus.Dispatcher
  */
 
 #define L2DBUS_LIBEV_UNINITIALIZED_DEFAULT_LOOP ((struct ev_loop*)1)

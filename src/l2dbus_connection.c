@@ -43,10 +43,10 @@
 /**
  L2DBUS Connection
 
- This module defines the functions/methods associated with the L2DBUS Connection
- class.
+ This namespace defines the functions/methods associated with the L2DBUS
+ Connection class.
 
- @module l2dbus.Connection
+ @namespace l2dbus.Connection
  */
 
 

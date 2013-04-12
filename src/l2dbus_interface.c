@@ -57,7 +57,7 @@
  the associated service object is given the opportunity to the
  request.
 
- @module l2dbus.Interface
+ @namespace l2dbus.Interface
  */
 
 
