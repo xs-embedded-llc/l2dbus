@@ -28,9 +28,11 @@ An "debug" option can be specified as the first argument to make a debug version
 
 There is also a script to build a cross-compiled version of the Lua module. This needs to up modified for a particular build environment.
 
-The library installation path can be modified by specifying passing in a CMake variable on the command line:
+The library installation prefix can be modified by specifying passing in a CMake variable on the command line:
 
 	# ./build_host.sh -DINSTALL_LIBS="/path/to/lua/libs"
+
+**TODO:** This method of passing in the installation prefix is currently incorrect. This script has to be changed to support this.
 
 The default library installation path is set to */usr/local/lib/lua/5.1* 
 
