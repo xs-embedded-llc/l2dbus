@@ -12,4 +12,4 @@ new_type("handlerReturn", "Message Handler Return Values")
 new_type("dbusError", "D-Bus Errors")
 new_type("namespace", "Namespaces", true)
 
-file = { '../l2dbus', '../src' }
+file = { '../lua/l2dbus', '../src' }
