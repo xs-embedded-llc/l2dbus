@@ -83,7 +83,7 @@ l2dbus_uint64Cast
     int         baseIdx
     )
 {
-    uint64_t value;
+    uint64_t value = 0;
     const char* vStr;
     l2dbus_Uint64* uint64Ud;
     l2dbus_Int64* int64Ud;

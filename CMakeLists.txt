@@ -1,52 +1,168 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6.0)
+PROJECT( l2dbus  C )
 
-AUX_SOURCE_DIRECTORY(src LIBSOURCES)
-
-add_library(l2dbus SHARED ${LIBSOURCES})
-set_target_properties(l2dbus PROPERTIES OUTPUT_NAME l2dbus_core)
-set_target_properties(l2dbus PROPERTIES PREFIX "")
-
-
-ADD_LIBRARY(cdbus_static STATIC IMPORTED)
-set(CDBUS_PATH "/usr/lib")
-IF(CMAKE_CROSSCOMPILING)
-    set(CDBUS_PATH "${CMAKE_FIND_ROOT_PATH}/usr/lib")
-ENDIF(CMAKE_CROSSCOMPILING)
-SET_TARGET_PROPERTIES(cdbus_static PROPERTIES IMPORTED_LOCATION ${CDBUS_PATH}/cdbus.a)
-                                         
-
-IF("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
-SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fPIC"  )
-SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_DEBUG} -fPIC"  )
-ENDIF("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
-
-
-# The SDK a little messed up at the moment
-IF(DEFINED LUA_INCLUDE_DIR)
-	INCLUDE_DIRECTORIES(${LUA_INCLUDE_DIR})
-	message("Lua include = ${LUA_INCLUDE_DIR}")
-ELSE(DEFINED LUA_INCLUDE_DIR) 
-  IF(CMAKE_CROSSCOMPILING)
-    include_directories(${CMAKE_FIND_ROOT_PATH}/usr/include/lua5.1)
-  ENDIF(CMAKE_CROSSCOMPILING)
-ENDIF(DEFINED LUA_INCLUDE_DIR)
+# Add an additional modules path
+set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/CMakeModules")
+set(FIND_LIBRARY_USE_LIB64_PATHS TRUE)
 
 include(FindPkgConfig)
-pkg_check_modules(DBUSLIB_PKG REQUIRED "dbus-1")
+
+# Define the L2DBUS root directory
+set(L2DBUS_ROOT_DIR ${PROJECT_SOURCE_DIR})
+set(L2DBUS_OUTPUT_DIR "${L2DBUS_ROOT_DIR}/${CMAKE_SYSTEM_PROCESSOR}-${CMAKE_BUILD_TYPE}")
+set( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${L2DBUS_OUTPUT_DIR}/lib )
+set( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${L2DBUS_OUTPUT_DIR}/lib )
+set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${L2DBUS_OUTPUT_DIR}/bin )
+
+set(L2DBUS_MAJOR_VERSION 1)
+set(L2DBUS_MINOR_VERSION 0)
+set(L2DBUS_RELEASE_VERSION 0)
+set(L2DBUS_VERSION_STRING ${L2DBUS_MAJOR_VERSION}.${L2DBUS_MINOR_VERSION}.${L2DBUS_RELEASE_VERSION})
+
+if(COMMAND cmake_policy)
+  cmake_policy(SET CMP0003 NEW)
+  cmake_policy(SET CMP0007 OLD)
+endif(COMMAND cmake_policy)
+
+set(L2DBUS_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
+file(GLOB L2DBUS_SRC_FILES "${L2DBUS_SRC_DIR}/*.c")
+
+add_library(L2DBUS_MODULE SHARED ${L2DBUS_SRC_FILES})
+set_target_properties(L2DBUS_MODULE PROPERTIES OUTPUT_NAME l2dbus_core)
+set_target_properties(L2DBUS_MODULE PROPERTIES PREFIX "")
+
+# Configure the compiler settings
+include(CompilerSettings)
+
+pkg_check_modules(DBUSLIB_PKG REQUIRED "dbus-1>=1.4.0")
 include_directories(${DBUSLIB_PKG_INCLUDE_DIRS})
 link_directories(${DBUSLIB_PKG_LIBRARY_DIRS})
-target_link_libraries(l2dbus ${DBUSLIB_PKG_LIBRARIES})
 
-pkg_check_modules(LUA_PKG REQUIRED "lua5.1")
-include_directories(${LUA_PKG_INCLUDE_DIRS})
 
-target_link_libraries(l2dbus cdbus_static ev m )
+pkg_check_modules(LIBEV_PKG "ev")
+if( LIBEV_PKG_FOUND )
+    include_directories(${LIBEV_PKG_INCLUDE_DIRS})
+    link_directories(${LIBEV_PKG_LIBRARY_DIRS})
+else( LIBEV_PKG_FOUND )
+    # Search for the library in the usual places
+    find_library( LIBEV_LIB ev )
+    if( "${LIBEV_LIB}" STREQUAL "LIBEV_LIB-NOTFOUND" )
+        message(FATAL_ERROR "Cannot find libev in the library search path")
+    else( "${LIBEV_LIB}" STREQUAL "LIBEV_LIB-NOTFOUND" )
+        message(STATUS "Will link with libev found here: "${LIBEV_LIB})
+    endif( "${LIBEV_LIB}" STREQUAL "LIBEV_LIB-NOTFOUND" )
+endif( LIBEV_PKG_FOUND )
 
-get_property(inc_dirs DIRECTORY PROPERTY INCLUDE_DIRECTORIES)
-message("Include dirs = ${inc_dirs}")
+pkg_check_modules(CDBUS_PKG "cdbus")
+if( CDBUS_PKG_FOUND )
+    include_directories(${CDBUS_PKG_INCLUDE_DIRS})
+    link_directories(${CDBUS_PKG_LIBRARY_DIRS})
+else( CDBUS_PKG_FOUND )
+    # Search for the library in the usual places
+    find_library( CDBUS_LIB "cdbus" )
+    if( "${CDBUS_LIB}" STREQUAL "CDBUS_LIB-NOTFOUND" )
+        message(FATAL_ERROR "Cannot find libcdbus in the library search path")
+    else( "${CDBUS_LIB}" STREQUAL "CDBUS_LIB-NOTFOUND" )
+        message(STATUS "Will link with libcdbus found here: "${CDBUS_LIB})
+    endif( "${CDBUS_LIB}" STREQUAL "CDBUS_LIB-NOTFOUND" )
+endif( CDBUS_PKG_FOUND )
 
-IF(NOT DEFINED INSTALL_LIBS)
-	SET(INSTALL_LIBS "/usr/local/lib/lua/5.1/")
-ENDIF(NOT DEFINED INSTALL_LIBS)
+# See if a specific Lua version has already been specified
+if( NOT DEFINED L2DBUS_LUA_VERSION )
+    # The default is to use 5.1
+    set(L2DBUS_LUA_VERSION "5.1")
+endif( NOT DEFINED L2DBUS_LUA_VERSION )
 
-install(TARGETS l2dbus DESTINATION ${INSTALL_LIBS})
+MESSAGE(STATUS "Searching for Lua ${L2DBUS_LUA_VERSION}")
+find_package(Lua ${L2DBUS_LUA_VERSION} REQUIRED)
+
+
+include_directories(${LUA_INCLUDE_DIR})
+target_link_libraries(L2DBUS_MODULE ${DBUSLIB_PKG_LIBRARIES}
+                                    ${LIBEV_PKG_LIBRARIES}
+                                    ${CDBUS_PKG_LIBRARIES}
+                                    ${LUA_LIBRARIES})
+
+LINK_DIRECTORIES(${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+
+# Installation setup
+set(INSTALL_TARGETS_DEFAULT_ARGS
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION "lib/lua/${LUA_VERSION_STRING}"
+    ARCHIVE DESTINATION lib
+)
+
+IF(NOT DEFINED LUA_INSTALL_CMOD_PATH)
+    SET(LUA_INSTALL_CMOD_PATH "lib/lua/${L2DBUS_LUA_VERSION}")
+ENDIF(NOT DEFINED LUA_INSTALL_CMOD_PATH)
+
+IF(NOT DEFINED LUA_INSTALL_LMOD_PATH)
+    SET(LUA_INSTALL_LMOD_PATH "share/lua/${L2DBUS_LUA_VERSION}")
+ENDIF(NOT DEFINED LUA_INSTALL_LMOD_PATH)
+
+install(DIRECTORY "${L2DBUS_ROOT_DIR}/lua/l2dbus" DESTINATION "${LUA_INSTALL_LMOD_PATH}")
+install(TARGETS L2DBUS_MODULE DESTINATION "${LUA_INSTALL_CMOD_PATH}")
+
+# Uninstall target
+configure_file(
+    "${PROJECT_SOURCE_DIR}/CMakeModules/CMakeUninstall.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+    IMMEDIATE @ONLY
+)
+
+add_custom_target(uninstall
+    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
+
+# Documentation
+FIND_PACKAGE(Doxygen)
+IF(DOXYGEN_FOUND)
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/docs/doxy.cfg.in ${CMAKE_CURRENT_BINARY_DIR}/docs/doxy.cfg @ONLY)
+  ADD_CUSTOM_TARGET(priv-docs ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/docs/doxy.cfg
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    COMMENT "Generating private documentation (Doxygen)...")
+ENDIF(DOXYGEN_FOUND)
+
+IF(DEFINED LUA_EXECUTABLE)
+  find_program(LDOC_EXECUTABLE ldoc.lua) 
+  IF( "${LDOC_EXECUTABLE}" STREQUAL "LDOC_EXECUTABLE-NOTFOUND" )
+    message(STATUS "ldoc not found - will not be able to generate public docs.")  
+  ELSE( "${LDOC_EXECUTABLE}" STREQUAL "LDOC_EXECUTABLE-NOTFOUND" )
+    message(STATUS "Found LDoc: ${LDOC_EXECUTABLE}") 
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/docs/config.ld.in ${CMAKE_CURRENT_BINARY_DIR}/docs/config.ld @ONLY)
+    ADD_CUSTOM_TARGET(pub-docs ${LUA_EXECUTABLE} ${LDOC_EXECUTABLE} -c ${CMAKE_CURRENT_BINARY_DIR}/docs/config.ld .
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        COMMENT "Generating public documentation (LDoc)...")
+  ENDIF( "${LDOC_EXECUTABLE}" STREQUAL "LDOC_EXECUTABLE-NOTFOUND")
+ENDIF(DEFINED LUA_EXECUTABLE)
+
+# Make package release from source (must be done on the GIT source tree)
+SET(L2DBUS_PKG_NAME "${PROJECT_NAME}-${L2DBUS_VERSION_STRING}.tar.gz")
+SET(DIST_DIR "${CMAKE_BINARY_DIR}/dist-${PROJECT_NAME}")
+ADD_CUSTOM_TARGET("dist-${PROJECT_NAME}"
+    rm -rf "${DIST_DIR}" "${CMAKE_BINARY_DIR}/${L2DBUS_PKG_NAME}"
+    COMMAND mkdir "${DIST_DIR}"
+    COMMAND git clone --depth 1 ssh://git@git.xs-embedded.us:2222/l2dbus.git "${DIST_DIR}/${PROJECT_NAME}"
+    COMMAND tar -czf "${CMAKE_BINARY_DIR}/${L2DBUS_PKG_NAME}"
+            -C "${DIST_DIR}" --exclude-vcs --exclude="arm*" --exclude="x86*"
+            --exclude=".cproject" --exclude=".project" --exclude=".settings" "${PROJECT_NAME}"
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    # Cleanup so that there is no copy in the source dir
+    COMMAND rm -rf "${DIST_DIR}"
+)
+
+
+# Needs to be last statement:
+INCLUDE(CPackSettings)
+
+# Finished:
+MESSAGE ("\n")
+MESSAGE (STATUS "Compile l2dbus using: make")
+MESSAGE (STATUS "Install l2dbus using: make install")
+MESSAGE (STATUS "Uninstall l2dbus using: make uninstall")
+MESSAGE (STATUS "Compile public API documentation using: make pub-docs")
+MESSAGE (STATUS "Compile private API  documentation using: make priv-docs")
+MESSAGE (STATUS "Create l2dbus source distribution using: make dist-l2dbus")
+MESSAGE (STATUS " (be sure to set the correct CMAKE_INSTALL_PREFIX before)\n")
+
+
+

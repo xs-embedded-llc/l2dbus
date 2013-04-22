@@ -216,11 +216,11 @@ l2dbus_getVersion
     lua_setfield(L, -2, "dbusMinor");
     lua_pushinteger(L, dbusMicroVer);
     lua_setfield(L, -2, "dbusRelease");
-    lua_pushinteger(L, atoi(L2DBUS_VERSION_MAJOR));
+    lua_pushinteger(L, L2DBUS_MAJOR_VERSION);
     lua_setfield(L, -2, "l2dbusMajor");
-    lua_pushinteger(L, atoi(L2DBUS_VERSION_MINOR));
+    lua_pushinteger(L, L2DBUS_MINOR_VERSION);
     lua_setfield(L, -2, "l2dbusMinor");
-    lua_pushinteger(L, atoi(L2DBUS_VERSION_RELEASE));
+    lua_pushinteger(L, L2DBUS_RELEASE_VERSION);
     lua_setfield(L, -2, "l2dbusRelease");
     lua_pushliteral(L, L2DBUS_VERSION_STRING);
     lua_setfield(L, -2, "l2dbusVerStr");

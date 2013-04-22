@@ -537,7 +537,7 @@ l2dbus_connectionCanSendType
     )
 {
     l2dbus_Connection* connUd;
-    int dbusType;
+    int dbusType = DBUS_TYPE_INVALID;
     const char* typeStr;
     size_t len;
 

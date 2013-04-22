@@ -301,7 +301,7 @@ l2dbus_newWatch
     l2dbus_Dispatcher* dispUd;
     cdbus_UInt32 events = 0U;
     int nArgs;
-    cdbus_Descriptor fd;
+    cdbus_Descriptor fd = -1;
     FILE* fp;
     int userIdx = L2DBUS_CALLBACK_NOREF_NEEDED;
 

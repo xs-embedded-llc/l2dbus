@@ -561,7 +561,7 @@ l2dbus_interfaceParseItems
     l2dbus_Bool isValid = L2DBUS_FALSE;
     char* reason = "unknown failure";
     size_t nArgs = 0;
-    size_t itemIdx;
+    size_t itemIdx = 0;
     size_t argIdx;
     int argTblRef;
     int stackTop;

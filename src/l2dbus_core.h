@@ -30,13 +30,30 @@
 struct lua_State;
 
 
-#define L2DBUS_VERSION_MAJOR    "1"
-#define L2DBUS_VERSION_MINOR    "0"
-#define L2DBUS_VERSION_RELEASE  "0"
-#define L2DBUS_VERSION_NUMBER   010000
-#define L2DBUS_VERSION_STRING   L2DBUS_VERSION_MAJOR "." \
-                                L2DBUS_VERSION_MINOR "." \
-                                L2DBUS_VERSION_RELEASE
+#define L2DBUS_XSTR(s)   L2DBUS_STR(s)
+#define L2DBUS_STR(s)    #s
+
+#ifndef L2DBUS_MAJOR_VERSION
+#define L2DBUS_MAJOR_VERSION 1
+#endif
+
+#ifndef L2DBUS_MINOR_VERSION
+#define L2DBUS_MINOR_VERSION 0
+#endif
+
+#ifndef L2DBUS_RELEASE_VERSION
+#define L2DBUS_RELEASE_VERSION 0
+#endif
+
+#define L2DBUS_VERSION_STRING \
+        L2DBUS_XSTR(L2DBUS_MAJOR_VERSION)"." \
+        L2DBUS_XSTR(L2DBUS_MINOR_VERSION)"." \
+        L2DBUS_XSTR(L2DBUS_RELEASE_VERSION)
+
+#define L2DBUS_VERSION_NUMBER   ((L2DBUS_MAJOR_VERSION << 16) | \
+                                (L2DBUS_MINOR_VERSION << 8) | \
+                                (L2DBUS_RELEASE_VERSION))
+
 #define L2DBUS_COPYRIGHT        "(c) Copyright 2013 XS-Embedded LLC"
 #define L2DBUS_AUTHOR           "Glenn Schmottlach"
 

@@ -1,10 +1,10 @@
 -- ldoc configuration file
 project = 'L2DBUS'
-description = 'L2DBUS Lua Libraries 1.0.0'
+description = 'L2DBUS Lua Libraries @L2DBUS_VERSION_STRING@'
 title = 'Lua-To-D-Bus (L2DBUS) Documentation'
 package = 'l2dbus'
-dir = 'api'
-topics = './manual'
+dir = '@L2DBUS_OUTPUT_DIR@/docs/api'
+topics = '@L2DBUS_ROOT_DIR@/docs/manual'
 format = 'markdown'
 new_type("constant", "Constants")
 new_type("messageType", "Message Types")
@@ -12,4 +12,4 @@ new_type("handlerReturn", "Message Handler Return Values")
 new_type("dbusError", "D-Bus Errors")
 new_type("namespace", "Namespaces", true)
 
-file = { '../lua/l2dbus', '../src' }
+file = { '@L2DBUS_ROOT_DIR@/lua/l2dbus', '@L2DBUS_ROOT_DIR@/src' }
