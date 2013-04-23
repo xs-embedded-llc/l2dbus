@@ -78,7 +78,7 @@ l2dbus_validateErrorName
 #if DBUS_VERSION < 0x010512
     return L2DBUS_TRUE;
 #else
-    return dbus_validate_eror_name(name, NULL);
+    return dbus_validate_error_name(name, NULL);
 #endif
 }
 

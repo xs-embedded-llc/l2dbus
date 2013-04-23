@@ -118,19 +118,19 @@ FIND_PACKAGE(Doxygen)
 IF(DOXYGEN_FOUND)
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/docs/doxy.cfg.in ${CMAKE_CURRENT_BINARY_DIR}/docs/doxy.cfg @ONLY)
   ADD_CUSTOM_TARGET(priv-docs ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/docs/doxy.cfg
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     COMMENT "Generating private documentation (Doxygen)...")
 ENDIF(DOXYGEN_FOUND)
 
 IF(DEFINED LUA_EXECUTABLE)
   find_program(LDOC_EXECUTABLE ldoc.lua) 
   IF( "${LDOC_EXECUTABLE}" STREQUAL "LDOC_EXECUTABLE-NOTFOUND" )
-    message(STATUS "ldoc not found - will not be able to generate public docs.")  
+    message(STATUS "ldoc not found - will not be able to generate public API docs.")  
   ELSE( "${LDOC_EXECUTABLE}" STREQUAL "LDOC_EXECUTABLE-NOTFOUND" )
     message(STATUS "Found LDoc: ${LDOC_EXECUTABLE}") 
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/docs/config.ld.in ${CMAKE_CURRENT_BINARY_DIR}/docs/config.ld @ONLY)
     ADD_CUSTOM_TARGET(pub-docs ${LUA_EXECUTABLE} ${LDOC_EXECUTABLE} -c ${CMAKE_CURRENT_BINARY_DIR}/docs/config.ld .
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMENT "Generating public documentation (LDoc)...")
   ENDIF( "${LDOC_EXECUTABLE}" STREQUAL "LDOC_EXECUTABLE-NOTFOUND")
 ENDIF(DEFINED LUA_EXECUTABLE)
@@ -145,10 +145,24 @@ ADD_CUSTOM_TARGET("dist-${PROJECT_NAME}"
     COMMAND tar -czf "${CMAKE_BINARY_DIR}/${L2DBUS_PKG_NAME}"
             -C "${DIST_DIR}" --exclude-vcs --exclude="arm*" --exclude="x86*"
             --exclude=".cproject" --exclude=".project" --exclude=".settings" "${PROJECT_NAME}"
-    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     # Cleanup so that there is no copy in the source dir
     COMMAND rm -rf "${DIST_DIR}"
 )
+
+
+# Add a custom target to install/uninstall public documentation
+ADD_CUSTOM_TARGET(install-docs
+    install -d "${CMAKE_INSTALL_PREFIX}/share/doc/${PROJECT_NAME}"
+    COMMAND cp -rf "${CMAKE_CURRENT_BINARY_DIR}/docs/api/*" "${CMAKE_INSTALL_PREFIX}/share/doc/${PROJECT_NAME}"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+)
+ADD_CUSTOM_TARGET(uninstall-docs
+    rm -rf "${CMAKE_INSTALL_PREFIX}/share/doc/${PROJECT_NAME}"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+)
+ADD_DEPENDENCIES(install-docs pub-docs)
+ADD_DEPENDENCIES(uninstall uninstall-docs)
 
 
 # Needs to be last statement:
@@ -156,12 +170,14 @@ INCLUDE(CPackSettings)
 
 # Finished:
 MESSAGE ("\n")
-MESSAGE (STATUS "Compile l2dbus using: make")
-MESSAGE (STATUS "Install l2dbus using: make install")
-MESSAGE (STATUS "Uninstall l2dbus using: make uninstall")
+MESSAGE (STATUS "Compile ${PROJECT_NAME} using: make")
+MESSAGE (STATUS "Install ${PROJECT_NAME} using: make install")
+MESSAGE (STATUS "Uninstall ${PROJECT_NAME} using: make uninstall")
 MESSAGE (STATUS "Compile public API documentation using: make pub-docs")
 MESSAGE (STATUS "Compile private API  documentation using: make priv-docs")
-MESSAGE (STATUS "Create l2dbus source distribution using: make dist-l2dbus")
+MESSAGE (STATUS "Install public API  documentation using: make install-docs")
+MESSAGE (STATUS "Uninstall public API  documentation using: make uninstall-docs")
+MESSAGE (STATUS "Create ${PROJECT_NAME} source distribution using: make dist-${PROJECT_NAME}")
 MESSAGE (STATUS " (be sure to set the correct CMAKE_INSTALL_PREFIX before)\n")
 
 
