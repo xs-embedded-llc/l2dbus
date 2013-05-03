@@ -503,7 +503,7 @@ Possible values for the *access* field include *r* (read), *w* (write), *rw* or
  @table IntrospectProp
  @field name (string) [Req] The name of the D-Bus property.
  @field sig (string) [Req] The D-Bus signature of the property.
- @field access (string) [Req] The access permissions for the property.
+ @field access (string) [Req] The access permissions for the property (**r**, **w**, or **rw**).
  @see registerProperties
  */
 
@@ -520,7 +520,7 @@ Possible values for the *access* field include *r* (read), *w* (write), *rw* or
  @table IntrospectArg
  @field name (string) [Opt] The name of the argument.
  @field sig (string) [Req] The D-Bus signature of the argument.
- @field dir (string) [Opt] The *direction* of the argument.
+ @field dir (string) [Opt] The *direction* of the argument (**in** or **out**).
  @see registerMethods
  @see registerSignals
  */

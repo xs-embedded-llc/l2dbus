@@ -174,6 +174,7 @@ end
 -- occurs.
 -- 
 -- @within MsgBusController
+-- @tparam userdata ctrl Message Bus controller instance.
 -- @tparam bool doIntrospect If set to **true** the controller will make an
 -- introspection call on the Message Bus service. If set to **false**
 -- (the default) the controller will use cached introspection data
@@ -199,6 +200,7 @@ end
 -- Once unbound, methods on the Message Bus proxy should no longer be called.
 -- 
 -- @within MsgBusController
+-- @tparam userdata ctrl Message Bus controller instance.
 -- @function unbind
 function MsgBusController:unbind()
 	self.ctrl:unbind()
@@ -210,7 +212,8 @@ end
 -- The returned Lua table is a representation of the D-Bus XML data in a
 -- format that is understood by the proxy. Internally the proxy does **not**
 -- maintain the original D-Bus XML description.
--- 
+--
+-- @tparam userdata ctrl Message Bus controller instance. 
 -- @treturn table A Lua table containing the parsed introspection data for
 -- the Message Bus.
 -- 
@@ -229,6 +232,7 @@ end
 -- can be used to directly call methods or interrogate properties on the
 -- remote service.
 -- 
+-- @tparam userdata ctrl Message Bus controller instance. 
 -- @treturn table Returns the Message Bus proxy instance.
 -- 
 -- @within MsgBusController
@@ -250,7 +254,8 @@ end
 -- The timeout value may be set to two well-know *special*
 -- values: @{l2dbus.Dbus.TIMEOUT_USE_DEFAULT|TIMEOUT_USE_DEFAULT} or
 -- @{l2dbus.Dbus.TIMEOUT_INFINITE|TIMEOUT_INFINITE}
--- 
+--
+-- @tparam userdata ctrl Message Bus controller instance.
 -- @tparam number timeout The time in milliseconds to set as the timeout
 -- for future calls to the Message Bus. This value applies globally to all
 -- method/property calls. The timeout value must be non-negative.
@@ -266,7 +271,8 @@ end
 -- 
 -- Returns the timeout value used by the proxy when making method calls or
 -- manipulating properties.
--- 
+--
+-- @tparam userdata ctrl Message Bus controller instance. 
 -- @treturn number The timeout (in milliseconds) used by the proxy. It
 -- may be one of the *special* values: @{l2dbus.Dbus.TIMEOUT_USE_DEFAULT|TIMEOUT_USE_DEFAULT}
 -- or @{l2dbus.Dbus.TIMEOUT_INFINITE|TIMEOUT_INFINITE}.
@@ -278,6 +284,47 @@ function MsgBusController:getTimeout()
 end
 
 
+--- Sets whether Message Bus proxy method calls expect/need a reply.
+-- 
+-- This method determines whether proxy calls to the Message Bus need a
+-- response. Specifically, if set to **true**, out-going messages are marked to
+-- indicate that a reply is not needed so that the Message Bus can decide
+-- whether or not to reply to the message. The Message Bus can always reply
+-- regardless of the flag but it means the near-end will ignore the reply. The
+-- default setting for the controller is **false** which means replies are
+-- expected from the far-end. If set to **true** out-going messages are marked
+-- to indicate a reply is not needed. This setting applies to all subsequent
+-- proxy *method* calls made *after* the value is changed. The behavior of
+-- individual proxy method calls can only be controlled by calling this method
+-- *before* making the method call on the Message Bus proxy. 
+-- 
+-- @within MsgBusController
+-- @tparam table ctrl The Message Bus controller instance.
+-- @tparam bool mode Set to **true** if no reply is needed/expected,
+-- **false** to indicate a reply is expected.
+-- @function setProxyNoReplyNeeded
+function MsgBusController:setProxyNoReplyNeeded(noReply)
+	self.ctrl:setProxyNoReplyNeeded(noReply)
+end
+
+
+--- Indicates whether Message Bus proxy calls need/expect a reply.
+-- 
+-- This method returns an indication of whether Message Bus proxy method calls
+-- expect a reply. If this returns **true** then no reply is needed and proxy
+-- method calls will **not** wait to hear the reply to a request. If **false**
+-- is returned (the default behavior) then it is expected that proxy method
+-- calls will return a reply message.
+-- 
+-- @within MsgBusController
+-- @tparam table ctrl The Message Bus controller instance.
+-- @treturn bool Returns **true** if no reply is expected from the Message Bus,
+-- **false** (the default) if every proxy request expects a reply.
+-- @function getProxyNoReplyNeeded
+function MsgBusController:getProxyNoReplyNeeded()
+	return self.ctrl:getProxyNoReplyNeeded()
+end
+
 --- Sets whether proxy calls to the Message Bus are blocking or unblocking.
 -- 
 -- This option determines whether calls made through the proxy are blocking
@@ -288,7 +335,7 @@ end
 -- be called when the reply or error is returned. Once set this option applies
 -- globally to all methods/properties of the Message Bus proxy.
 -- 
--- 
+-- @tparam userdata ctrl Message Bus controller instance. 
 -- @tparam bool mode Set to **true** if proxy calls should be blocking and
 -- **false** for non-blocking (asynchronous) calls. 
 -- @within MsgBusController
@@ -302,7 +349,8 @@ end
 -- 
 -- Returns the current option for call to methods/properties of the
 -- Message Bus service.
--- 
+--
+-- @tparam userdata ctrl Message Bus controller instance. 
 -- @treturn bool Returns **true** for blocking mode and **false** for
 -- non-blocking mode. 
 -- @within MsgBusController
@@ -319,7 +367,8 @@ end
 -- handler function will be called as a result. The signature of the handler
 -- function should match the signature specified by the D-Bus XML signal
 -- description for the Message Bus. 
--- 
+--
+-- @tparam userdata ctrl Message Bus controller instance. 
 -- @tparam string sigName The name of the Message Bus signal to receive.
 -- @tparam func handler The signal handler function which is called with the
 -- same arguments as specified for the signal in the D-Bus XML description
@@ -338,7 +387,8 @@ end
 -- 
 -- This method disconnects the signal handler with the specified handle
 -- returned by @{connectSignal}. 
--- 
+--
+-- @tparam userdata ctrl Message Bus controller instance. 
 -- @tparam lightuserdata hnd The opaque handle originally returned by the call
 -- to @{connectSignal}. 
 -- @treturn bool Returns **true** if the handler was disconnected successfully
@@ -355,6 +405,7 @@ end
 -- This method makes a best effort to disconnects all the signal handlers for
 -- all Message Bus signals. 
 --
+-- @tparam userdata ctrl Message Bus controller instance.
 -- @within MsgBusController
 -- @function disconnectAllSignals
 function MsgBusController:disconnectAllSignals()

@@ -94,7 +94,9 @@ function M.new(conn, busName, objPath)
 				signalHnds = {},
 				introspectData = nil,
 				blockingMode = false,
-				timeout = l2dbus.Dbus.TIMEOUT_USE_DEFAULT
+				timeout = l2dbus.Dbus.TIMEOUT_USE_DEFAULT,
+				proxyCache = {},
+				proxyNoReplyNeeded = false
 				}
 					
 	return setmetatable(proxyController, ProxyController)
@@ -139,6 +141,9 @@ function ProxyController:bind()
 			local msg = reply:stealReply()
 			self.introspectData = self:parseXml(msg:getArgs())
 		end
+		-- Clear the proxy cache so it will be re-generated when
+		-- the client requests it again
+		self.proxyCache = {}
 	end
 	return true
 end
@@ -269,7 +274,11 @@ function ProxyController:bindNoIntrospect(introspectData)
 		self.introspectData = introspectData
 	else
 		error("D-Bus XML string or Lua introspection table expected")
-	end	
+	end
+	-- Clear the proxy reference so it will be re-generated the next
+	-- time the client asks for it
+	self.proxyCache = {}
+		
 	return true
 end
 
@@ -286,6 +295,7 @@ end
 -- @function unbind
 function ProxyController:unbind()
 	self.introspectionData = nil
+	self.proxyCache = {}
 end
 
 
@@ -345,7 +355,7 @@ end
 -- 		proxyCtrl:setBlockingMode(false)
 -- 		-- Get the proxy for the interface we're interested in
 -- 		proxy = proxyCtrl:getProxy("org.freedesktop.NetworkManager")
--- 		-- If everyone goes smoothly (status == true) the 'pending' is
+-- 		-- If everything goes smoothly (status == true) the 'pending' is
 -- 		-- a PendingCall object.
 -- 		status, pending = proxy.m.GetDevices()
 -- 		if status then
@@ -383,11 +393,17 @@ end
 -- <ul>
 -- <li>**status** (bool) **True** if the call completed without error, **false**
 -- otherwise.</li>
+-- </p>
 -- <li>**arg1..argN|PendingCall|errName** (any|userdata|string) If **status**
--- is **true** and the ProxyController is configured to be blocking, the remote
--- service return values (arg1..argN) are returned. A non-blocking call will
--- result in a @{l2dbus.PendingCall|PendingCall} being returned. If the
--- **status** is **false** then generally a D-Bus error name is returned.</li>
+-- is **true** and proxy calls are configured to expect a reply, if the
+-- ProxyController is configured to be blocking, the remote service return
+-- values (arg1..argN) are returned. A non-blocking call expecting a reply will
+-- result in a @{l2dbus.PendingCall|PendingCall} being returned. If no reply
+-- is expected then this argument will be the D-Bus serial number of the
+-- request message.
+-- If the **status** is **false** then generally a D-Bus error name is
+-- returned.</li>
+-- </p>
 -- <li>**errMsg** (string|nil) If **status** were **false** then the third
 -- parameter would be an optional error message or **nil** if one
 -- is not available.</li>
@@ -412,12 +428,17 @@ function ProxyController:getProxy(interface)
 	verify(validate.isValidInterface(interface), "invalid D-Bus interface")
 	verify( self.introspectData, "controller is not bound to service object")
 
-	local metadata = self.introspectData[interface]
-	if not metadata then
-		error("service object does not implement " .. interface)
+	if self.proxyCache[interface] == nil then
+		local metadata = self.introspectData[interface]
+		if not metadata then
+			error("service object does not implement " .. interface)
+		end
+		
+		self.proxyCache[interface] = { m = newMethodProxy(self, metadata),
+										p = newPropertyProxy(self, metadata) }
 	end
 	
-	return { m = newMethodProxy(self, metadata), p = newPropertyProxy(self, metadata) }	
+	return self.proxyCache[interface]	
 end
 
 
@@ -492,6 +513,48 @@ function ProxyController:getBlockingMode()
 	return self.blockingMode
 end
 
+
+--- Sets whether proxy method calls expect/need a reply from the far-end.
+-- 
+-- This method determines whether proxy calls to the far-end need a response.
+-- Specifically, if set to **true**, out-going messages are marked to indicate
+-- that a reply is not needed so that the far-end can decide whether or not to
+-- reply to the message. The far-end can always reply regardless of the flag
+-- but it means the near-end will ignore the reply. The default setting for
+-- the controller is **false** which means replies are expected from the
+-- far-end. If set to **true** out-going messages are marked to indicate a
+-- reply is not needed by using the call to @{sendMessageNoReply} to transmit
+-- the request message rather than @{sendMessage}. This setting applies to
+-- all subsequent proxy *method* calls made *after* the value is changed. The
+-- behavior of individual proxy method calls can only be controlled by calling
+-- this method *before* making the method call on the proxy. 
+-- 
+-- @within ProxyController
+-- @tparam table ctrl The ProxyController instance.
+-- @tparam bool mode Set to **true** if no reply is needed/expected,
+-- **false** to indicate a reply is expected.
+-- @function setProxyNoReplyNeeded
+function ProxyController:setProxyNoReplyNeeded(noReply)
+	self.proxyNoReplyNeeded = noReply and true or false
+end
+
+
+--- Indicates whether proxy calls need/expect a reply from the far-end.
+-- 
+-- This method returns an indication of whether proxy method calls expect a
+-- reply from the far-end. If this returns **true** then no reply is needed
+-- and proxy method calls will **not** wait to hear the reply to a request.
+-- If **false** is returned (the default behavior) then it is expected that
+-- proxy method calls will return a reply message.
+-- 
+-- @within ProxyController
+-- @tparam table ctrl The ProxyController instance.
+-- @treturn bool Returns **true** if no reply is expected from the far-end,
+-- **false** (the default) if every proxy request expects a reply.
+-- @function getProxyNoReplyNeeded
+function ProxyController:getProxyNoReplyNeeded()
+	return self.proxyNoReplyNeeded
+end
 
 --- Connects a handler to an interface's signal.
 -- 
@@ -584,7 +647,7 @@ end
 -- will wait on a reply (or timeout) and if everything is successful a
 -- D-Bus message of type @{l2dbus.Message.METHOD_RETURN|METHOD_RETURN} is
 -- returned. *Non-blocking* calls (on success) will return a
--- @{l2dbus.PendingCall|PendingCall} object that the caller can use to
+-- @{l2dbus.PendingCall|PendingCsendMessageNoReplyall} object that the caller can use to
 -- @{waitForReply|wait} on or be notified of the reply. Proxy calls,
 -- internally use this method to execute calls to remote services.
 -- 
@@ -811,22 +874,36 @@ newMethodProxy = function (proxyCtrl, metadata)
 				end
 			end
 			if #callingArgs ~= #inArgs then
-				error(string.format("method argument mis-match : provided=%d needed=%d",
-						#callingArgs, #inArgs))
+				error(string.format("method argument mis-match for %s: provided=%d needed=%d",
+						method, #callingArgs, #inArgs))
 			else
 				for idx=1,#inArgs do
 					msg:addArgsBySignature(inArgs[idx].sig, callingArgs[idx])
 				end
 			end
-			local reply, errName, errMsg = ctrl:sendMessage(msg)
-			if not reply then
-				-- We failed to send the message or received an error in response
-				return false, errName, errMsg
-			elseif "l2dbus.message" == reply.__type then
-				return true, reply:getArgs()
-			-- Else return the pending call
+			
+			-- Determine if the proxy method call needs to wait around
+			-- for a response.
+			if ctrl:getProxyNoReplyNeeded() then
+				local status, serNum = ctrl:sendMessageNoReply(msg)
+				if status then
+					return true, serNum
+				else
+					return false, l2dbus.Dbus.ERROR_FAILED,
+							string.format("Unable to call method %s", method)
+				end
 			else
-				return true, reply	-- PendingCall object
+				local reply, errName, errMsg = ctrl:sendMessage(msg)
+				if not reply then
+					-- We failed to send the message or received an error
+					-- in response
+					return false, errName, errMsg
+				elseif "l2dbus.message" == reply.__type then
+					return true, reply:getArgs()
+				-- Else return the pending call
+				else
+					return true, reply	-- PendingCall object
+				end
 			end
 		end
 		

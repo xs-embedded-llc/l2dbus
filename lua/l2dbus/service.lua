@@ -354,6 +354,64 @@ function M.convertXmlToIntfMeta(intfName, xmlStr)
     return (#interfaces > 0) and interfaces[1] or nil
 end
 
+--- The Lua Table Representation of a D-Bus Interface Description.
+-- </p>
+-- The metadata describing a D-Bus interface can be specified using
+-- one of two different formats. This first form is the direct D-Bus XML
+-- introspection <a href="http://dbus.freedesktop.org/doc/dbus-specification.html#introspection-format">description</a>.
+-- The other format describes the D-Bus interface using a Lua table.
+-- Internally, the XML format is always transformed into the more efficiently
+-- manipulated Lua table-based representation described here.
+-- </p>
+-- An example Lua table representation of a D-Bus interface is shown below:
+-- 
+-- 		{
+-- 			interface = "org.example.Interface",
+--			properties = {					-- Array of properties
+--				{							-- IntrospectProp[1] (Prop1)
+--					name = "Prop1",
+--					sig = "s",
+--					access = "rw"
+--				},
+--				...							-- IntrospectProp[N] (PropN)
+--			},
+--			signals = {						-- Array of signals
+--				{							-- IntrospectItem[1] (Signal1)
+--					name = "Signal1",
+--					args = {				-- Signal1 arguments
+--						{					-- IntrospectArg[1]
+--							sig = "s",
+--							name = "arg1",
+--						},
+--						...					-- IntrospectArg[N]
+--					}
+--				},
+--				...							-- IntrospectItem[N] (SignalN)
+--			},
+--			methods = {						-- Array of methods
+--				{							-- IntrospectItem[1] (Method1)
+--					name = "Method1",
+--					args = {				-- Method1 arguments
+--						{					-- IntrospectArg[1]
+--							sig = "s",
+--							name = "arg1",
+--							dir = "in"
+--						},
+--						...					-- IntrospectArg[N]
+--					}
+--				},
+--				...							-- IntrospectItem[N] (MethodN)
+--			}
+--		}
+--
+-- The key fields for the Lua table include:
+-- </p>		
+-- @field interface The valid D-Bus interface name
+-- @field methods An array of methods of type @{l2dbus.Interface.IntrospectItem|IntrospectItem}
+-- @field signals An array of signals of type @{l2dbus.Interface.IntrospectItem|IntrospectItem}
+-- @field properties An array of properties of type @{l2dbus.Interface.IntrospectProp|IntrospectProp}
+-- @table DbusInterfaceMetadata
+
 
 --- Service
 -- @type Service
@@ -413,9 +471,16 @@ end
 -- 
 -- @within Service
 -- @tparam userdata svc The Service instance.
--- @tparam userdata conn The D-Bus connection.
--- @treturn bool Returns **true** if the service is detached and **false**
--- otherwise.
+-- @tparam string name The D-Bus name of the interface being added to the
+-- service. It must be a valid D-Bus interface name.
+-- @tparam string|table metadata The meta-data description of the D-Bus
+-- interface. This can either be the D-Bus XML introspection description or
+-- the equivalent Lua table @{DbusInterfaceMetadata|representation}. If the
+-- D-Bus XML description lists multiple interfaces then **only** the interface
+-- with the specified name will be decoded into an equivalent Lua table
+-- representation.
+-- @treturn bool Returns **true** if the interface is added successfully and
+-- **false** otherwise.
 -- @function addInterface
 function Service:addInterface(name, metadata)
 	verify(validate.isValidInterface(name), "invalid D-Bus interface name")
@@ -589,7 +654,7 @@ function Service:unregisterMethodHandler(intfName, methodName)
 	verify(validate.isValidInterface(intfName), "invalid D-Bus interface name")
 	verify(validate.isValidMember(methodName), "invalid D-Bus method name")
 	
-	if elf.interfaces[intfName] == nil then
+	if self.interfaces[intfName] == nil then
 		error("interface '" .. intfName .. "' is unknown to this service object")
 	end
 	
