@@ -244,3 +244,48 @@ l2dbus_getGlobalField
     lua_getfield(L, -1, name);
     lua_remove(L, -2);
 }
+
+
+l2dbus_Bool
+l2dbus_isString
+    (
+    lua_State*  L,
+    int         nArg
+    )
+{
+    /* Returns 'true' only if the argument is a string and not necessarily
+     * convertable to a string.
+     */
+    return lua_type(L, nArg) == LUA_TSTRING;
+}
+
+
+const char*
+l2dbus_checkString
+    (
+    lua_State*  L,
+    int         nArg
+    )
+{
+    lua_Debug dbgRec;
+    const char* funcName = "unknown";
+
+    if ( !l2dbus_isString(L, nArg) )
+    {
+        if ( 0 < lua_getstack(L, 0, &dbgRec) )
+        {
+            if ( 0 < lua_getinfo(L, "n", &dbgRec) )
+            {
+                funcName = dbgRec.name;
+            }
+        }
+
+        luaL_error(L, "bad argument #%d to '%s' (string expected, got %s)",
+                    lua_absindex(L, nArg),
+                    funcName,
+                    lua_typename(L, lua_type(L, nArg)));
+    }
+
+    return lua_tostring(L, nArg);
+}
+

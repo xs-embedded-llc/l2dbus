@@ -165,16 +165,18 @@ l2dbus_newMessage
  object receives the message if more than one interface defines the
  same member name.
 
- @tparam string|table member The member name to call **or** a
- @{MethodCallInitializer} table containing all the method call parameters. If
- a table is specified then the parameters following the table are ignored.
- @tparam ?string|nil interface The interface to invoke the method on. Ignored
- if the first parameter is a table.
- @tparam string path The D-Bus object path the message should be sent to. Ignored
- if the first parameter is a table.
- @tparam ?string|nil destination The bus name that the message should be sent to.
+ @tparam ?string|table destination The bus name that the message should be
+ sent to **or** a @{MethodCallInitializer} table containing all the method
+ call parameters. If a table is specified then the parameters following the
+ table are ignored. The destination is a optional parameter and may be set
+ to **nil**.
+ @tparam string path The D-Bus object path the message should be sent to.
  Ignored if the first parameter is a table.
- @treturn userdata Message userdata object
+ @tparam ?string|nil interface The interface to invoke the method on. Ignored
+ if the first parameter is a table. The interface is optional and may be set
+ to **nil**.
+ @tparam string member The member name to call.
+ @treturn userdata Message userdata object for a message call.
  */
 static int
 l2dbus_newMessageMethodCall
@@ -197,13 +199,13 @@ l2dbus_newMessageMethodCall
         luaL_checkstack(L, 4, "cannot grow Lua stack to parse arguments");
 
         lua_getfield(L, 1, "destination");
-        if ( lua_isstring(L, -1) )
+        if ( l2dbus_isString(L, -1) )
         {
             destination = lua_tostring(L, -1);
         }
 
         lua_getfield(L, 1, "path");
-        if ( !lua_isstring(L, -1) )
+        if ( !l2dbus_isString(L, -1) )
         {
             luaL_error(L, "expecting 'path' field with string value");
         }
@@ -213,13 +215,13 @@ l2dbus_newMessageMethodCall
         }
 
         lua_getfield(L, 1, "interface");
-        if ( lua_isstring(L, -1) )
+        if ( l2dbus_isString(L, -1) )
         {
             interface = lua_tostring(L, -1);
         }
 
         lua_getfield(L, 1, "method");
-        if ( !lua_isstring(L, -1) )
+        if ( !l2dbus_isString(L, -1) )
         {
             luaL_error(L, "expecting 'method' field with string value");
         }
@@ -231,17 +233,19 @@ l2dbus_newMessageMethodCall
     else
     {
         luaL_checkany(L, lua_absindex(L,-4));
-        path = luaL_checkstring(L, lua_absindex(L,-3));
+        path = l2dbus_checkString(L, -3);
         luaL_checkany(L,lua_absindex(L,-2));
-        method = luaL_checkstring(L, lua_absindex(L,-1));
+        method = l2dbus_checkString(L, -1);
 
-        if ( lua_isstring(L, -4) )
+        if ( !lua_isnil(L, -4) )
         {
+            luaL_checktype(L, lua_absindex(L, -4), LUA_TSTRING);
             destination = lua_tostring(L, -4);
         }
 
-        if ( lua_isstring(L, -2) )
+        if ( !lua_isnil(L, -2) )
         {
+            luaL_checktype(L, lua_absindex(L, -2), LUA_TSTRING);
             interface = lua_tostring(L, -2);
         }
     }
@@ -346,13 +350,13 @@ l2dbus_newMessageMethodReturn
  Constructs a D-Bus signal message either using an initializer @{SignalInitializer|table}
  or parameter list.
 
- @tparam string|table name The signal name **or** a
+ @tparam string path The path to the object emitting the signal**or** a
  @{SignalInitializer} table containing all the signal parameters. If
  a table is specified then the parameters following the table are ignored.
- @tparam ?string|nil interface The interface the signal is emitted from. Ignored
- if the first parameter is a table.
- @tparam string path The path to the object emitting the signal. Ignored
- if the first parameter is a table.
+ @tparam ?string|nil interface The interface the signal is emitted from.
+ Ignored if the first parameter is a table.
+ @tparam ?string|nil name The signal name. Ignored if the first parameter is a
+ table.
  @treturn userdata Message userdata object for a signal.
  */
 static int
@@ -713,7 +717,7 @@ l2dbus_messageGetAutoStart
 
 
 /**
- @function setPath
+ @function setObjectPath
  @within l2dbus.Message
 
  Sets the object path the message is being sent to (for a
@@ -814,14 +818,13 @@ l2dbus_messageGetPath
  @function hasObjectPath
  @within l2dbus.Message
 
- Gets the object path this message is being sent to (for a
- @{l2dbus.Dbus.MESSAGE_TYPE_METHOD_CALL|MESSAGE_TYPE_METHOD_CALL}) or the
- path the signal is being emitted from (for @{l2dbus.Dbus.MESSAGE_TYPE_SIGNAL|MESSAGE_TYPE_SIGNAL}).
+ Checks to see if the message has the specified object path.
 
- The path must be a valid D-Bus object path.
+ The provided path must be a valid D-Bus object path.
 
- @tparam userdata msg The D-Bus message to get the path.
- @treturn string|nil The path or **nil** if it's not set.
+ @tparam userdata msg The D-Bus message to check the object path.
+ @tparam string path The object path to compare.
+ @treturn bool Returns **true** if the paths match, **false** otherwise.
  */
 static int
 l2dbus_messageHasPath
@@ -1144,7 +1147,7 @@ l2dbus_messageGetMember
  Checks to see if the message has a matching interface member.
 
  @tparam userdata msg The D-Bus message to compare with the interface member.
- @tparam string interface The member name to compare.
+ @tparam string member The member name to compare.
  @treturn bool Returns **true** if the member field in the message
  header matches, **false** otherwise.
  */

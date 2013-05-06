@@ -282,8 +282,8 @@ l2dbus_watchHandler
  The handler does not have to return anything but should exit quickly to
  minimize interruptions to the @{l2dbus.Dispatcher|Dispatcher} main loop.
 
- @tparam userdata The @{l2dbus.Dispatcher|dispatcher} with which to associate
- the Watch.
+ @tparam userdata dispatcher The @{l2dbus.Dispatcher|dispatcher} with which
+ to associate the Watch.
  @tparam ?number|userdata fd The file descriptor to watch. This can be either
  a Lua file (e.g. userdata wrapping the actual file descriptor) or the
  raw integral file descriptor received from the operating system that is

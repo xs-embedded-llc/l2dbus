@@ -48,5 +48,7 @@ l2dbus_Bool l2dbus_isValidIndex(lua_State* L, int idx);
 l2dbus_TypeId l2dbus_getMetaTypeId(lua_State* L, int idx);
 const char* l2dbus_getTypeName(lua_State* L, int idx);
 void l2dbus_getGlobalField(lua_State* L, const char* name);
+l2dbus_Bool l2dbus_isString(lua_State* L, int nArg);
+const char* l2dbus_checkString(lua_State* L, int nArg);
 
 #endif /* Guard for L2DBUS_UTIL_H_ */

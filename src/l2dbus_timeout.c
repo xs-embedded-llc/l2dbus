@@ -146,7 +146,7 @@ l2dbus_timeoutHandler
  The handler does not have to return anything but should exit quickly to
  minimize interruption to the @{l2dbus.Dispatcher|Dispatcher} main loop.
 
- @tparam userdata The @{l2dbus.Dispatcher|dispatcher} with which to associate
+ @tparam userdata dispatcher The @{l2dbus.Dispatcher|dispatcher} with which to associate
  the Timeout.
  @tparam number interval The amount of time (in millisecond) before the timeout
  will expire.
