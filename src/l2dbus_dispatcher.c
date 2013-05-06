@@ -41,6 +41,7 @@
 #include "l2dbus_trace.h"
 #include "l2dbus_debug.h"
 #include "l2dbus_types.h"
+#include "l2dbus_callback.h"
 
 /**
  The L2DBUS Event Dispatcher Object
@@ -214,7 +215,8 @@ l2dbus_dispatcherRun
             break;
     }
 
-    rc = cdbus_dispatcherRun(ud->disp, (cdbus_RunOption)runOpt);
+    rc = cdbus_dispatcherRunWithData(ud->disp, (cdbus_RunOption)runOpt,
+                                    l2dbus_callbackGetThread());
     if ( CDBUS_FAILED(rc) )
     {
         lua_pushboolean(L, L2DBUS_FALSE);

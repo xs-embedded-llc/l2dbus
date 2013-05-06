@@ -54,7 +54,7 @@ local ev = require("ev")
 
 local M = { }
 --- Module version
-local VERSION = "1.0.1"
+local VERSION = "1.1.0"
 local mainLoop = ev.Loop.new()
 local dispatch = l2dbus.Dispatcher.new(mainLoop)
 
@@ -600,7 +600,7 @@ local function newBus(b)
     -- @return @{ErrorInfo} which is a table: {errCode, errMsg}
 	local hasName = function(name)
 		local result = nil
-		local errInfo = {errCode = dispatch.ERR_LUA_ERROR,
+		local errInfo = {errCode = M.ERR_LUA_ERROR,
 						errMsg = "Invalid well-known D-Bus bus name"}
         if M.isValidWellKnownBusName(name) then
         	local msgBus = self.msgBusCtrl:getProxy()
@@ -629,7 +629,7 @@ local function newBus(b)
     -- @return @{ErrorInfo} which is a table: {errCode, errMsg}
 	local requestName = function(name, busFlags)
 		local result = nil
-		local errInfo = {errCode = dispatch.ERR_LUA_ERROR,
+		local errInfo = {errCode = M.ERR_LUA_ERROR,
 						errMsg="Invalid well-known D-Bus bus name"}
 		
 		if busFlags == nil then
@@ -648,7 +648,7 @@ local function newBus(b)
 					result = ""
 					errInfo = {errCode = M.ERR_OK, errMsg = ""}
 				else
-					errInfo = {errCode = dispatch.ERR_DBUS,
+					errInfo = {errCode = M.ERR_DBUS,
 								errMsg = string.format("Failed to acquire D-Bus name (code=%d)", value)}
 				end
 			end
@@ -696,7 +696,7 @@ local function newBus(b)
     -- @treturn nil (on failure) or a new proxy object
     -- @return @{ErrorInfo} which is a table: {errCode, errMsg}
 	local newProxy = function(busName, objPath)
-		local errInfo = {errCode = dispatch.ERR_LUA_ERROR, errMsg=""}
+		local errInfo = {errCode = M.ERR_LUA_ERROR, errMsg=""}
 		local result = newProxy(self.bus, busName, objPath)
 		if not result then
 			errInfo.errMsg = "Failed to create proxy"
@@ -922,7 +922,7 @@ function M.loop(init, ...)
 	starter:start(mainLoop)
 
 	-- Loop forever processing events
-	mainLoop:loop()
+	dispatch:run(l2dbus.Dispatcher.DISPATCH_WAIT)
 end
 
 
