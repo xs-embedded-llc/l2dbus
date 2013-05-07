@@ -874,7 +874,7 @@ function ReplyContext:error(errName, errMsg)
 	verify(validate.isValidInterface(errName), "invalid D-Bus error name")
 	local errorMsg = l2dbus.Message.newError(self.msg, errName, errMsg)
 	-- Return true/serial # or false/nil
-	return self.conn:send(replyMsg)
+	return self.conn:send(errorMsg)
 end
 
 

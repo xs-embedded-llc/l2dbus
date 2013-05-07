@@ -877,10 +877,22 @@ function M.closeBus(bus)
 end
 
 
+--- Gets the dispatch Lua file descriptors
+-- @return readFd, writeFd
+function M.getDispatchFds()
+    return -1, -1
+end
+
 --- Gets the underlying libev loop used by the module.
 -- @return None
 function M.getLoop()
     return mainLoop
+end
+
+--- Start the dispatcher
+-- @return None
+function M.startDispatch()
+    -- Do nothing
 end
 
 
@@ -923,6 +935,16 @@ function M.loop(init, ...)
 
 	-- Loop forever processing events
 	dispatch:run(l2dbus.Dispatcher.DISPATCH_WAIT)
+end
+
+--- Iterate the D-Bus event handler once
+-- @return None
+function M.loopIterate(runOpt)
+	if nil == runOpt then
+    	dispatch:run(l2dbus.Dispatcher.DISPATCH_NO_WAIT)
+    else
+    	dispatch:run(runOpt)
+    end
 end
 
 
