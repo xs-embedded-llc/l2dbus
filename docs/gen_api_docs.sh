@@ -1,1 +1,0 @@
-ldoc -c config.ld .
