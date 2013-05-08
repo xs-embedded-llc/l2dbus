@@ -393,7 +393,7 @@ local function newAdaptor(objPath, b)
     -- @return @{ErrorInfo} which is a table: {errCode, errMsg}
 	local notify = function(sigName, param)
 		if self.adaptor:emit(self.bus, XS_EMBEDDED_SERVICE_PROVIDER_INF,
-			"Notify", param) then
+			"Notify", sigName, param) then
 			return "", {errCode = M.ERR_OK, errMsg = ""}
 		else
 			return nil, {errCode = M.ERR_DBUS, errMsg = "Failed to end notification"}

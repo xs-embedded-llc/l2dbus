@@ -199,15 +199,23 @@ l2dbus_newMessageMethodCall
         luaL_checkstack(L, 4, "cannot grow Lua stack to parse arguments");
 
         lua_getfield(L, 1, "destination");
-        if ( l2dbus_isString(L, -1) )
+        if ( !lua_isnil(L, -1) )
         {
-            destination = lua_tostring(L, -1);
+            if ( l2dbus_isString(L, -1) )
+            {
+                destination = lua_tostring(L, -1);
+            }
+            else
+            {
+                luaL_error(L,
+                    "expecting 'destination' field with a string value");
+            }
         }
 
         lua_getfield(L, 1, "path");
         if ( !l2dbus_isString(L, -1) )
         {
-            luaL_error(L, "expecting 'path' field with string value");
+            luaL_error(L, "expecting 'path' field with a string value");
         }
         else
         {
@@ -215,15 +223,23 @@ l2dbus_newMessageMethodCall
         }
 
         lua_getfield(L, 1, "interface");
-        if ( l2dbus_isString(L, -1) )
+        if ( !lua_isnil(L, -1) )
         {
-            interface = lua_tostring(L, -1);
+            if ( l2dbus_isString(L, -1) )
+            {
+                interface = lua_tostring(L, -1);
+            }
+            else
+            {
+                luaL_error(L,
+                    "expecting 'interface' field with a string value");
+            }
         }
 
         lua_getfield(L, 1, "method");
         if ( !l2dbus_isString(L, -1) )
         {
-            luaL_error(L, "expecting 'method' field with string value");
+            luaL_error(L, "expecting 'method' field with a string value");
         }
         else
         {
@@ -378,27 +394,29 @@ l2dbus_newMessageSignal
     {
         luaL_checkstack(L, 3, "cannot grow Lua stack to parse arguments");
         lua_getfield(L, 1, "path");
-        if ( !lua_isstring(L, -1) )
+        if ( !l2dbus_isString(L, -1) )
         {
-            luaL_error(L, "expecting 'path' field with string value");
+            luaL_error(L, "expecting 'path' field with a string value");
         }
         else
         {
             path = lua_tostring(L, -1);
         }
+
         lua_getfield(L, 1, "interface");
-        if ( !lua_isstring(L, -1) )
+        if ( !l2dbus_isString(L, -1) )
         {
-            luaL_error(L, "expecting 'interface' field with string value");
+            luaL_error(L, "expecting 'interface' field with a string value");
         }
         else
         {
             interface = lua_tostring(L, -1);
         }
+
         lua_getfield(L, 1, "name");
-        if ( !lua_isstring(L, -1) )
+        if ( !l2dbus_isString(L, -1) )
         {
-            luaL_error(L, "expecting 'name' field with string value");
+            luaL_error(L, "expecting 'name' field with a string value");
         }
         else
         {
@@ -407,9 +425,9 @@ l2dbus_newMessageSignal
     }
     else
     {
-        path = luaL_checkstring(L, lua_absindex(L,-3));
-        interface = luaL_checkstring(L, lua_absindex(L,-2));
-        name = luaL_checkstring(L, lua_absindex(L,-1));
+        path = l2dbus_checkString(L, -3);
+        interface = l2dbus_checkString(L, -2);
+        name = l2dbus_checkString(L, -1);
     }
 
     dbusMsg = dbus_message_new_signal(path, interface, name);
@@ -469,7 +487,7 @@ l2dbus_newMessageError
     luaL_argcheck(L, DBUS_MESSAGE_TYPE_METHOD_CALL == dbus_message_get_type(replyMsgUd->msg), 1,
                  "must be a D-Bus method call message");
 
-    errName = luaL_checkstring(L, 2);
+    errName = l2dbus_checkString(L, 2);
     errMsg = luaL_optstring(L, 3, NULL);
 
     errDbusMsg = dbus_message_new_error(replyMsgUd->msg, errName, errMsg);
