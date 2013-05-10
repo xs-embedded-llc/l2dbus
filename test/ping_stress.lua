@@ -116,7 +116,7 @@ end
 -- Const
 ---------------
 
-local APP_VER               = "1.0.0"
+local APP_VER               = "1.0.1"
 
 -- Service API
 local STRESS_BUSNAME        = "com.l2dbus.service.ping_stress"
@@ -529,14 +529,16 @@ local function ClientRequests()
 
     end -- loop -------------------------------------
 
-    if socket then
-        -- millisecond granularity
-        g_stats.time.totalTime = socket.gettime() - g_testStartTime
-    else
-        -- second granularity
-        g_stats.time.totalTime = os.time() - g_testStartTime
+    if g_timestamp == true then
+        if socket then
+            -- millisecond granularity
+            g_stats.time.totalTime = socket.gettime() - g_testStartTime
+        else
+            -- second granularity
+            g_stats.time.totalTime = os.time() - g_testStartTime
+        end
     end
-
+    
     print("\n")
     Snapshot()  -- display stats
     print("\n")
