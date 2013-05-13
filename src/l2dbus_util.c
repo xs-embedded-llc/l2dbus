@@ -131,7 +131,7 @@ l2dbus_cdbusError
             break;
     }
 
-    luaL_error(L, "%s : %s/%s/0x%X", msg, sev, fac, code);
+    luaL_error(L, "%s : %s/%s/%p", msg, sev, fac, code);
 }
 
 

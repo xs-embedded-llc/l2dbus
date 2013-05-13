@@ -134,15 +134,39 @@ function ProxyController:bind()
 		if not reply then
 			return nil, errName, errMsg
 		end
+		
+		local result
 		if self:getBlockingMode() then
-			self.introspectData = self:parseXml(reply:getArgs())
+			result = reply:getArgs()
+			if type(result) ~= "string" then
+				errName = l2dbus.Dbus.ERROR_FAILED 
+				errMsg = "Failed to get introspection data"
+			end
 		else
 			reply:block()
 			local msg = reply:stealReply()
-			self.introspectData = self:parseXml(msg:getArgs())
+			if msg:getType() == l2dbus.Dbus.MESSAGE_TYPE_ERROR then
+				result = nil
+				errName = msg:getErrorName()
+				errMsg = msg:getArgs()
+			else
+				-- Assume it's a reply message
+				result = msg:getArgs()
+				if type(result) ~= "string" then
+					errName = l2dbus.Dbus.ERROR_FAILED 
+					errMsg = "Failed to get introspection data"
+				end
+			end
 		end
+		
+		if type(result) == "string" then
+			self.introspectData = self:parseXml(result)
+		else
+			return nil, errName, errMsg
+		end
+		
 		-- Clear the proxy cache so it will be re-generated when
-		-- the client requests it again
+		-- the client requests a new proxy again.
 		self.proxyCache = {}
 	end
 	return true
@@ -683,7 +707,8 @@ function ProxyController:sendMessage(msg)
 	else
 		local status, pending = self.conn:sendWithReply(msg, self.timeout)
 		if not status then
-			reply, errName, errMsg = nil, l2dbus.Dbus.ERROR_FAILED, "failed to send message"
+			reply, errName, errMsg = nil, l2dbus.Dbus.ERROR_FAILED,
+									"failed to send message"
 		else
 			reply, errName, errMsg = pending, nil, nil
 		end
