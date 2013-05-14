@@ -44,6 +44,7 @@ typedef struct l2dbus_Timeout
 {
     struct cdbus_Timeout*   timeout;
     int                     dispUdRef;
+    int                     timeoutUdRef;
     l2dbus_CallbackCtx      cbCtx;
 } l2dbus_Timeout;
 

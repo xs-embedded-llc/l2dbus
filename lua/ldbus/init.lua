@@ -884,10 +884,17 @@ function M.getDispatchFds()
 end
 
 --- Gets the underlying libev loop used by the module.
--- @return None
+-- @return Libev main loop
 function M.getLoop()
     return mainLoop
 end
+
+--- Gets the underlying L2DBUS dispatcher for the shim.
+-- @return L2DBUS dispatcher
+function M.getDispatcher()
+	return dispatch
+end
+
 
 --- Start the dispatcher
 -- @return None

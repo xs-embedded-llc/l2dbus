@@ -44,6 +44,7 @@ typedef struct l2dbus_Watch
 {
     struct cdbus_Watch* watch;
     int                 dispUdRef;
+    int                 watchUdRef;
     l2dbus_CallbackCtx  cbCtx;
 } l2dbus_Watch;
 
