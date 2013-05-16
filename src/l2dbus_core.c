@@ -93,7 +93,7 @@ The following namespaces are created when the *l2dbus* module is loaded:
  * shutdown sequencing issues between libev and when D-Bus has
  * truly shutdown.
  */
-#undef L2DBUS_SHUTDOWN_CDBUS
+#define L2DBUS_SHUTDOWN_CDBUS
 
 
 /**
@@ -288,6 +288,27 @@ l2dbus_getLocalMachineId
 
 
 /**
+ @function getDefaultMainLoop
+
+ Returns the underlying default main loop used by the Dispatcher.
+
+ This is the default main loop used in the creation of a Dispatcher if
+ another main loop is not specified. If the Lua libev
+ <a href="https://github.com/brimworks/lua-ev">binding</a> is not available
+ then **nil** will be returned. If the Lua libev binding is not available an
+ internal libev main loop will be utilized but there is no access to that
+ loop from Lua. It is **strongly** recommended, therefore, to use the default
+ main loop when available since on L2DBUS @{shutdown} a race condition can
+ develop due to the order the internal objects are destroyed. This leads to
+ a program fault on exit. If this is a concern then calls to @{shutdown} should
+ be avoided at the end of a program. This typically is not a problem since
+ standard process clean-up operations should reclaim all the program resources.
+
+ @treturn userdata The Lua libev default main loop.
+ */
+
+
+/**
  * @brief Adds a reference to the global module finalizer userdata.
  *
  * An internal function used to add a reference to the module's global
@@ -359,9 +380,12 @@ l2dbus_moduleFinalizerDispose
     void* p = lua_touserdata(L, -1);
     /* This *should* be the last thing destroyed by the module */
     L2DBUS_TRACE((L2DBUS_TRC_TRACE, "GC: module finalizer (userdata=%p)", p));
-    l2dbus_callbackShutdown(L);
     l2dbus_shutdownCdbus();
-
+    /* It's important to do this *after* shutting down the CDBUS binding
+     * in case the Lua state associated with the callback mechanism is
+     * needed to cleanly shutdown CDBUS.
+     */
+    l2dbus_callbackShutdown(L);
     return 0;
 }
 

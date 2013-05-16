@@ -54,9 +54,9 @@ local ev = require("ev")
 
 local M = { }
 --- Module version
-local VERSION = "1.1.0"
-local mainLoop = ev.Loop.new()
-local dispatch = l2dbus.Dispatcher.new(mainLoop)
+local VERSION = "1.1.1"
+local mainLoop = l2dbus.getDefaultMainLoop()
+local dispatch = l2dbus.Dispatcher.new()
 
 --- XS Embedded Service Provider Interface Description
 local XS_EMBEDDED_SERVICE_PROVIDER_INF = "com.xsembedded.ServiceProvider"
