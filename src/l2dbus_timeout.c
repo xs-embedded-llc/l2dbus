@@ -60,6 +60,20 @@
  execution or the L2DBUS dispatch loop will block as well. Every effort should
  be made to exit the timeout handler quickly.
 
+
+ While a Timeout is enabled a *strong* reference will be kept to it regardless
+ of whether is referenced by the client code. This means that it is **not**
+ eligible for garbage collection (GC) by the Lua VM. The strong reference
+ will be maintained until the first timeout occurs. At the point, if the timeout
+ remains enabled and is **not** configured to *repeat* then the strong
+ reference will be dropped. If the timeout is enabled and repeatable then
+ the strong reference is always maintained. This behavior facilitates the
+ creation of non-referenced timeouts that will continue to trigger as long
+ as they remain enabled and configured to repeat. It also supports the
+ concept of a *one-shot* timeout that will automatically be reclaimed by the
+ GC after firing once (when it's not set to repeat) when no external references
+ are maintained.
+
  @namespace l2dbus.Timeout
  */
 
@@ -112,7 +126,23 @@ l2dbus_timeoutHandler
             {
                 errMsg = lua_tostring(L, -1);
             }
-            L2DBUS_TRACE((L2DBUS_TRC_ERROR, "Timeout callback error: %s", errMsg));
+            L2DBUS_TRACE((L2DBUS_TRC_ERROR, "Timeout callback error: %s",
+                          errMsg));
+        }
+
+        /*
+         * If we're in the scenario where the timeout is enabled but it's not
+         * configured to repeat then we need to un-reference it or it could
+         * never be garbage collected.
+         */
+        if ( cdbus_timeoutIsEnabled(ud->timeout) &&
+            !cdbus_timeoutGetRepeat(ud->timeout) )
+        {
+            /* Remove the reference since the timeout is now eligible to
+             * be garbage collected.
+             */
+            luaL_unref(L, LUA_REGISTRYINDEX, ud->timeoutUdRef);
+            ud->timeoutUdRef = LUA_NOREF;
         }
     }
 
@@ -130,8 +160,9 @@ l2dbus_timeoutHandler
  Creates a new Timeout.
 
  Creates a new Timeout with an associated handler that can be called (possibly
- repeatedly) as the timeout expires.
- A handler (callback) is associated with a timeout and it is called when the
+ repeatedly) as the timeout expires. A newly created Timeout is **disabled**
+ by default and must explicitly be enabled in order to arm it. A handler
+ (callback) is associated with a timeout and it is called when the
  timeout expires. The signature of the handler has the form:
 
     function onTimeout(timeout, userToken)
@@ -210,6 +241,7 @@ l2dbus_newTimeout
         /* Reset the userdata structure */
         l2dbus_callbackInit(&timeoutUd->cbCtx);
         timeoutUd->dispUdRef = LUA_NOREF;
+        timeoutUd->timeoutUdRef = LUA_NOREF;
 
         l2dbus_callbackRef(L, 4 /* func */, userIdx, &timeoutUd->cbCtx);
         timeoutUd->timeout = cdbus_timeoutNew(dispUd->disp, msecInterval, repeat,
@@ -312,6 +344,12 @@ l2dbus_timeoutIsEnabled
 
  Enables or disables a timeout.
 
+ Internally a strong reference to an enabled timeout will be maintained
+ until it triggers and then it will be further maintained if set to
+ repeat. This can prevent the Lua GC from reclaiming a timeout that is
+ enabled and set to *repeat*. By default a newly created timeout is *disabled*
+ and must explicitly be enabled in order to activate it.
+
  @tparam userdata timeout The timeout to set.
  @tparam bool option Set to **true** to enable the timeout or **false** to
  disable it.
@@ -337,6 +375,25 @@ l2dbus_timeoutSetEnable
     if ( CDBUS_FAILED(rc) )
     {
         l2dbus_cdbusError(L, rc, "Cannot enable/disable timer");
+    }
+
+    /*
+     * While a timer is enabled a strong reference is kept to it so the
+     * GC won't reclaim it. This addresses the situation where you have
+     * an "anonymous" timeout that is enabled and needs to fire but no
+     * one has kept a reference to it. After firing the strong reference is
+     * maintained only if the timeout remains enabled and it's set to repeat.
+     */
+    if ( enable )
+    {
+        lua_pushvalue(L, 1 /* timeoutUd */);
+        ud->timeoutUdRef = luaL_ref(L, LUA_REGISTRYINDEX);
+    }
+    else
+    {
+        /* We no longer need to anchor the timer when it's disabled */
+        luaL_unref(L, LUA_REGISTRYINDEX, ud->timeoutUdRef);
+        ud->timeoutUdRef = LUA_NOREF;
     }
 
     return 0;

@@ -54,9 +54,9 @@ local ev = require("ev")
 
 local M = { }
 --- Module version
-local VERSION = "1.1.0"
-local mainLoop = ev.Loop.new()
-local dispatch = l2dbus.Dispatcher.new(mainLoop)
+local VERSION = "1.1.1"
+local mainLoop = l2dbus.getDefaultMainLoop()
+local dispatch = l2dbus.Dispatcher.new()
 
 --- XS Embedded Service Provider Interface Description
 local XS_EMBEDDED_SERVICE_PROVIDER_INF = "com.xsembedded.ServiceProvider"
@@ -884,10 +884,17 @@ function M.getDispatchFds()
 end
 
 --- Gets the underlying libev loop used by the module.
--- @return None
+-- @return Libev main loop
 function M.getLoop()
     return mainLoop
 end
+
+--- Gets the underlying L2DBUS dispatcher for the shim.
+-- @return L2DBUS dispatcher
+function M.getDispatcher()
+	return dispatch
+end
+
 
 --- Start the dispatcher
 -- @return None

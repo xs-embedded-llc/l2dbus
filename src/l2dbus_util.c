@@ -70,7 +70,7 @@ l2dbus_isUserData
             return p;
         }
     }
-    return NULL ; /* not what is wanted */
+    return NULL;
 }
 
 struct ev_loop*
@@ -97,7 +97,7 @@ l2dbus_isEvLoop
             lua_pop(L, 2);
         }
     }
-    return loop ; /* not what is wanted */
+    return loop;
 }
 
 void
@@ -131,7 +131,7 @@ l2dbus_cdbusError
             break;
     }
 
-    luaL_error(L, "%s : %s/%s/0x%X", msg, sev, fac, code);
+    luaL_error(L, "%s : %s/%s/%p", msg, sev, fac, code);
 }
 
 

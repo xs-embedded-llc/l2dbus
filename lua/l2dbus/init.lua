@@ -34,6 +34,33 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 local l2dbus = require("l2dbus_core")
 
+-- Try to load the Lua libev module
+local gMainLoop = nil
+local status, ev = pcall(require, "ev")
+if status then
+	-- If loaded successfully then we'll use the default main loop as
+	-- the main loop for the dispatcher.
+	gMainLoop = ev.Loop.default
+	-- Call method to realize it so it's actually allocated
+	gMainLoop:now()
+end
+
+-- Override the "core" Dispatcher constructor.
+local coreDispatcherNew = l2dbus.Dispatcher.new
+l2dbus.Dispatcher.new = function(loop)
+	if loop == nil then
+		loop = gMainLoop
+	end
+	
+	return coreDispatcherNew(loop)
+end
+
+
+-- Documented in the l2dbus_core.c file.
+l2dbus.getDefaultMainLoop = function()
+	return gMainLoop
+end
+
 -- Called when this module is run as a program
 local function main(arg)
     print("Module: " .. string.match(arg[0], "^(.+)%.lua"))

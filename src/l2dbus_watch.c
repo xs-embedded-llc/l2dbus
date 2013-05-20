@@ -52,12 +52,21 @@
  L2DBUS Watch
 
  This section describes a L2DBUS Watch class which represents a file
- descriptor that can be monitored for activity. On Linux platforms this
- can include sockets, pipes, files, and anything that yields a poll-able
- descriptor. Internally, L2DBUS monitors the file-descriptor associated
- with a @{l2dbus.Connection|Connection} to detect when new messages are
- available to be received. Client applications can use this same mechanism
- to monitor activity on various descriptors themselves.
+ descriptor that can be monitored for activity.
+
+ On Linux platforms this can include sockets, pipes, files, and anything that
+ provides a poll-able descriptor. Internally, L2DBUS monitors the
+ file-descriptor associated with a @{l2dbus.Connection|Connection} to detect
+ when new messages are available to be received. Client applications can use
+ this same mechanism to monitor activity on various descriptors themselves.
+
+
+ While a Watch is enabled a *strong* reference will be kept to it regardless
+ of whether is referenced by the client code. This means that it is **not**
+ eligible for garbage collection (GC) by the Lua VM. The strong reference
+ will be maintained until it is disabled again. This behavior facilitates the
+ creation of non-referenced watches that will continue to trigger as long
+ as they remain enabled.
 
  @namespace l2dbus.Watch
  */
@@ -266,7 +275,10 @@ l2dbus_watchHandler
  Creates a new Watch.
 
  Creates a new Watch with an associated handler that is called whenever one
- of the specified events is signaled on the provided file descriptor.
+ of the specified events is signaled on the provided file descriptor. By
+ default a Watch is created **disabled** and needs to be explicitly enabled
+ in order to be armed.
+
  The Watch handler has a signature of the form:
 
     function onWatch(watch, evTable, userToken)
@@ -371,6 +383,7 @@ l2dbus_newWatch
         /* Reset the userdata structure */
         l2dbus_callbackInit(&watchUd->cbCtx);
         watchUd->dispUdRef = LUA_NOREF;
+        watchUd->watchUdRef = LUA_NOREF;
 
         l2dbus_callbackRef(L, 4 /* func */, userIdx, &watchUd->cbCtx);
         watchUd->watch = cdbus_watchNew(dispUd->disp, fd, events,
@@ -596,6 +609,20 @@ l2dbus_watchSetEnable
         l2dbus_cdbusError(L, rc, "Cannot enable/disable watch");
     }
 
+    /* Maintain a strong reference on the watch while it's enabled
+     * so that it won't get GC'ed by the VM.
+     */
+    if ( enable )
+    {
+        lua_pushvalue(L, 1 /* watchUd */);
+        ud->watchUdRef = luaL_ref(L, LUA_REGISTRYINDEX);
+    }
+    else
+    {
+        /* We no longer need to anchor the watch userdata */
+        luaL_unref(L, LUA_REGISTRYINDEX, ud->watchUdRef);
+        ud->watchUdRef = LUA_NOREF;
+    }
     return 0;
 }
 

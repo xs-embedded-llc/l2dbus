@@ -41,6 +41,7 @@
 static lua_State*  gCallbackThread = NULL;
 static int gCallbackRef = LUA_NOREF;
 
+
 void
 l2dbus_callbackConfigure
     (

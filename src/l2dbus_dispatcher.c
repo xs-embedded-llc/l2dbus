@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include "ev.h"
 #include "cdbus/cdbus.h"
+#include "l2dbus_alloc.h"
 #include "l2dbus_compat.h"
 #include "l2dbus_dispatcher.h"
 #include "l2dbus_core.h"
@@ -56,6 +57,28 @@
 #define L2DBUS_LIBEV_UNINITIALIZED_DEFAULT_LOOP ((struct ev_loop*)1)
 
 
+/*
+ * This function is called when the *last* reference to an underlying
+ * CDBUS dispatcher is called. It's only called in the case when a "foreign"
+ * libev loop is being utilized (e.g. we don't own it but it's owned by
+ * another module like the Lua libev binding).
+ */
+static void
+l2dbus_dispatcherFinalized
+    (
+    void*   data
+    )
+{
+    int* loopRef = (int*)data;
+    if ( NULL != loopRef )
+    {
+        L2DBUS_TRACE((L2DBUS_TRC_TRACE, "Unreferencing the foreign main loop"));
+        luaL_unref(l2dbus_callbackGetThread(), LUA_REGISTRYINDEX, *loopRef);
+        l2dbus_free(loopRef);
+    }
+}
+
+
 /**
  @function new
 
@@ -64,23 +87,28 @@
  Constructs a new Dispatcher using an (optionally) provided Lua libev
  <a href="https://github.com/brimworks/lua-ev">ev.Loop</a> object or, if
  none is provided, internally create a new libev main loop to handle events.
- A Lua libev loop that is passed into this constructor is considered
- **not** to be owned by the Dispatcher. In this case it is the
- responsibility of the caller to dispose of it appropriately on program
- termination.
+ A Lua libev loop that is passed into this constructor is **not** owned by the
+ Dispatcher. In this case it is the responsibility of the caller to dispose of
+ it appropriately on program termination. By default, if no main loop is
+ specified and the Lua libev library is available it's *default* main loop will
+ be utilized. This default main loop can be retrieved by calling
+ @{l2dbus.getDefaultMainLoop|getDefaultMainLoop}. This loop is probably the
+ best alternative due to @{l2dbus.shutdown|shutdown} race conditions when
+ using an alternate main loop.
 
  *Note:* If passing in a libev main loop (ev.Loop) please insure
  that it has been fully instantiated by either creating it by calling
      loop = ev.Loop.new()
- or calling a Lua libev function that consumes a ev.Loop object. By default
- the libev ev.Loop objects are lazily realized. It's possible to unwittingly
- pass an unrealized Lua libev main loop to the Dispatcher constructor
- which will cause it to fail.
+ or calling a Lua libev function that consumes a ev.Loop object
+ (e.g. loop:now()). By default the libev ev.Loop objects are lazily realized.
+ It's possible to unwittingly pass an unrealized Lua libev main loop to the
+ Dispatcher constructor which will cause it to fail.
 
  See <a href="http://software.schmorp.de/pkg/libev.html">libev</a> for
  additional information on the underlying main loop library.
 
- @tparam ?ev.Loop|nil loop Optional Lua libev main loop
+ @tparam ?ev.Loop|nil loop Optional Lua libev main loop. If nil then a suitable
+ default main loop will be used. This is the recommended approach.
  @treturn userdata Dispatcher userdata object
  */
 int
@@ -93,6 +121,7 @@ l2dbus_newDispatcher
     struct ev_loop* loop = NULL;
     int ownsLoop = 0;
     int loopIdx= 0;
+    int* loopRef = NULL;
 
     L2DBUS_TRACE((L2DBUS_TRC_TRACE, "Create: dispatcher"));
 
@@ -104,14 +133,14 @@ l2dbus_newDispatcher
      */
     if ( LUA_TUSERDATA == lua_type(L, -1) )
     {
-        loop = l2dbus_isEvLoop(L, -1);
+        loopIdx = lua_absindex(L, -1);
+        loop = l2dbus_isEvLoop(L, loopIdx);
         if ( loop == L2DBUS_LIBEV_UNINITIALIZED_DEFAULT_LOOP )
         {
             luaL_error(L, "The Lua libev loop is uninitialized - "
                     "try using ev.Loop.new() to create one");
         }
         ownsLoop = 0;
-        loopIdx = lua_absindex(L, -1);
     }
     else
     {
@@ -128,7 +157,6 @@ l2dbus_newDispatcher
     {
         userData = (l2dbus_Dispatcher*)l2dbus_objectNew(L, sizeof(*userData),
                                         L2DBUS_DISPATCHER_TYPE_ID);
-        userData->loopRef = LUA_NOREF;
         userData->finalizerRef = LUA_NOREF;
         L2DBUS_TRACE((L2DBUS_TRC_TRACE, "Dispatcher userdata=%p", userData));
         if ( NULL == userData )
@@ -143,6 +171,11 @@ l2dbus_newDispatcher
         userData->disp = cdbus_dispatcherNew(loop, ownsLoop, NULL, NULL);
         if ( NULL == userData->disp )
         {
+            /* Normally, a fully formed CDBUS dispatcher would own the loop
+             * and would take careo of destorying it. In this case, the
+             * CDBUS dispatcher wasn't created successfully so we have to
+             * manually destroy it.
+             */
             if ( ownsLoop )
             {
                 ev_loop_destroy(loop);
@@ -153,8 +186,31 @@ l2dbus_newDispatcher
         /* If we don't own the loop then we need to at least reference it */
         if ( !ownsLoop )
         {
-            lua_pushvalue(L, loopIdx);
-            userData->loopRef = luaL_ref(L, LUA_REGISTRYINDEX);
+            loopRef = (int*)l2dbus_malloc(sizeof(*loopRef));
+            if ( NULL == loopRef )
+            {
+                cdbus_dispatcherUnref(userData->disp);
+                userData->disp = NULL;
+                luaL_error(L,
+                    "Failed to allocate memory for libev loop reference!");
+            }
+            else
+            {
+                lua_pushvalue(L, loopIdx);
+                *loopRef = luaL_ref(L, LUA_REGISTRYINDEX);
+
+                /* This function is called when the *last* reference to the
+                 * CDBUS dispatcher is dropped. At that point we'll break the
+                 * strong reference to the foreign libev loop. If we break the
+                 * reference any sooner then there is a chance that as D-Bus is
+                 * shut-down an associated Watch may try to access the foreign
+                 * libev loop. If it's already been GC'ed by Lua then it may
+                 * not be around and we'll see an assertion.
+                 */
+                cdbus_dispatcherSetFinalizer(userData->disp,
+                                            l2dbus_dispatcherFinalized,
+                                            loopRef);
+            }
         }
 
         userData->finalizerRef = l2dbus_moduleFinalizerRef(L);
@@ -288,10 +344,14 @@ l2dbus_dispatcherDispose
 
     if ( ud->disp != NULL )
     {
-        luaL_unref(L, LUA_REGISTRYINDEX, ud->loopRef);
         cdbus_dispatcherUnref(ud->disp);
         ud->disp = NULL;
         l2dbus_moduleFinalizerUnref(L, ud->finalizerRef);
+
+        /* A "foreign" libev loop that we don't own will be unreferenced
+         * later when the last reference to the underlying CDBUS dispatcher
+         * is dropped.
+         */
     }
 
     return 0;
