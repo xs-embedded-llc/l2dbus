@@ -313,7 +313,7 @@ function M.isValidObjectPath(name)
         elseif string.sub(objPath,1,1) ~= '/' then
             isValid = false
         elseif (string.sub(objPath,#objPath,#objPath)) == '/' and
-        	(#objPath == 1) then
+        	(#objPath ~= 1) then
             isValid = false
         elseif string.find(objPath, "//") ~= nil then
             isValid = false
