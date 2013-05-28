@@ -20,10 +20,10 @@ local helpText = [[
   --bus [busName]       -- Bus name
   -g                    -- force garbage collection call after each reply (rx/tx)
                            May impact overall performance.  Default is off.
-  -v                    -- Verbosity 
-                           v = level 1, Basic Count 
+  -v                    -- Verbosity
+                           v = level 1, Basic Count
                                Shows the packet count only
-                           vv = level 2, Basic I/O 
+                           vv = level 2, Basic I/O
                                client: 't' == tx (request)
                                        'r' == rx on reply interface (reply)
                                        'e' == rx on error interface (error)
@@ -36,29 +36,31 @@ local helpText = [[
                                Displays the complete rx/tx payloads
 
   Client Args:
-  -a                    -- Test with an async reply from server. 
+  -a                    -- Test with an async reply from server.
                            Default is sync.
-  -c [count]            -- Stop after sending [count] packets. 
+  -c [count]            -- Stop after sending [count] packets.
                            Default is infinite.
   -e                    -- Server will reply on the error interface.
                            Default use normal reply interface.
   -f                    -- Flood  ping.  This will set -i to 0 and enable -r.
-  -i [interval]         -- Wait  interval  seconds  between  sending  each 
+  -i [interval]         -- Wait  interval  seconds  between  sending  each
                            packet.  The default is to wait for one second
-                           between each packet normally, or not to wait in 
+                           between each packet normally, or not to wait in
                            flood mode. Default is 1 second.
   -k                    -- Kill the client after a single reply.  This will
                            result in a new client for each request.  This makes
                            it easier to exercise the client creation code.
                            Default is to use the same client for the whole test.
-  -r                    -- This will ignore the reply from the server before 
-                           going to the next request/wait/etc.  
+  -n                    -- Optional name to append to the default client name.
+                           This is useful when running more than one client.
+  -r                    -- This will ignore the reply from the server before
+                           going to the next request/wait/etc.
                            Default is to wait.
   -s [packetSize]       -- Specifies the number of data bytes to be sent.
                            Default is 64. Minumum is 8 bytes.
   -t                    -- Timestamp and track round trip times. Default is off.
   -w                    -- Wait on Exit. This is useful when using "-c" and
-                           then client goes to exit.  This will prevent the 
+                           then client goes to exit.  This will prevent the
                            process from cleaning up to allow a chance to look
                            for potential leaks, etc. Default is no wait.
 
@@ -69,22 +71,22 @@ local helpText = [[
   (NOTE: Adjust the verbosity to meet your needs)
   (NOTE: You can run multiple clients for a single server for more stress testing)
 
-  # Stress/stability test of dbus.  
+  # Stress/stability test of dbus.
   # (Add "-s" for large packets sizes)
   lua ping_stress.lua -f -v
 
-  # Look for memory leaks.  
+  # Look for memory leaks.
   # (Add -a and/or -e for other code paths in l2dbus/cdbus/etc)
   lua ping_stress.lua -c 50 -s 512000 -i 0 -w -g -v
 
-  # Performance testing.  
-  # (Add "-s" for other packets sizes, and adjust "-c" longer timing)  
+  # Performance testing.
+  # (Add "-s" for other packets sizes, and adjust "-c" longer timing)
   # NOTE: no verbosity so only calculate the timing and display the stats when done.
   # NOTE: Make sure the service instance has little or no verbosity.
   lua ping_stress.lua -c 50000 -t -i 0
 
   # Performance testing, this will have the OS do the timing instead of us.
-  # (Add "-s" for other packets sizes, and adjust "-c" longer timing)  
+  # (Add "-s" for other packets sizes, and adjust "-c" longer timing)
   # NOTE: Make sure the service instance has little or no verbosity.
   time lua ping_stress.lua -c 50000 -i 0
 
@@ -116,12 +118,12 @@ end
 -- Const
 ---------------
 
-local APP_VER               = "1.0.1"
+local APP_VER               = "1.0.2"
 
 -- Service API
-local STRESS_BUSNAME        = "com.l2dbus.service.ping_stress"
-local STRESS_OBJPATH        = "/com/l2dbus/service/ping_stress"
-local STRESS_INTERFACE      = "com.l2dbus.ping"
+local STRESS_BUSNAME        = "com.dbus.service.ping_stress"
+local STRESS_OBJPATH        = "/com/dbus/service/ping_stress"
+local STRESS_INTERFACE      = "com.dbus.ping"
 
 local ASYNC_TIMEOUT         = 250 -- msec
 
@@ -137,6 +139,7 @@ local g_floodMode           = false             -- -f option
 local g_forceGC             = false             -- -g option
 local g_waitInterval        = 1                 -- -i option
 local g_killClients         = false             -- -k option
+local g_clientName          = "Client"          -- -n option
 local g_ignoreReply         = false             -- -r option
 local g_payloadSize         = 64                -- -s option
 local g_serverMode          = false             -- -S option
@@ -199,7 +202,7 @@ local function log( sCh, sLog, payload )
         else
             print(sLog, payload)
         end
-               
+
     end
 
 end -- log
@@ -255,7 +258,7 @@ end -- echo_asError
 ----------------------------------------------------------------
 --- echo_async
 ---
---- Responds with the original payload asynchronously after 
+--- Responds with the original payload asynchronously after
 --- a short delay.
 ----------------------------------------------------------------
 function g_dbMethods.echo_async( payload, ctxtContainer  )
@@ -265,8 +268,8 @@ function g_dbMethods.echo_async( payload, ctxtContainer  )
     if g_verbose > 0 then
         log( "r", g_stats.rxAsync .. " - Rx:echoAsync   ", payload )
     end
-    
-    ev.Timer.new( function() 
+
+    ev.Timer.new( function()
                        g_stats.txAsync = g_stats.txAsync + 1
                        if g_verbose > 0 then
                            log( "t", g_stats.txAsync .. " - Tx:echoAsync   ", payload )
@@ -288,7 +291,7 @@ end -- echo_async
 ----------------------------------------------------------------
 --- echo_asyncAsError
 ---
---- Responds with the original payload asynchronously after 
+--- Responds with the original payload asynchronously after
 --- a short delay using the error Interface.
 ----------------------------------------------------------------
 function g_dbMethods.echo_asyncAsError( payload, ctxtContainer  )
@@ -298,8 +301,8 @@ function g_dbMethods.echo_asyncAsError( payload, ctxtContainer  )
     if g_verbose > 0 then
         log( "R", g_stats.rxAsyncErr .. " - Rx:echoAsyncErr", payload )
     end
-    
-    ev.Timer.new( function() 
+
+    ev.Timer.new( function()
                        g_stats.txAsyncErr = g_stats.txAsyncErr + 1
                        if g_verbose > 0 then
                            log( "T", g_stats.txAsyncErr .. " - Tx:echoAsyncErr", payload )
@@ -363,7 +366,7 @@ local function ClientRequests()
     if g_verbose == 1 then
         io.stdout:write("Pkt: 0")
     end
-    
+
     if g_waitOnExit == true then
         print(string.rep("-", 80))
         print("PRESS <ENTER> TO START...")
@@ -372,7 +375,8 @@ local function ClientRequests()
     end
 
     if g_timestamp == true then
-        g_stats.time           = {} 
+        g_stats.time           = {}
+        g_stats.time.totalRTT  = 0
         g_stats.time.avgRTT    = 0
         g_stats.time.maxRTT    = 0
         g_stats.time.minRTT    = 4294967295 -- 0xFFFFFFFF
@@ -386,7 +390,7 @@ local function ClientRequests()
             g_testStartTime = os.time()
         end
     end
-    
+
     while bInfinite == true or g_iterCount > 0 do
 
         g_stats.iPkt = g_stats.iPkt + 1
@@ -395,7 +399,7 @@ local function ClientRequests()
             g_dbusBus.close()
             InitDbus()
         end
-        
+
         ----------------------------
         -- Pre Logging
         ----------------------------
@@ -413,7 +417,7 @@ local function ClientRequests()
         else
             g_stats.tx = g_stats.tx + 1
         end
-        
+
         ----------------------------
         -- Timing
         ----------------------------
@@ -444,6 +448,8 @@ local function ClientRequests()
                 execTime = os.time() - startTime
             end
 
+            g_stats.time.totalRTT = g_stats.time.totalRTT + execTime
+
             -- Max, Min, Avg
             if execTime > g_stats.time.maxRTT then
                 g_stats.time.maxRTT = execTime
@@ -465,7 +471,7 @@ local function ClientRequests()
         else
             g_stats.rx = g_stats.rx + 1
         end
-        
+
         ----------------------------
         -- Post Logging
         ----------------------------
@@ -511,7 +517,7 @@ local function ClientRequests()
                 print()
             end
         end -- verbosity
-        
+
         ----------------------------
         -- Post Features
         ----------------------------
@@ -525,7 +531,7 @@ local function ClientRequests()
 
         if g_iterCount > 0 then
             g_iterCount = g_iterCount - 1
-        end        
+        end
 
     end -- loop -------------------------------------
 
@@ -538,7 +544,7 @@ local function ClientRequests()
             g_stats.time.totalTime = os.time() - g_testStartTime
         end
     end
-    
+
     print("\n")
     Snapshot()  -- display stats
     print("\n")
@@ -549,7 +555,7 @@ local function ClientRequests()
         print(string.rep("-", 80))
         io.stdin:read("*line")
     end
-    
+
     ShutdownDbus()
 
 end -- ClientRequests
@@ -600,7 +606,7 @@ function InitDbus()
 
     else -- CLIENT MODE
 
-        local bRet, errStr = g_dbusBus.requestName( STRESS_BUSNAME.."Client" )
+        local bRet, errStr = g_dbusBus.requestName( STRESS_BUSNAME..g_clientName )
         if bRet == false then
             print(string.format("ERROR: Couldn't get the bus name %s Client => %s", STRESS_BUSNAME, errStr))
             ShutdownDbus()
@@ -636,7 +642,7 @@ local function ParseArgs()
                      {"bus",          true,    nil },
           }
 
-    for opt, optval in utils.getopt(lArgs, 'ac:efghi:krs:Stvw', longOpt) do
+    for opt, optval in utils.getopt(lArgs, 'ac:efghi:kn:rs:Stvw', longOpt) do
 
         if opt == "a" then
 
@@ -683,6 +689,10 @@ local function ParseArgs()
 
             g_killClients = true
 
+        elseif opt == "n" then
+
+            g_clientName = "Client"..optval
+
         elseif opt == "r" then
 
             g_ignoreReply = true
@@ -694,7 +704,7 @@ local function ParseArgs()
                 print("ERROR: Invalid payload size (option -s): ", g_payloadSize)
                 os.exit(1)
             end
-            
+
         elseif opt == "S" then
 
             g_serverMode = true
@@ -744,6 +754,7 @@ local function ParseArgs()
 
         else -- client
 
+            print("Client Name:                        ", STRESS_BUSNAME..g_clientName)
             print("Test Async Server Reply:            ", g_asyncMode)
             print("Ingnore Reply from Request:         ", g_ignoreReply)
             print("Reply Using Error Interface:        ", g_errorIface)
