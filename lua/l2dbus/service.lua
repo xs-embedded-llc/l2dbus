@@ -834,11 +834,10 @@ end
 -- @function reply
 function ReplyContext:reply(...)
 	local replyMsg = l2dbus.Message.newMethodReturn(self.msg)
-	local intfName = self.msg:getInterface()
 	-- If an output signature is available then ...
 	if self.outSignature then
 		replyMsg:addArgsBySignature(self.outSignature, ...)
-	-- Else no interface was specified in the request message
+	-- Else no signature was provided for the reply message
 	else
 		-- Make our best guess encoding thing correctly
 		replyMsg:addArgs(...)
