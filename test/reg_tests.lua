@@ -1239,6 +1239,17 @@ local function Test_MessageAPI( )
             -- msg:setObjectPath (GOOD)
             -- - - - - - - - - - - - - - - - -
             g_sectionExecCount  = g_sectionExecCount + 1
+            msg:setObjectPath( "/" )
+            g_sectionExecCount  = g_sectionExecCount + 1
+            if msg:getObjectPath() ~= "/" then
+                PrintIncFailure("%s ERROR: msg:setObjectPath.good(%s) failed, got(%s)", testName, "/", msg:getObjectPath() or "nil")
+            else
+                g_passed = g_passed + 1
+            end
+
+            -- msg:setObjectPath (GOOD)
+            -- - - - - - - - - - - - - - - - -
+            g_sectionExecCount  = g_sectionExecCount + 1
             msg:setObjectPath( TEST_OBJPATH )
             g_sectionExecCount  = g_sectionExecCount + 1
             if msg:getObjectPath() ~= TEST_OBJPATH then
@@ -1638,8 +1649,11 @@ local function Test_MessageAPI( )
             print("ERROR: Exiting Early")
             return g_sectionExecCount
         end
+        if l2dbus.Message.msgTypeToString( mtype ) ) == nil then
+            print("ERROR: Exiting Early")
+            return g_sectionExecCount
+        end
     end -- for loop
-
 
     -- newMethodCall(arg list) (Bad Args)
     -----------------------------------------
