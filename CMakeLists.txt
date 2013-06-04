@@ -31,6 +31,33 @@ add_library(L2DBUS_MODULE SHARED ${L2DBUS_SRC_FILES})
 set_target_properties(L2DBUS_MODULE PROPERTIES OUTPUT_NAME l2dbus_core)
 set_target_properties(L2DBUS_MODULE PROPERTIES PREFIX "")
 
+if( NOT L2DBUS_NO_LIBEV_LOOP )
+    set(L2DBUS_EV_SRC_FILES
+            "${L2DBUS_SRC_DIR}/main-loop/l2dbus_main-loop-ev.c"
+            "${L2DBUS_SRC_DIR}/l2dbus_compat.c"
+            "${L2DBUS_SRC_DIR}/l2dbus_types.c"
+            "${L2DBUS_SRC_DIR}/l2dbus_alloc.c"
+            "${L2DBUS_SRC_DIR}/l2dbus_util.c"
+       )
+    add_library(L2DBUS_EV_MODULE SHARED ${L2DBUS_EV_SRC_FILES})
+    set_target_properties(L2DBUS_EV_MODULE PROPERTIES OUTPUT_NAME l2dbus_ev)
+    set_target_properties(L2DBUS_EV_MODULE PROPERTIES PREFIX "")
+endif( NOT L2DBUS_NO_LIBEV_LOOP )
+
+if( NOT L2DBUS_NO_GLIB_LOOP )
+    set(L2DBUS_GLIB_SRC_FILES
+            "${L2DBUS_SRC_DIR}/main-loop/l2dbus_main-loop-glib.c"
+            "${L2DBUS_SRC_DIR}/l2dbus_compat.c"
+            "${L2DBUS_SRC_DIR}/l2dbus_types.c"
+            "${L2DBUS_SRC_DIR}/l2dbus_alloc.c"
+            "${L2DBUS_SRC_DIR}/l2dbus_util.c"
+       )
+    add_library(L2DBUS_GLIB_MODULE SHARED ${L2DBUS_GLIB_SRC_FILES})
+    set_target_properties(L2DBUS_GLIB_MODULE PROPERTIES OUTPUT_NAME l2dbus_glib)
+    set_target_properties(L2DBUS_GLIB_MODULE PROPERTIES PREFIX "")
+endif( NOT L2DBUS_NO_GLIB_LOOP )
+
+
 # Configure the compiler settings
 include(CompilerSettings)
 
@@ -39,27 +66,34 @@ include_directories(${DBUSLIB_PKG_INCLUDE_DIRS})
 link_directories(${DBUSLIB_PKG_LIBRARY_DIRS})
 
 
-pkg_check_modules(LIBEV_PKG "ev")
-if( LIBEV_PKG_FOUND )
-    include_directories(${LIBEV_PKG_INCLUDE_DIRS})
-    link_directories(${LIBEV_PKG_LIBRARY_DIRS})
-else( LIBEV_PKG_FOUND )
-    # Search for the library in the usual places
-    find_library( LIBEV_LIB ev )
-    if( "${LIBEV_LIB}" STREQUAL "LIBEV_LIB-NOTFOUND" )
-        message(FATAL_ERROR "Cannot find libev in the library search path")
-    else( "${LIBEV_LIB}" STREQUAL "LIBEV_LIB-NOTFOUND" )
-        find_path(LIBEV_PKG_INCLUDE_DIRS ev.h)
+if( NOT L2DBUS_NO_LIBEV_LOOP )
+    pkg_check_modules(LIBEV_PKG "ev")
+    if( LIBEV_PKG_FOUND )
         include_directories(${LIBEV_PKG_INCLUDE_DIRS})
-        get_filename_component(LIBEV_PKG_LIBRARY_DIRS ${LIBEV_LIB} PATH)
         link_directories(${LIBEV_PKG_LIBRARY_DIRS})
-        set(LIBEV_PKG_LIBRARIES "ev")
-        message(STATUS "Will link with libev found here: ${LIBEV_LIB}")
-        message(STATUS "LIBEV_PKG_INCLUDE_DIRS: ${LIBEV_PKG_INCLUDE_DIRS}")
-        message(STATUS "LIBEV_PKG_LIBRARY_DIRS: ${LIBEV_PKG_LIBRARY_DIRS}")
-    endif( "${LIBEV_LIB}" STREQUAL "LIBEV_LIB-NOTFOUND" )
-endif( LIBEV_PKG_FOUND )
+    else( LIBEV_PKG_FOUND )
+        # Search for the library in the usual places
+        find_library( LIBEV_LIB ev )
+        if( "${LIBEV_LIB}" STREQUAL "LIBEV_LIB-NOTFOUND" )
+            message(FATAL_ERROR "Cannot find libev in the library search path")
+        else( "${LIBEV_LIB}" STREQUAL "LIBEV_LIB-NOTFOUND" )
+            find_path(LIBEV_PKG_INCLUDE_DIRS ev.h)
+            include_directories(${LIBEV_PKG_INCLUDE_DIRS})
+            get_filename_component(LIBEV_PKG_LIBRARY_DIRS ${LIBEV_LIB} PATH)
+            link_directories(${LIBEV_PKG_LIBRARY_DIRS})
+            set(LIBEV_PKG_LIBRARIES "ev")
+            message(STATUS "Will link with libev found here: ${LIBEV_LIB}")
+            message(STATUS "LIBEV_PKG_INCLUDE_DIRS: ${LIBEV_PKG_INCLUDE_DIRS}")
+            message(STATUS "LIBEV_PKG_LIBRARY_DIRS: ${LIBEV_PKG_LIBRARY_DIRS}")
+        endif( "${LIBEV_LIB}" STREQUAL "LIBEV_LIB-NOTFOUND" )
+    endif( LIBEV_PKG_FOUND )
+endif( NOT L2DBUS_NO_LIBEV_LOOP )
 
+if( NOT L2DBUS_NO_GLIB_LOOP )
+    pkg_check_modules(GLIB_PKG REQUIRED "glib-2.0>=2.0.0")
+    include_directories(${GLIB_PKG_INCLUDE_DIRS})
+    link_directories(${GLIB_PKG_LIBRARY_DIRS})
+endif( NOT L2DBUS_NO_GLIB_LOOP )
 
 pkg_check_modules(CDBUS_PKG "cdbus")
 if( CDBUS_PKG_FOUND )
@@ -90,11 +124,26 @@ endif ( "${LUA_VERSION_STRING}" STREQUAL "LUA_VERSION_STRING-NOTFOUND" )
 MESSAGE(STATUS "Found Lua version ${LUA_VERSION_STRING}")
 
 
-include_directories(${LUA_INCLUDE_DIR})
+include_directories("${LUA_INCLUDE_DIR}")
+include_directories("${L2DBUS_SRC_DIR}")
 target_link_libraries(L2DBUS_MODULE ${DBUSLIB_PKG_LIBRARIES}
+                                    ${CDBUS_PKG_LIBRARIES}
+                                    ${LUA_LIBRARIES})
+
+if( NOT L2DBUS_NO_LIBEV_LOOP )
+    target_link_libraries(L2DBUS_EV_MODULE
                                     ${LIBEV_PKG_LIBRARIES}
                                     ${CDBUS_PKG_LIBRARIES}
                                     ${LUA_LIBRARIES})
+endif( NOT L2DBUS_NO_LIBEV_LOOP )
+
+if( NOT L2DBUS_NO_GLIB_LOOP )
+    target_link_libraries(L2DBUS_GLIB_MODULE
+                                    ${GLIB_PKG_LIBRARIES}
+                                    ${CDBUS_PKG_LIBRARIES}
+                                    ${LUA_LIBRARIES})
+endif( NOT L2DBUS_NO_GLIB_LOOP )
+
 
 LINK_DIRECTORIES(${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
 
@@ -116,6 +165,14 @@ ENDIF(NOT DEFINED LUA_INSTALL_LMOD_PATH)
 install(DIRECTORY "${L2DBUS_ROOT_DIR}/lua/l2dbus" DESTINATION "${LUA_INSTALL_LMOD_PATH}")
 install(DIRECTORY "${L2DBUS_ROOT_DIR}/lua/ldbus" DESTINATION "${LUA_INSTALL_LMOD_PATH}")
 install(TARGETS L2DBUS_MODULE DESTINATION "${LUA_INSTALL_CMOD_PATH}")
+
+if( NOT L2DBUS_NO_LIBEV_LOOP )
+    install(TARGETS L2DBUS_EV_MODULE DESTINATION "${LUA_INSTALL_CMOD_PATH}")
+endif( NOT L2DBUS_NO_LIBEV_LOOP )
+
+if( NOT L2DBUS_NO_GLIB_LOOP )
+    install(TARGETS L2DBUS_GLIB_MODULE DESTINATION "${LUA_INSTALL_CMOD_PATH}")
+endif( NOT L2DBUS_NO_GLIB_LOOP )
 
 # Uninstall target
 configure_file(

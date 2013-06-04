@@ -52,11 +52,12 @@ local validate = require("l2dbus.validate")
 local logging = require("logging")
 local ev = require("ev")
 
+
 local M = { }
 --- Module version
 local VERSION = "1.1.1"
-local mainLoop = l2dbus.getDefaultMainLoop()
-local dispatch = l2dbus.Dispatcher.new()
+local mainLoop = require("l2dbus_ev").new()
+local dispatch = l2dbus.Dispatcher.new(mainLoop)
 
 --- XS Embedded Service Provider Interface Description
 local XS_EMBEDDED_SERVICE_PROVIDER_INF = "com.xsembedded.ServiceProvider"

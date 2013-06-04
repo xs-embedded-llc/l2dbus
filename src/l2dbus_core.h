@@ -32,6 +32,7 @@
  */
 
 #ifndef L2DBUS_CORE_H_
+#define L2DBUS_CORE_H_
 
 /* Forward Declarations */
 struct lua_State;
@@ -67,10 +68,6 @@ struct lua_State;
 void l2dbus_checkModuleInitialized(struct lua_State* L);
 int l2dbus_moduleFinalizerRef(struct lua_State* L);
 void l2dbus_moduleFinalizerUnref(struct lua_State* L, int ref);
-
-
-#define L2DBUS_CORE_H_
-
 
 
 #endif /* Guard for L2DBUS_CORE_H_ */

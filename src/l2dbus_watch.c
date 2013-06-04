@@ -688,37 +688,6 @@ l2dbus_watchSetData
 }
 
 
-/**
- @function clearPending
- @within Watch
-
- Retrieves any signaled/pending events for a descriptor and then clears them.
-
- If the watch has pending events it will return these pending events. If an
- event was signaled/pending the associated flag is cleared (and therefore this
- watch event will not trigger the handler function).
-
- @tparam userdata watch The watch to clear the events.
- @tparam table events Returns an @{EventTable} of signaled/pending events.
- */
-static int
-l2dbus_watchClearPending
-    (
-    lua_State*  L
-    )
-{
-    l2dbus_Watch* ud = (l2dbus_Watch*)luaL_checkudata(L, 1,
-                                                L2DBUS_WATCH_MTBL_NAME);
-
-    /* Make sure the module is initialized */
-    l2dbus_checkModuleInitialized(L);
-
-    l2dbus_watchMakeEvTable(L, cdbus_watchClearPending(ud->watch));
-
-    return 1;
-}
-
-
 /*
  * Define the methods of the Watch class
  */
@@ -730,7 +699,6 @@ static const luaL_Reg l2dbus_watchMetaTable[] = {
     {"setEvents", l2dbus_watchSetEvents},
     {"data", l2dbus_watchData},
     {"setData", l2dbus_watchSetData},
-    {"clearPending", l2dbus_watchClearPending},
     {"__gc", l2dbus_watchDispose},
     {NULL, NULL},
 };

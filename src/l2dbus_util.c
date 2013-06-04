@@ -36,13 +36,6 @@
 #include "l2dbus_debug.h"
 #include "l2dbus_compat.h"
 #include "l2dbus_defs.h"
-#include "ev.h"
-
-/* Lua Libev metatable type name. This would likely
- * break should the implementation of the Lua binding
- * to libev change.
- */
-const char* const L2DBUS_LOOP_MT = "ev{loop}";
 
 
 void*
@@ -73,32 +66,6 @@ l2dbus_isUserData
     return NULL;
 }
 
-struct ev_loop*
-l2dbus_isEvLoop
-    (
-    lua_State*  L,
-    int         udIdx
-    )
-{
-    /* Is value a userdata? */
-    struct ev_loop* loop = NULL;
-    struct ev_loop** p = lua_touserdata(L, udIdx);
-    if ( NULL != p )
-    {
-        /* Does it have a metatable? */
-        if ( lua_getmetatable(L, udIdx) )
-        {
-            lua_getfield(L, LUA_REGISTRYINDEX, L2DBUS_LOOP_MT);
-            /* Does it have the correct mt? */
-            if ( lua_rawequal(L, -1, -2) )
-            {
-                loop = *p;
-            }
-            lua_pop(L, 2);
-        }
-    }
-    return loop;
-}
 
 void
 l2dbus_cdbusError
@@ -143,8 +110,8 @@ l2dbus_createMetatable
     const luaL_Reg* funcs
     )
 {
-    const char* typename = l2dbus_getNameByTypeId(typeId);
-    if ( luaL_newmetatable(L, typename) )
+    const char* typeName = l2dbus_getNameByTypeId(typeId);
+    if ( luaL_newmetatable(L, typeName) )
     {
         /* Assign the methods to this new metatable */
         luaL_setfuncs(L, funcs, 0);
@@ -152,7 +119,7 @@ l2dbus_createMetatable
         lua_pushinteger(L, typeId);
         lua_setfield(L, -2, L2DBUS_META_TYPE_ID_FIELD);
 
-        lua_pushstring(L, typename);
+        lua_pushstring(L, typeName);
         lua_setfield(L, -2, L2DBUS_META_TYPE_NAME_FIELD);
 
         /* Set it's metatable to point to itself */

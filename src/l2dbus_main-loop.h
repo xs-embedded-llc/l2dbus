@@ -25,26 +25,32 @@
  *
  *===========================================================================
  *===========================================================================
- * @file           l2dbus_util.h        
+ * @file           l2dbus_main-loop.h
  * @author         Glenn Schmottlach
- * @brief          Definition of common utility types, functions, etc...
+ * @brief          Global module definitions for L2DBUS main loops.
  *===========================================================================
  */
 
-#ifndef L2DBUS_UTIL_H_
-#define L2DBUS_UTIL_H_
-#include "cdbus/cdbus.h"
-#include "lauxlib.h"
-#include "l2dbus_types.h"
+#ifndef L2DBUS_MAIN_LOOP_H_
+#define L2DBUS_MAIN_LOOP_H_
 
-void* l2dbus_isUserData(lua_State* L, int udIdx, const char *typeName);
-void l2dbus_cdbusError(lua_State* L, cdbus_HResult rc, const char* msg);
-int l2dbus_createMetatable(lua_State* L, l2dbus_TypeId typeId, const luaL_Reg* funcs);
-l2dbus_Bool l2dbus_isValidIndex(lua_State* L, int idx);
-l2dbus_TypeId l2dbus_getMetaTypeId(lua_State* L, int idx);
-const char* l2dbus_getTypeName(lua_State* L, int idx);
-void l2dbus_getGlobalField(lua_State* L, const char* name);
-l2dbus_Bool l2dbus_isString(lua_State* L, int nArg);
-const char* l2dbus_checkString(lua_State* L, int nArg);
+/* Forward Declarations */
+struct lua_State;
+struct cdbus_MainLoop;
 
-#endif /* Guard for L2DBUS_UTIL_H_ */
+/*
+ * The "base" class for Main Loop user data types. The "loop" field **MUST**
+ * always be declared first in any derived concrete type.
+ */
+typedef struct l2dbus_MainLoopUserData
+{
+    /* Must always be declared first */
+    struct cdbus_MainLoop* loop;
+
+    /* Derived Main Loop types can be defined separately but they
+     * must have 'loop' declared first. Additional fields can be added
+     * following 'loop'.
+     */
+} l2dbus_MainLoopUserData;
+
+#endif /* Guard for L2DBUS_MAIN_LOOP_H_ */
