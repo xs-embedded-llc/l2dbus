@@ -20,6 +20,7 @@ local helpText = [[
   --bus [busName]       -- Bus name
   -g                    -- force garbage collection call after each reply (rx/tx)
                            May impact overall performance.  Default is off.
+  -p [filename]         -- PID file.  Place to store the PID.  Useful with other tools.
   -v                    -- Verbosity
                            v = level 1, Basic Count
                                Shows the packet count only
@@ -66,6 +67,13 @@ local helpText = [[
 
   Server Args:
   -S                    -- Run as the server side. Default is client.
+  --setpause            -- Set the garbage collection "setpause" option to
+                           test various GC tuning. Default is 200, lower is
+                           more aggressive and occurs more often.   Values
+                           smaller than 100 mean the collector will not wait
+                           to start a new cycle. A value of 200 means that the
+                           collector waits for the total memory in use to
+                           double before starting a new cycle.
 
   Example:
   (NOTE: Adjust the verbosity to meet your needs)
@@ -118,7 +126,7 @@ end
 -- Const
 ---------------
 
-local APP_VER               = "1.0.2"
+local APP_VER               = "1.0.3"
 
 -- Service API
 local STRESS_BUSNAME        = "com.dbus.service.ping_stress"
@@ -228,6 +236,11 @@ function g_dbMethods.echo( payload )
     if g_forceGC == true then
         collectgarbage()
     end
+
+--  local memUsed = collectgarbage("count")
+--  if memUsed then
+--      print("Used:",memUsed*1024)
+--  end
 
     return payload
 
@@ -369,7 +382,7 @@ local function ClientRequests()
 
     if g_waitOnExit == true then
         print(string.rep("-", 80))
-        print("PRESS <ENTER> TO START...")
+        print("PRESS <ENTER> TO START...  (pid: " .. posix.getpid("pid") .. ")")
         print(string.rep("-", 80))
         io.stdin:read("*line")
     end
@@ -636,13 +649,16 @@ end -- InitDbus
 ----------------------------------------------------------------
 local function ParseArgs()
 
-    local bHelp   = false
-    local lArgs   = utils.deepcopy(arg)
-    local longOpt = {--name           hasArg   short/retOpt
-                     {"bus",          true,    nil },
+    local pauseVal = nil
+    local sPid     = nil
+    local bHelp    = false
+    local lArgs    = utils.deepcopy(arg)
+    local longOpt  = {--name           hasArg   short/retOpt
+                      {"bus",          true,    nil },
+                      {"setpause",     true,    nil },
           }
 
-    for opt, optval in utils.getopt(lArgs, 'ac:efghi:kn:rs:Stvw', longOpt) do
+    for opt, optval in utils.getopt(lArgs, 'ac:efghi:kn:p:rs:Stvw', longOpt) do
 
         if opt == "a" then
 
@@ -656,7 +672,7 @@ local function ParseArgs()
 
             g_iterCount = tonumber(optval)
             if g_iterCount == nil or g_iterCount < 1 then
-                print("ERROR: Invalid iteration count (option -c): ", g_iterCount)
+                print("ERROR: Invalid iteration count (option -c): ", optval)
                 os.exit(1)
             end
 
@@ -681,7 +697,7 @@ local function ParseArgs()
 
             g_waitInterval = tonumber(optval)
             if g_waitInterval == nil or g_waitInterval < 0 then
-                print("ERROR: Invalid wait interval (option -i): ", g_waitInterval)
+                print("ERROR: Invalid wait interval (option -i): ", optval)
                 os.exit(1)
             end
 
@@ -693,6 +709,17 @@ local function ParseArgs()
 
             g_clientName = "Client"..optval
 
+        elseif opt == "p" then
+
+            sPid     = optval
+            local fp = io.open( sPid, "w" )
+            if fp == nil then
+                print("ERROR: Unable to create: ", optval)
+                os.exit(1)
+            end
+            fp:write(posix.getpid("pid"))
+            fp:close()
+
         elseif opt == "r" then
 
             g_ignoreReply = true
@@ -701,13 +728,22 @@ local function ParseArgs()
 
             g_payloadSize = tonumber(optval)
             if g_payloadSize == nil or g_payloadSize < 8 then
-                print("ERROR: Invalid payload size (option -s): ", g_payloadSize)
+                print("ERROR: Invalid payload size (option -s): ", optval)
                 os.exit(1)
             end
 
         elseif opt == "S" then
 
             g_serverMode = true
+
+        elseif opt == "setpause" then
+
+            pauseVal = tonumber(optval)
+            if pauseVal == nil or pauseVal <= 0 then
+                print("ERROR: Invalid setpause value (option --setpause): ", optval)
+                os.exit(1)
+            end
+            collectgarbage( "setpause", pauseVal )
 
         elseif opt == "t" then
 
@@ -746,9 +782,16 @@ local function ParseArgs()
         print("Verbose:                            ", g_verbose)
         print("Garbage Collect After Reply:        ", g_forceGC)
         print("Timestamp Performance:              ", g_timestamp, (g_timestamp==true) and "(in "..g_timeUnits..")" or "")
+        if sPid then
+            print("PID Filename:                       ", sPid)
+        end
+
 
         if g_serverMode == true then
-
+            print("PID:                                ", posix.getpid("pid"))
+            if pauseVal then
+                print("GC setpause Value:                  ", pauseVal)
+            end
             print()
             print("NOTE: Connect to Bus:", STRESS_BUSNAME)
 
@@ -815,6 +858,9 @@ function Snapshot(  )
 
     print("STATS:")
     print(string.rep("=", 40))
+
+    g_stats.pktsPerSec = g_stats.iPkt / g_stats.time.totalRTT
+
     pretty.dump( g_stats )
 
 end -- Snapshot
