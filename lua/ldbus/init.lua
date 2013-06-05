@@ -55,9 +55,12 @@ local ev = require("ev")
 
 local M = { }
 --- Module version
-local VERSION = "1.1.1"
-local mainLoop = require("l2dbus_ev").new()
-local dispatch = l2dbus.Dispatcher.new(mainLoop)
+local VERSION = "1.1.2"
+local mainLoop = ev.Loop.default
+-- Call a method to force the loop to actually be allocated
+mainLoop:now()
+local dispLoop = require("l2dbus_ev").new(mainLoop)
+local dispatch = l2dbus.Dispatcher.new(dispLoop)
 
 --- XS Embedded Service Provider Interface Description
 local XS_EMBEDDED_SERVICE_PROVIDER_INF = "com.xsembedded.ServiceProvider"
