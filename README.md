@@ -6,13 +6,14 @@ A gentle introduction to the L2DBUS library can be found <a href="./doc/manual/0
 
 ## Dependencies
 
-L2DBUS depends on the following external libraries:
+L2DBUS uses the following external libraries and programs:
 
-* [D-Bus reference Library](http://dbus.freedesktop.org/releases/dbus/) (version > 1.4.X)
-* [libev](http://software.schmorp.de/pkg/libev.html) (version >= 4.00)
-* [Lua](http://www.lua.org/download.html) (version 5.1.X or 5.2.X) or [LuaJIT](http://luajit.org/download.html) (version > 2.0.X)
-* CDBUS
-* [CMake](http://www.cmake.org/) (version >= 2.6.0) Necessary for building.
+   * [D-Bus reference Library](http://dbus.freedesktop.org/releases/dbus/) (version > 1.4.X)
+   * [libev](http://software.schmorp.de/pkg/libev.html) (version >= 4.00) **Optional**
+   * [Glib](https://developer.gnome.org/glib/) (version >= 2.0.0) **Optional**
+   * [Lua](http://www.lua.org/download.html) (version 5.1.X or 5.2.X) or [LuaJIT](http://luajit.org/download.html) (version > 2.0.X)
+   * CDBUS
+   * [CMake](http://www.cmake.org/) (version >= 2.6.0) Necessary for building.
 
 Linking will also pull in the math library.
 
@@ -103,3 +104,11 @@ And of course to *clean* the build you can simple erase the build directory from
 ## License
 
 The L2DBUS library itself is licensed under the MIT License. See <a href="../../../LICENSE">LICENSE</a> in the source distribution for additional details. Additional terms may apply since L2DBUS does have other dependencies. The intent, however, was to utilize components that only have compatible licenses and support both open source and propriety (closed) source applications.
+
+## Known Issues / Caveats
+
+There are several known issues or caveats to be aware of for this package:
+
+   * Although this package compiles under Lua 5.2, it has *not* been tested or run under Lua 5.2. To date the primary development platform and system is Lua 5.1 based. It *should* work under Lua 5.2 but your mileage may vary. Please help us make the package better by providing feedback on any issues that are encountered when building/running L2DBUS under Lua 5.2 and/or LuaJIT.
+   
+   * This package contains a hack/kludge to work around a known Lua bug impacting load-able libraries. Specifically, the bug impacts dynamically loaded C-modules with finalizers that may run at program termination. Prior to Lua 5.2.1 it is possible that the Lua GC may *unload* modules before all finalizers have had an opportunity run (and potentially call code that resides in those modules). This typically results in a segmentation fault when a program is terminating. For more information see the full bug description and Lua VM patch [here](http://www.lua.org/bugs.html#5.2.2-1). Since most people won't patch their Lua VM for one reason or another, a work-around was devised. This work-around has been tested under Linux but it should be applicable to MacOSX and Windows. Shared libraries under all these major platforms are reference counted when loaded. This means, for instance, under Linux dlopen() increments a reference and dlclose() decrements it. When Lua loads a C-module the reference is incremented by one. In order to prevent certain modules from being unloaded prematurely (e.g. the *main loop* modules for libev and glib) each module internally loads themselves thus incrementing the reference count. This means even though the Lua GC unloads these C-modules at program termination they won't actually be unmapped from memory until the entire program exits.

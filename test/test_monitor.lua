@@ -39,9 +39,20 @@ end
 
 
 local function main()
-	l2dbus.Trace.setFlags(l2dbus.Trace.ERROR, l2dbus.Trace.WARN)
+	--l2dbus.Trace.setFlags(l2dbus.Trace.ERROR, l2dbus.Trace.WARN)
+	l2dbus.Trace.setFlags(l2dbus.Trace.ALL)
 
-    local disp = l2dbus.Dispatcher.new()
+	local mainLoop
+	if (arg[1] == "--glib") or (arg[1] == "-g") then
+		mainLoop = require("l2dbus_glib").MainLoop.new()
+	else
+		local ev = require("ev")
+		local evLoop = ev.Loop.default
+		evLoop:now()
+		mainLoop = require("l2dbus_ev").MainLoop.new(evLoop)
+	end
+	
+    local disp = l2dbus.Dispatcher.new(mainLoop)
     assert( nil ~= disp )
     local conn = l2dbus.Connection.openStandard(disp, l2dbus.Dbus.BUS_SESSION)
     assert( nil ~= conn )

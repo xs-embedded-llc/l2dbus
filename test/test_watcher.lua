@@ -7,7 +7,7 @@ local ev = require("ev")
 local bit = require("bit")
 local posix = require("posix")
 
-local gLoop = ev.Loop.new()
+local gDisp
 
 local FIFO_PATH = "/tmp/fifo"
 local gReadFd = nil
@@ -26,16 +26,16 @@ local function watchHandler(w, events, user)
     -- Either we've reached an EOF condition or detected an error/hangup
     if 0 == #result then
         w:setEnable(false)
-        gLoop:unloop()
+        gDisp:stop()
     end
 end
 
 
-local function onTimeout(loop, timer, events)
+local function onTimeout(tm, disp)
     gTickCnt = gTickCnt + 1
     if gTickCnt % 6 == 0 then
         print("Exiting . . .")
-        gLoop:unloop()
+        disp:stop()
     else
         posix.write(gWriteFd, string.format("Tick %d", gTickCnt))
     end
@@ -48,11 +48,21 @@ local function main()
     print("Dumping l2dbus_core")
     pretty.dump(l2dbus)
 
-    local backends = { [1] = "select", [2] = "poll", [4] = "epoll",
+	local mainLoop
+	if (arg[1] == "--glib") or (arg[1] == "-g") then
+		mainLoop = require("l2dbus_glib").MainLoop.new()
+	else
+		local ev = require("ev")
+		local evLoop = ev.Loop.default
+		--local evLoop = ev.Loop.new()
+		evLoop:now()
+		local backends = { [1] = "select", [2] = "poll", [4] = "epoll",
                        [8] = "kqueue", [16] = "/dev/poll", [32] = "Solaris port"}
-    print("The selected libev backend: " .. backends[gLoop:backend()])
-
-    local disp = l2dbus.Dispatcher.new(gLoop)
+    	print("The selected libev backend: " .. backends[evLoop:backend()])
+		mainLoop = require("l2dbus_ev").MainLoop.new(evLoop)
+	end
+	
+    gDisp = l2dbus.Dispatcher.new(mainLoop)
 
     -- Make sure the FIFO is available for reading/writing
     if 0 ~= posix.access(FIFO_PATH, "rw") then
@@ -66,9 +76,10 @@ local function main()
     assert( gWriteFd ~= nil, "Failed opening FIFO for writing")
 
     local timer = ev.Timer.new(onTimeout, 2, 2)
-    timer:start(gLoop, true)
+    local timer = l2dbus.Timeout.new(gDisp, 2000, true, onTimeout, gDisp)
+    timer:setEnable(true)
 
-    local watch = l2dbus.Watch.new(disp, gReadFd, l2dbus.Watch.READ, watchHandler, "teststring")
+    local watch = l2dbus.Watch.new(gDisp, gReadFd, l2dbus.Watch.READ, watchHandler, "teststring")
 
     print("The watch fd is: " .. tostring(watch:getDescriptor()))
 
@@ -95,12 +106,15 @@ local function main()
     watch:setEnable(true)
     print("The watch is now: " .. ((true == watch:isEnabled()) and "enabled" or "disabled"))
 
+	local conn = l2dbus.Connection.openStandard(gDisp, l2dbus.Dbus.BUS_SESSION)
+    assert( nil ~= conn )
+    
     print("Starting main loop")
-    gLoop:loop()
+    gDisp:run(l2dbus.Dispatcher.DISPATCH_WAIT)
 
     -- Free all resources
     watch = nil
-    dispatcher = nil
+    gDisp = nil
     posix.close(gReadFd)
     posix.close(gWriteFd)
     posix.unlink(FIFO_PATH)
@@ -112,7 +126,6 @@ io.stdin:read("*l")
 print("Starting program")
 main()
 
-gLoop = nil
 l2dbus.shutdown()
 collectgarbage("collect")
 

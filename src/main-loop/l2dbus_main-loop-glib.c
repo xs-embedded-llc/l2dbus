@@ -39,6 +39,7 @@
 #include "l2dbus_compat.h"
 #include "l2dbus_types.h"
 #include "l2dbus_util.h"
+#include "l2dbus_module.h"
 
 
 /**
@@ -158,7 +159,7 @@ l2dbus_mainLoopDispose
 
 
 /**
- @function new
+ @function MainLoop.new
 
  Creates a new L2DBUS Glib-based main loop.
 
@@ -192,16 +193,16 @@ l2dbus_mainLoopNew
     /* Check to see if a Lua libev loop userdata was passed
      * in for use as the main loop.
      */
-    int loopType = lua_type(L, -1);
+    int loopType = lua_type(L, 1);
 
     if ( LUA_TLIGHTUSERDATA == loopType )
     {
         /* We'll assume (big assumption) that this raw pointer is
          * actually a Glib main loop pointer.
          */
-        glibLoop = lua_touserdata(L, -1);
+        glibLoop = lua_touserdata(L, 1);
     }
-    else if ( LUA_TNIL == loopType )
+    else if ( (LUA_TNONE == loopType) || (LUA_TNIL == loopType) )
     {
         /* Use the default loop provided by the Glib main loop binding */
         glibLoop = NULL;
@@ -242,10 +243,17 @@ static const luaL_Reg l2dbus_mainLoopGlibMetaTable[] =
 
 
 /* Module top-level functions */
-static const luaL_Reg l2dbus_mainLoopModuleMetaTable[] =
+static const luaL_Reg l2dbus_mainLoopModuleTable[] =
+{
+    {"getVersion", l2dbus_mainLoopGetVersion},
+    {NULL, NULL},
+};
+
+
+/* Main loop top-level functions */
+static const luaL_Reg l2dbus_mainLoopLoopTable[] =
 {
     {"new", l2dbus_mainLoopNew},
-    {"getVersion", l2dbus_mainLoopGetVersion},
     {NULL, NULL},
 };
 
@@ -274,7 +282,28 @@ luaopen_l2dbus_glib
     lua_pop(L, l2dbus_createMetatable(L, L2DBUS_MAIN_LOOP_TYPE_ID,
         l2dbus_mainLoopGlibMetaTable));
 
-    luaL_newlib(L, l2dbus_mainLoopModuleMetaTable);
+    luaL_newlib(L, l2dbus_mainLoopModuleTable);
+    luaL_newlib(L, l2dbus_mainLoopLoopTable);
+
+    /* Assign main loop table to the top-level module table */
+    lua_setfield(L, -2, "MainLoop");
+
+    /*
+     * ** KLUDGE **
+     * Lua has a bug (fixed version 5.2.1) where finalizers may call functions
+     * from a dynamic library (module) after the library has been unloaded
+     * (see http://www.lua.org/bugs.html#5.2.0-3). This is a very real problem
+     * for the main loop modules since it's possible they will be unloaded
+     * *before* D-Bus has been fully shut down. This leads to a seg-fault
+     * when a program is exits. In order to get around this bug (short of
+     * using a Lua version >= 5.2.1) another reference is made to the
+     * module's dynamic library so that when Lua does an effective dlclose()
+     * on the module it isn't unloaded (e.g. it's ref-count remains greater
+     * than 1). As a result the module won't be unloaded until the program
+     * exits. It's not a pretty fix but the only solution short of a patch
+     * to all earlier versions of Lua.
+     */
+    l2dbus_moduleRef(L, "l2dbus_glib");
 
     return 1;
 }

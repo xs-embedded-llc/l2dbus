@@ -7,10 +7,11 @@
 #        . ./setLuaEnv.sh 
 #-------------------------------------------------------------
 
-# Taylor this as needed...
-#export LD_LIBRARY_PATH="/home/username/workspace/cdbus/x86_64-linux-debug/"
-#export LUA_PATH="${LUA_PATH};;/home/username/workspace/l2dbus/?.lua;/home/username/workspace/l2dbus/?/init.lua"
-#export LUA_CPATH="${LUA_CPATH};;/home/username/workspace/l2dbus/x86-64-debug/?.so"
+# Tailor as needed for your build environment
+export BUILD_ROOT="${HOME}/workspace"
+export LD_LIBRARY_PATH="${BUILD_ROOT}/cdbus/x86_64-Debug/lib"
+export LUA_PATH="${LUA_PATH};;${BUILD_ROOT}/l2dbus/lua/?.lua;${BUILD_ROOT}/l2dbus/lua/?/init.lua"
+export LUA_CPATH="${LUA_CPATH};;${BUILD_ROOT}/l2dbus/x86_64-Debug/lib/?.so"
 
 echo ""
 echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"

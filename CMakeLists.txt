@@ -34,6 +34,7 @@ set_target_properties(L2DBUS_MODULE PROPERTIES PREFIX "")
 if( NOT L2DBUS_NO_LIBEV_LOOP )
     set(L2DBUS_EV_SRC_FILES
             "${L2DBUS_SRC_DIR}/main-loop/l2dbus_main-loop-ev.c"
+            "${L2DBUS_SRC_DIR}/main-loop/l2dbus_module.c"
             "${L2DBUS_SRC_DIR}/l2dbus_compat.c"
             "${L2DBUS_SRC_DIR}/l2dbus_types.c"
             "${L2DBUS_SRC_DIR}/l2dbus_alloc.c"
@@ -47,6 +48,7 @@ endif( NOT L2DBUS_NO_LIBEV_LOOP )
 if( NOT L2DBUS_NO_GLIB_LOOP )
     set(L2DBUS_GLIB_SRC_FILES
             "${L2DBUS_SRC_DIR}/main-loop/l2dbus_main-loop-glib.c"
+            "${L2DBUS_SRC_DIR}/main-loop/l2dbus_module.c"
             "${L2DBUS_SRC_DIR}/l2dbus_compat.c"
             "${L2DBUS_SRC_DIR}/l2dbus_types.c"
             "${L2DBUS_SRC_DIR}/l2dbus_alloc.c"
@@ -87,12 +89,21 @@ if( NOT L2DBUS_NO_LIBEV_LOOP )
             message(STATUS "LIBEV_PKG_LIBRARY_DIRS: ${LIBEV_PKG_LIBRARY_DIRS}")
         endif( "${LIBEV_LIB}" STREQUAL "LIBEV_LIB-NOTFOUND" )
     endif( LIBEV_PKG_FOUND )
+    
+    pkg_check_modules(CDBUS_EV_PKG REQUIRED "cdbus-ev")
+    include_directories(${CDBUS_EV_PKG_INCLUDE_DIRS})
+    link_directories(${CDBUS_EV_PKG_LIBRARY_DIRS})
 endif( NOT L2DBUS_NO_LIBEV_LOOP )
 
 if( NOT L2DBUS_NO_GLIB_LOOP )
     pkg_check_modules(GLIB_PKG REQUIRED "glib-2.0>=2.0.0")
     include_directories(${GLIB_PKG_INCLUDE_DIRS})
     link_directories(${GLIB_PKG_LIBRARY_DIRS})
+
+    pkg_check_modules(CDBUS_GLIB_PKG REQUIRED "cdbus-glib")
+    include_directories(${CDBUS_GLIB_PKG_INCLUDE_DIRS})
+    link_directories(${CDBUS_GLIB_PKG_LIBRARY_DIRS})
+    
 endif( NOT L2DBUS_NO_GLIB_LOOP )
 
 pkg_check_modules(CDBUS_PKG "cdbus")
@@ -132,15 +143,15 @@ target_link_libraries(L2DBUS_MODULE ${DBUSLIB_PKG_LIBRARIES}
 
 if( NOT L2DBUS_NO_LIBEV_LOOP )
     target_link_libraries(L2DBUS_EV_MODULE
-                                    ${LIBEV_PKG_LIBRARIES}
                                     ${CDBUS_PKG_LIBRARIES}
+                                    ${CDBUS_EV_PKG_LIBRARIES}
                                     ${LUA_LIBRARIES})
 endif( NOT L2DBUS_NO_LIBEV_LOOP )
 
 if( NOT L2DBUS_NO_GLIB_LOOP )
     target_link_libraries(L2DBUS_GLIB_MODULE
-                                    ${GLIB_PKG_LIBRARIES}
                                     ${CDBUS_PKG_LIBRARIES}
+                                    ${CDBUS_GLIB_PKG_LIBRARIES}
                                     ${LUA_LIBRARIES})
 endif( NOT L2DBUS_NO_GLIB_LOOP )
 

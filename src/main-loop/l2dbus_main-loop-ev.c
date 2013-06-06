@@ -38,6 +38,7 @@
 #include "l2dbus_compat.h"
 #include "l2dbus_types.h"
 #include "l2dbus_util.h"
+#include "l2dbus_module.h"
 
 
 /**
@@ -292,7 +293,7 @@ l2dbus_mainLoopPostLoop
 
 
 /**
- @function new
+ @function MainLoop.new
 
  Creates a new L2DBUS libev-based main loop.
 
@@ -336,7 +337,7 @@ l2dbus_mainLoopNew
     /* Check to see if a Lua libev loop userdata was passed
      * in for use as the main loop.
      */
-    int loopType = lua_type(L, -1);
+    int loopType = lua_type(L, 1);
 
     if ( NULL == gLuaLibevThread )
     {
@@ -344,7 +345,7 @@ l2dbus_mainLoopNew
     }
     else if ( LUA_TUSERDATA == loopType )
     {
-        evLoop = l2dbus_isEvLoop(L, lua_absindex(L, -1));
+        evLoop = l2dbus_isEvLoop(L, 1);
         if ( evLoop == L2DBUS_LIBEV_UNINITIALIZED_DEFAULT_LOOP )
         {
             luaL_error(L, "The Lua libev loop is uninitialized - "
@@ -356,9 +357,9 @@ l2dbus_mainLoopNew
         /* We'll assume (big assumption) that this raw pointer is
          * actually a libev main loop pointer.
          */
-        evLoop = lua_touserdata(L, -1);
+        evLoop = lua_touserdata(L, 1);
     }
-    else if ( LUA_TNIL == loopType )
+    else if ( (LUA_TNONE == loopType) || (LUA_TNIL == loopType) )
     {
         /* Use the default loop provided by the libev main loop binding */
         evLoop = NULL;
@@ -418,14 +419,20 @@ static const luaL_Reg l2dbus_mainLoopEvMetaTable[] =
 
 
 /* Module top-level functions */
-static const luaL_Reg l2dbus_mainLoopModuleMetaTable[] =
+static const luaL_Reg l2dbus_mainLoopModuleTable[] =
 {
-    {"new", l2dbus_mainLoopNew},
     {"getVersion", l2dbus_mainLoopGetVersion},
     {"shutdown", l2dbus_mainLoopThreadFree},
     {NULL, NULL},
 };
 
+
+/* Main loop top-level functions */
+static const luaL_Reg l2dbus_mainLoopLoopTable[] =
+{
+    {"new", l2dbus_mainLoopNew},
+    {NULL, NULL},
+};
 
 int
 luaopen_l2dbus_ev
@@ -454,7 +461,28 @@ luaopen_l2dbus_ev
     lua_pop(L, l2dbus_createMetatable(L, L2DBUS_MAIN_LOOP_TYPE_ID,
         l2dbus_mainLoopEvMetaTable));
 
-    luaL_newlib(L, l2dbus_mainLoopModuleMetaTable);
+    luaL_newlib(L, l2dbus_mainLoopModuleTable);
+    luaL_newlib(L, l2dbus_mainLoopLoopTable);
+
+    /* Assign main loop table to the top-level module table */
+    lua_setfield(L, -2, "MainLoop");
+
+    /*
+     * ** KLUDGE **
+     * Lua has a bug (fixed version 5.2.1) where finalizers may call functions
+     * from a dynamic library (module) after the library has been unloaded
+     * (see http://www.lua.org/bugs.html#5.2.0-3). This is a very real problem
+     * for the main loop modules since it's possible they will be unloaded
+     * *before* D-Bus has been fully shut down. This leads to a seg-fault
+     * when a program is exits. In order to get around this bug (short of
+     * using a Lua version >= 5.2.1) another reference is made to the
+     * module's dynamic library so that when Lua does an effective dlclose()
+     * on the module it isn't unloaded (e.g. it's ref-count remains greater
+     * than 1). As a result the module won't be unloaded until the program
+     * exits. It's not a pretty fix but the only solution short of a patch
+     * to all earlier versions of Lua.
+     */
+    l2dbus_moduleRef(L, "l2dbus_ev");
 
     return 1;
 }

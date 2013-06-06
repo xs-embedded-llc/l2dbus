@@ -357,7 +357,7 @@ local function initDbus()
     l2dbus.Trace.setFlags(l2dbus.Trace.ERROR, l2dbus.Trace.WARN)
     --l2dbus.Trace.setFlags(l2dbus.Trace.ALL)
 
-    gDispatcher = l2dbus.Dispatcher.new(gMainLoop)
+    gDispatcher = l2dbus.Dispatcher.new(require("l2dbus_ev").new(gMainLoop))
     assert( nil ~= gDispatcher )
 
     -- Init [Pairing/HFP] Agent Service

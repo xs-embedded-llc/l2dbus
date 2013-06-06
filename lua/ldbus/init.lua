@@ -59,7 +59,7 @@ local VERSION = "1.1.2"
 local mainLoop = ev.Loop.default
 -- Call a method to force the loop to actually be allocated
 mainLoop:now()
-local dispLoop = require("l2dbus_ev").new(mainLoop)
+local dispLoop = require("l2dbus_ev").MainLoop.new(mainLoop)
 local dispatch = l2dbus.Dispatcher.new(dispLoop)
 
 --- XS Embedded Service Provider Interface Description
