@@ -108,8 +108,9 @@ local cjson     = require "cjson.safe"
 local pretty    = require "pl.pretty"
 local posix     = require "posix"
 local ev        = require "ev"
-local dbusUtils = require "xse.dbusUtils"
-local utils     = require "xse.commonUtils"  -- args parsing
+local dbusUtils	= require "utils.dbusUtils"
+local utils     = require "utils.commonUtils"  -- args parsing
+local l2dbus	= require "l2dbus"
 
 --- If the socket module is not loaded the os.time() will be
 --- used which gives a one second granularity instead of milliseconds.
@@ -586,17 +587,17 @@ function InitDbus()
     local errStr = nil
     local result = nil
 
-    g_dbusBus, errStr = dbusUtils.newBus( g_dbusBusName, nil, g_verbose )
+    g_dbusBus, errStr = dbusUtils.openBus( g_dbusBusName, false )
     if g_dbusBus == nil then
         print("ERROR: DBus Session Bus not available: ", errStr)
         os.exit(2)
     end
-
+	
     if g_serverMode == true then
         -- SERVER MODE
 
         local dbAgent, errStr = g_dbusBus.newAdaptor( STRESS_OBJPATH )
-        if errStr then
+        if dbAgent == nil then
             print("ERROR: failed to create DBus agent: ", errStr)
             os.exit(3)
         end
@@ -633,9 +634,9 @@ function InitDbus()
             os.exit(1)
         end
 
-        -- This ensures this is the default since we will open more latrer
+        -- This ensures this is the default since we will open more later
         -- NOTE: This does not mean the deafult is ever used, this is more
-        --       for the benifit of testing/plugins.
+        --       for the benefit of testing/plugins.
         g_dbusBus.setDefaultProxy( dbProxy )
 
     end
@@ -859,8 +860,9 @@ function Snapshot(  )
     print("STATS:")
     print(string.rep("=", 40))
 
-    g_stats.pktsPerSec = g_stats.iPkt / g_stats.time.totalRTT
-
+	if g_timestamp then
+    	g_stats.pktsPerSec = g_stats.iPkt / g_stats.time.totalRTT
+    end
     pretty.dump( g_stats )
 
 end -- Snapshot
@@ -871,6 +873,7 @@ end -- Snapshot
 ----------------------------------------------------------------
 local function main()
 
+	l2dbus.Trace.setFlags(l2dbus.Trace.ERROR, l2dbus.Trace.WARN)
     ParseArgs()
 
     InitDbus()

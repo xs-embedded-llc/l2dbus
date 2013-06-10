@@ -39,8 +39,8 @@ end
 
 
 local function main()
-	--l2dbus.Trace.setFlags(l2dbus.Trace.ERROR, l2dbus.Trace.WARN)
-	l2dbus.Trace.setFlags(l2dbus.Trace.ALL)
+	l2dbus.Trace.setFlags(l2dbus.Trace.ERROR, l2dbus.Trace.WARN)
+	--l2dbus.Trace.setFlags(l2dbus.Trace.ALL)
 
 	local mainLoop
 	if (arg[1] == "--glib") or (arg[1] == "-g") then

@@ -104,7 +104,8 @@ local HFP_AGENT_METHODS = {
 -- Globals
 ----------
 
-local gMainLoop = ev.Loop.new()
+local gMainLoop = ev.Loop.default
+gMainLoop:now()
 local gPrompter = Prompter:new(gMainLoop)
 
 local gDispatcher
@@ -357,7 +358,7 @@ local function initDbus()
     l2dbus.Trace.setFlags(l2dbus.Trace.ERROR, l2dbus.Trace.WARN)
     --l2dbus.Trace.setFlags(l2dbus.Trace.ALL)
 
-    gDispatcher = l2dbus.Dispatcher.new(require("l2dbus_ev").new(gMainLoop))
+    gDispatcher = l2dbus.Dispatcher.new(require("l2dbus_ev").MainLoop.new(gMainLoop))
     assert( nil ~= gDispatcher )
 
     -- Init [Pairing/HFP] Agent Service
@@ -601,7 +602,8 @@ local function getDeviceIfaceProxy( iface, adapterProxy, bUseLastDevice )
     local proxyCtrl = proxyctrl.new(gSystemConn, iface[BUSNAME], gLastDevice )
     assert(proxyCtrl:bind())
 
-    local proxy = proxyCtrl:getProxy( iface[IFACE] )
+    --local proxy = proxyCtrl:getProxy( iface[IFACE] )
+    local proxy = proxyCtrl:getProxy("org.bluez.Device")
     assert( nil ~= proxy )
 
     return proxy, adapterProxy, proxyCtrl
@@ -1308,7 +1310,7 @@ local function menuOptionsDevices()
 
         elseif opt == 3 then  -- "CancelDiscover() (cancel DiscoverServices())"
 
-            executeMenuAction( "CancelDiscover", devProxy.m.CancelDiscover )
+            executeMenuAction( "CancelDiscovery", devProxy.m.CancelDiscovery )
 
         elseif opt == 4 then  -- "Disconnect"
 

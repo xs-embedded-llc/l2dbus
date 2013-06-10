@@ -41,6 +41,8 @@ local helpText = [[
   -g              -- Continue on failure
   -h              -- This help
   --count [count] -- number of times to repeat tests (default = 1)
+  --glib          -- Use the Glib-based main loop. By default the tests
+                  -- use the libev main loop.
   --version       -- Get the application version and exit
   -v              -- Debug verbosity (add more v's fr more verbosity)
 
@@ -81,6 +83,9 @@ local g_sectionExecCount    = 0
 
 local g_testName            = ""
 local g_sectionName         = ""
+local g_mainLoop
+local g_useGlibLoop			= false
+
 
 -- test execution stack
 -- This is a list of objects that allow us to process the complete protocol.
@@ -620,7 +625,7 @@ local function ParseArgs()
                             print(string.format("getopt: ? (longopt): %s", longArg))
                             return "?", longArg
                         else
-                            print(string.format("getopt: retOpt/optVal: %s/%s", retOpt, optVal))
+                            print(string.format("getopt: retOpt/optVal: %s/%s", retOpt, tostring(optVal)))
                             return retOpt, optVal
                         end
 
@@ -667,7 +672,7 @@ local function ParseArgs()
                 table.remove(args, 1);
                 place = 0;
             end
-            print(string.format("getopt: optopt/arg: %s/%s", optopt, arg))
+            print(string.format("getopt: optopt/arg: %s/%s", optopt, tostring(arg)))
             return optopt, arg;
         end
 
@@ -676,7 +681,8 @@ local function ParseArgs()
 
     local longOpt = {--name         hasArg   short/retOpt
                      {"count",      true,    nil },
-                     {"version",    false,   nil } }
+                     {"version",    false,   nil },
+                     {"glib",       false,   nil } }
     local lArgs   = deepcopy(arg)
 
     for opt, optval in getopt(lArgs, 'ghsv', longOpt) do
@@ -696,6 +702,9 @@ local function ParseArgs()
                 g_iterations = 1
             end
 
+		elseif opt == "glib" then
+			g_useGlibLoop = true
+			
         elseif opt == "v" then
             g_verbose = g_verbose + 1
 
@@ -798,7 +807,7 @@ local function Test_l2dbus_ConnAPI()
     local bOK       = true
     local bSuccess  = true
     local conn
-    local disp      = l2dbus.Dispatcher.new()
+    local disp      = l2dbus.Dispatcher.new(g_mainLoop)
     local errStr    = ""
 
     -- Section init
@@ -1649,7 +1658,7 @@ local function Test_MessageAPI( )
             print("ERROR: Exiting Early")
             return g_sectionExecCount
         end
-        if l2dbus.Message.msgTypeToString( mtype ) ) == nil then
+        if l2dbus.Message.msgTypeToString( mtype ) == nil then
             print("ERROR: Exiting Early")
             return g_sectionExecCount
         end
@@ -1971,6 +1980,12 @@ end -- Test_MessageArgsAPI
 --- Start testing
 ----------------------------------------------------------------
 local function main( )
+
+	if g_useGlibLoop then
+		g_mainLoop = require("l2dbus_glib").MainLoop.new()
+	else
+		g_mainLoop = require("l2dbus_ev").MainLoop.new()
+	end	
 
     while g_curIter ~= g_iterations do
         g_curIter = g_curIter + 1

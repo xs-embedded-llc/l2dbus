@@ -13,7 +13,7 @@ end
 local function onFilterMatch(match, msg, ud)
 	local msgType = msg:getType()
 
-	io.stdout:write(msg.msgTypeToString(msgType) .. " sender=" ..
+	io.stdout:write(l2dbus.Message.msgTypeToString(msgType) .. " sender=" ..
 					tostring(msg:getSender()) .. " -> dest=" ..
 					tostring(msg:getDestination()) .. " serial=" ..
 					tostring(msg:getSerial()))
@@ -41,7 +41,14 @@ end
 local function main()
 	l2dbus.Trace.setFlags(l2dbus.Trace.ERROR, l2dbus.Trace.WARN)
 
-    local disp = l2dbus.Dispatcher.new()
+	local mainLoop
+	if (arg[1] == "--glib") or (arg[1] == "-g") then
+		mainLoop = require("l2dbus_glib").MainLoop.new()
+	else
+		mainLoop = require("l2dbus_ev").MainLoop.new()
+	end
+	
+    local disp = l2dbus.Dispatcher.new(mainLoop)
     assert( nil ~= disp )
     local conn = l2dbus.Connection.openStandard(disp, l2dbus.Dbus.BUS_SESSION)
     assert( nil ~= conn )

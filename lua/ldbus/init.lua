@@ -588,13 +588,14 @@ local function newBus(b)
     -- @treturn nil (on failure) or an empty string indicating the bus is closed
     -- @return @{ErrorInfo} which is a table: {errCode, errMsg}
 	local close = function()
-		self.msgBus:disconnectAllSignals()
-		self.msgBus:unbind()
-		self.msgBus = nil
+		self.msgBusCtrl:disconnectAllSignals()
+		self.msgBusCtrl:unbind()
+		self.msgBusCtrl = nil
 		if self.bus:isConnected() then
 			self.bus:flush()
 		end
 		self.bus = nil
+		return "", {errCode = M.ERR_OK, errMsg = ""}
 	end
 
 	--- Checks to see whether the given well-known D-Bus bus name has an owner.

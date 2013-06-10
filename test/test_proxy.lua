@@ -6,7 +6,9 @@ local pretty = require("pl.pretty")
 local ev = require("ev")
 local Prompter = require("utils.prompter")
 
-local gMainLoop = ev.Loop.new()
+local gMainLoop = ev.Loop.default
+-- Must call a method to instantiate the main loop
+gMainLoop:now()
 local gPrompter = Prompter:new(gMainLoop)
 local gDispatcher
 local gProxyCtrl
@@ -276,7 +278,7 @@ end
 local function setup()
 	l2dbus.Trace.setFlags(l2dbus.Trace.ERROR, l2dbus.Trace.WARN)
 	--l2dbus.Trace.setFlags(l2dbus.Trace.ALL)
-	gDispatcher = l2dbus.Dispatcher.new(gMainLoop)
+	gDispatcher = l2dbus.Dispatcher.new(require("l2dbus_ev").MainLoop.new(gMainLoop))
 	assert( nil ~= gDispatcher )
 	local conn = l2dbus.Connection.openStandard(gDispatcher, l2dbus.Dbus.BUS_SYSTEM)
 	assert( nil ~= conn )

@@ -3,7 +3,6 @@
 local state = require("utils.luastate")
 local pretty = require("pl.pretty")
 local l2dbus = require("l2dbus")
-local ev = require("ev")
 local bit = require("bit")
 local posix = require("posix")
 
@@ -75,7 +74,6 @@ local function main()
     gWriteFd, errMsg = posix.open(FIFO_PATH, bit.bor(posix.O_WRONLY, posix.O_NONBLOCK))
     assert( gWriteFd ~= nil, "Failed opening FIFO for writing")
 
-    local timer = ev.Timer.new(onTimeout, 2, 2)
     local timer = l2dbus.Timeout.new(gDisp, 2000, true, onTimeout, gDisp)
     timer:setEnable(true)
 

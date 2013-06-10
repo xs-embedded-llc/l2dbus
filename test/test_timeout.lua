@@ -3,27 +3,32 @@
 local state = require("utils.luastate")
 local pretty = require("pl.pretty")
 local l2dbus = require("l2dbus")
-local ev = require("ev")
 
-local loop = ev.Loop.new()
 local tickCount = 0
+local gDisp
 
 local function onTimeout(tmout, func)
     tickCount = tickCount + 1
     func("Tick count = " .. tostring(tickCount))
     if tickCount == 5 then
         tmout:setEnable(false)
-        loop:unloop()
+        gDisp:stop()
     end
 end
 
 local function main()
     pretty.dump(l2dbus)
 
-    local disp = l2dbus.Dispatcher.new(loop)
-    --local disp = l2dbus.Dispatcher.new()
+	local mainLoop
+	if (arg[1] == "--glib") or (arg[1] == "-g") then
+		mainLoop = require("l2dbus_glib").MainLoop.new()
+	else
+		mainLoop = require("l2dbus_ev").MainLoop.new()
+	end
+	
+    gDisp = l2dbus.Dispatcher.new(mainLoop)
 
-    local timeout = l2dbus.Timeout.new(disp, 1000, false, onTimeout, function(str) print(str) end)
+    local timeout = l2dbus.Timeout.new(gDisp, 1000, false, onTimeout, function(str) print(str) end)
     print("The initialized interval is: " .. timeout:interval())
     timeout:setInterval(2000)
     print("The new interval is: " .. timeout:interval())
@@ -46,11 +51,11 @@ local function main()
     print("The timer is: " .. ((true == timeout:isEnabled()) and "enabled" or "disabled"))
 
     print("Starting main loop")
-    loop:loop()
+    gDisp:run(l2dbus.Dispatcher.DISPATCH_WAIT)
 
     -- Free all resources
     timeout = nil
-    dispatcher = nil
+    gDisp = nil
 end
 
 
