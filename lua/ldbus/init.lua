@@ -793,6 +793,26 @@ local function newBus(b)
 		return true
 	end
 
+	--- Get the maximum number of bytes that can be used by all
+	-- messages received on this connection.
+	-- @return The maximum total number of bytes.
+	local getMaxReceivedSize = function()
+		return self.bus:getMaxReceivedSize()
+	end
+	
+	--- Set the maximum number of bytes that can be used by all
+	-- messages received on this connection.
+	-- @tparam number size The maximum total number of bytes.
+	local setMaxReceivedSize = function(size)
+		self.bus:setMaxReceivedSize(size)
+	end
+	
+	--- Get the approximate size in bytes of al messages in the outgoing queue.
+	-- @tparam number size The maximum total number of bytes.
+	local getOutgoingSize = function()
+		return self.bus:getOutgoingSize()
+	end
+			
 	-- (Private) Returns the underlying opaque handle to the bus
 	local private = function()
 		return self.bus
@@ -807,6 +827,9 @@ local function newBus(b)
 		destroyAdaptor = destroyAdaptor,
 		newProxy = newProxy,
 		destroyProxy = destroyProxy,
+		getMaxReceivedSize = getMaxReceivedSize,
+		setMaxReceivedSize = setMaxReceivedSize,
+		getOutgoingSize = getOutgoingSize,
 
 		-- Private (internal) methods
 		private = private,

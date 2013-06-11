@@ -34,6 +34,9 @@
 #define L2DBUS_TRACE_H_
 #include "cdbus/cdbus.h"
 
+/* Forward Declarations */
+struct DBusMessage;
+
 #define L2DBUS_TRC_OFF   CDBUS_TRC_OFF
 #define L2DBUS_TRC_FATAL CDBUS_TRC_FATAL
 #define L2DBUS_TRC_ERROR CDBUS_TRC_ERROR
@@ -49,6 +52,7 @@ int l2dbus_traceIsEnabled(unsigned level, ...);
 void l2dbus_tracePrintPrefix(int isEnabled, const char* file, const char* funcName, unsigned line);
 void l2dbus_traceSetMask(unsigned mask);
 unsigned l2dbus_traceGetMask();
+void l2dbus_traceMessage(unsigned level, struct DBusMessage* msg);
 
 /*
  * L2DBUS_TRACE((LVL, FMT, ...))
@@ -72,14 +76,21 @@ unsigned l2dbus_traceGetMask();
         #define L2DBUS_TRACE(X) \
             do { l2dbus_tracePrintPrefix(l2dbus_traceIsEnabled X, L2DBUS_BASENAME(__FILE__), __FUNCTION__, __LINE__); \
             l2dbus_trace X; } while ( 0 )
+        #define L2DBUS_TRACE_MSG(X) \
+            do { l2dbus_tracePrintPrefix(l2dbus_traceIsEnabled X, L2DBUS_BASENAME(__FILE__), __FUNCTION__, __LINE__); \
+            l2dbus_traceMessage X; } while ( 0 )
     #else
         #define L2DBUS_TRACE(X) \
             do { l2dbus_tracePrintPrefix(l2dbus_traceIsEnabled X, L2DBUS_BASENAME(__FILE__), 0, __LINE__); \
             l2dbus_trace X; } while ( 0 )
+        #define L2DBUS_TRACE_MSG(X) \
+            do { l2dbus_tracePrintPrefix(l2dbus_traceIsEnabled X, L2DBUS_BASENAME(__FILE__), 0, __LINE__); \
+            l2dbus_traceMessage X; } while ( 0 )
     #endif
 
 #else
     #define L2DBUS_TRACE(X) do { if ( 0 ) l2dbus_trace X; } while ( 0 )
+    #define L2DBUS_TRACE_MSG(X) do { if ( 0 ) l2dbus_trace X; } while ( 0 )
 #endif
 
 

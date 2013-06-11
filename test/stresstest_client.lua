@@ -358,6 +358,13 @@ local function main()
 	
 	assert( nil ~= conn )
 
+	if gOptions.verbose > 2 then
+		print(string.format("Connection: max message size: %d (bytes)",
+				conn:getMaxMessageSize()))
+		print(string.format("Connection: max received size: %d (bytes)",
+				conn:getMaxReceivedSize()))
+	end
+	
 	gProxyCtrl = ProxyController.new(conn, L2DBUS_STRESS_TEST_SVC_BUS_NAME,
 										L2DBUS_STRESS_TEST_SVC_OBJECT_PATH)
 	gProxyCtrl:setBlockingMode(true)

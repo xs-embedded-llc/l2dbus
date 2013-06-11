@@ -60,8 +60,8 @@
 
  Once created, interfaces are typically associated with one (or more)
  D-Bus service objects. The interface itself can be configured to
- receive and handle client requests. If not handled by the interface
- the associated service object is given the opportunity to the
+ receive and handle client requests. If **not** handled by the interface
+ the associated service object is given the opportunity to handle the
  request.
 
  @namespace l2dbus.Interface

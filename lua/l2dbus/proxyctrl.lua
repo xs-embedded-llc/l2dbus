@@ -68,13 +68,14 @@ local newPropertyProxy
 --- Constructs a new ProxyController instance.
 -- 
 -- The constructor creates a ProxyController instance. As its name implies
--- the object controls the behavior and configuration of a proxy. Things like
--- the timeout used by the proxy, blocking mode, and the actual dynamic
--- generation of the proxy itself based on metadata gleaned from the remote
--- object (via D-Bus introspection) or provided directly. The ProxyController
--- exposes the actual remote service proxy including methods and
--- properties via separate objects that eliminate namespace collisions between
--- the controller's methods and those of the remote service.
+-- the object controls the behavior and configuration of a proxy. These
+-- configurable items include things like the timeout used by the proxy,
+-- blocking mode, and the actual dynamic generation of the proxy itself based
+-- on metadata gleaned from the remote object (via D-Bus introspection or
+-- provided directly). The ProxyController exposes the actual remote service
+-- proxy including methods and properties via separate objects that eliminate
+-- *namespace* collisions between the controller's methods and those of the
+-- remote service.
 -- 
 -- @tparam userdata conn The @{l2dbus.Connection|Connection} to attach
 -- the controller to.
@@ -340,7 +341,7 @@ end
 
 --- Retrieves the actual proxy for the remote D-Bus service.
 -- 
--- This method returns a proxy for the name interface. The actual
+-- This method returns a proxy for the named interface. The actual
 -- proxy has two sub-objects named *p* and *m*. These sub-objects split
 -- the interface namespace into properties (*p*) and methods (*m*) avoiding
 -- the possibility of name collisions. Before you can get the proxy the
@@ -364,7 +365,7 @@ end
 -- 		-- Use the "getter" sub-object to read the value of a property
 -- 		status, enabled = proxy.p.get.WirelessEnabled()
 -- 		if status then
--- 			-- Set the property but indicated we're not interested
+-- 			-- Set the property but indicate we're not interested
 -- 			-- in the response ('true' == no response needed)
 --			proxy.p.set.WirelessEnabled(not enabled, true)
 --		end
@@ -412,7 +413,7 @@ end
 -- boundaries. For properties that are read/write the identical name may appear
 -- under both *set* and *get*.
 -- </br></br>
--- Methods or properties that called will typically return two (or more)
+-- Methods or properties that are called will typically return two (or more)
 -- parameters at a minimum.
 -- <ul>
 -- <li>**status** (bool) **True** if the call completed without error, **false**
@@ -438,14 +439,14 @@ end
 -- errors (e.g. wrong parameters, types, etc...). D-Bus error messages returned
 -- by a remote service **do not** generate Lua errors but rather the error
 -- name and message are returned with **status** set to **false**. In general
--- the calls on the proxy should not be made with a Lua protected
--- call (pcall) unless every possible exception needs to be caught.
+-- the calls on the proxy do not need to be made with a Lua protected
+-- call (*pcall*) unless every possible exception needs to be caught.
 -- 
 -- @within ProxyController
 -- @tparam table ctrl The ProxyController instance.
 -- @tparam string interface The D-Bus interface name for which to retrieve
 -- the proxy. This interface **must** be an element of the introspection
--- data.
+-- data. A Lua error is generated if the interface is not supported.
 -- @treturn table The actual proxy for the remote service.
 -- @function getProxy
 function ProxyController:getProxy(interface)
@@ -810,9 +811,9 @@ end
 -- 
 -- This method parses D-Bus introspection data and converts it to an internal
 -- Lua table representation which is used to generate the necessary proxy
--- objects. The XML parses used to parse this data is **not** a fully
--- validating parser and has known limitations. See the @{l2dbus.xml} module
--- for more details.
+-- objects. The XML parser used to parse this data is **not** a full-blown,
+-- fully validating parser and has known limitations. See the @{l2dbus.xml}
+-- module for more details.
 -- 
 -- @within ProxyController
 -- @tparam table ctrl The ProxyController instance.
@@ -911,6 +912,8 @@ newMethodProxy = function (proxyCtrl, metadata)
 			-- for a response.
 			if ctrl:getProxyNoReplyNeeded() then
 				local status, serNum = ctrl:sendMessageNoReply(msg)
+				-- Let go of the reference since D-Bus now owns it
+				msg:dispose()
 				if status then
 					return true, serNum
 				else
@@ -919,12 +922,18 @@ newMethodProxy = function (proxyCtrl, metadata)
 				end
 			else
 				local reply, errName, errMsg = ctrl:sendMessage(msg)
+				-- Let go of the reference since D-Bus now owns it
+				msg:dispose()
 				if not reply then
 					-- We failed to send the message or received an error
 					-- in response
 					return false, errName, errMsg
 				elseif "l2dbus.message" == reply.__type then
-					return true, reply:getArgs()
+					local replyArgs = {reply:getArgs()}
+					-- Let go of the reference since the D-Bus message is no
+					-- longer needed
+					reply:dispose()
+					return true, unpack(replyArgs)
 				-- Else return the pending call
 				else
 					return true, reply	-- PendingCall object
@@ -974,10 +983,16 @@ newPropertyProxy = function(proxyCtrl, metadata)
 			msg:addArgsBySignature("s", metadata.interface)
 			msg:addArgsBySignature("s", propName)
 			local reply, errName, errMsg = ctrl:sendMessage(msg)
+			-- Let go of the reference since D-Bus now owns it
+			msg:dispose()
 			if not reply then
 				return false, errName, errMsg
 			elseif "l2dbus.message" == reply.__type then
-				return true, reply:getArgs()
+				local replyArgs = {reply:getArgs()}
+				-- Let go of the reference since the D-Bus message is no
+				-- longer needed
+				reply:dispose()
+				return true, unpack(replyArgs)
 			-- Else return the pending call
 			else
 				return true, reply	-- PendingCall object
@@ -1019,13 +1034,21 @@ newPropertyProxy = function(proxyCtrl, metadata)
 			local errName = nil
 			local errMsg = nil
 			if noReplyNeeded then
-				return ctrl:sendMessageNoReply(msg)
+				reply = {ctrl:sendMessageNoReply(msg)}
+				-- Dispose of the message since it's no longer needed
+				msg:dispose()
+				return unpack(reply)
 			else
 				reply, errName, errMsg = ctrl:sendMessage(msg)
+				-- Dispose of the message since it's no longer needed
+				msg:dispose()
 				if not reply then
 					return false, errName, errMsg
 				elseif "l2dbus.message" == reply.__type then
-					return true, reply:getArgs()
+					local replyArgs = {reply:getArgs()}
+					-- Dispose of the reply since it's no longer needed
+					reply:dispose()
+					return true, unpack(replyArgs)
 				-- Else return the pending call
 				else
 					return true, reply	-- PendingCall object

@@ -151,6 +151,11 @@ local function main()
     local conn = l2dbus.Connection.openStandard(gDispatcher, l2dbus.Dbus.BUS_SESSION)
     assert( nil ~= conn )
     
+	print(string.format("Connection: max message size: %d (bytes)",
+			conn:getMaxMessageSize()))
+	print(string.format("Connection: max received size: %d (bytes)",
+			conn:getMaxReceivedSize()))
+	
     local dbusProxyCtrl = dbusCtrl.new(conn)
     dbusProxyCtrl:bind(true)
     dbusProxyCtrl:setBlockingMode(true)

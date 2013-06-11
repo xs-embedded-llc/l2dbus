@@ -612,6 +612,8 @@ l2dbus_connectionSend
 
     lua_pushboolean(L, dbus_connection_send(cdbus_connectionGetDBus(connUd->conn),
                     msgUd->msg, &serialNum));
+    L2DBUS_TRACE_MSG((L2DBUS_TRC_TRACE, msgUd->msg));
+
     lua_pushnumber(L, serialNum);
 
     return 2;
@@ -663,11 +665,14 @@ l2dbus_connectionSendWithReply
     if ( dbus_connection_send_with_reply(cdbus_connectionGetDBus(connUd->conn),
         msgUd->msg, &pending, msecTimeout) && (NULL != pending) )
     {
+        L2DBUS_TRACE_MSG((L2DBUS_TRC_TRACE, msgUd->msg));
         lua_pushboolean(L, L2DBUS_TRUE);
         l2dbus_newPendingCall(L, pending, 1);
     }
     else
     {
+        L2DBUS_TRACE_MSG((L2DBUS_TRC_ERROR, msgUd->msg));
+        L2DBUS_TRACE((L2DBUS_TRC_ERROR, "Failed to send message"));
         lua_pushboolean(L, L2DBUS_FALSE);
         lua_pushnil(L);
     }
@@ -729,6 +734,7 @@ l2dbus_connectionSendWithReplyAndBlock
 
     dbus_error_init(&dbusError);
 
+    L2DBUS_TRACE_MSG((L2DBUS_TRC_TRACE, msgUd->msg));
     replyMsg = dbus_connection_send_with_reply_and_block(cdbus_connectionGetDBus(connUd->conn),
                                                         msgUd->msg, msecTimeout, &dbusError);
 
@@ -1028,6 +1034,185 @@ l2dbus_connectionUnregisterObject
     return 1;
 }
 
+/**
+ @function getMaxMessageSize
+ @within Connection
+
+ Returns the maximum size message this connection is allowed to receive.
+
+ The maximum size of an individual message that this connection is allowed
+ to receive in bytes.
+
+ @tparam userdata conn The D-Bus connection object
+ @treturn number Returns the maximum size of an individual message that this
+ connection is allowed to received in bytes.
+ */
+static int
+l2dbus_connectionGetMaxMessageSize
+    (
+    lua_State*  L
+    )
+{
+    l2dbus_Connection* connUd;
+
+    /* Make sure the module is initialized */
+    l2dbus_checkModuleInitialized(L);
+    connUd = (l2dbus_Connection*)luaL_checkudata(L, 1,
+                                                L2DBUS_CONNECTION_MTBL_NAME);
+    lua_pushnumber(L,
+        (lua_Number)dbus_connection_get_max_message_size(
+                        cdbus_connectionGetDBus(connUd->conn)));
+
+    return 1;
+}
+
+
+
+/**
+ @function setMaxMessageSize
+ @within Connection
+
+ Sets the maximum size message this connection is allowed to receive.
+
+ Sets the maximum size (in bytes) of an individual message that this
+ connection is allowed to receive.
+
+ @tparam userdata conn The D-Bus connection object
+ @tparam number size The maximum message size in bytes
+ */
+static int
+l2dbus_connectionSetMaxMessageSize
+    (
+    lua_State*  L
+    )
+{
+    l2dbus_Connection* connUd;
+
+    /* Make sure the module is initialized */
+    l2dbus_checkModuleInitialized(L);
+    connUd = (l2dbus_Connection*)luaL_checkudata(L, 1,
+                                                L2DBUS_CONNECTION_MTBL_NAME);
+    long limit = luaL_checklong(L, 2);
+
+    dbus_connection_set_max_message_size(cdbus_connectionGetDBus(connUd->conn),
+                                        limit);
+
+    return 0;
+}
+
+
+/**
+ @function getMaxReceivedSize
+ @within Connection
+
+ Gets the value set by @{setMaxReceivedSize}.
+
+ This is the maximum total number of bytes that can be used for all messages
+ received on this connection. Messages are counted toward the maximum until
+ they are finalized (e.g. collected by the Lua garbage collector). When the
+ maximum limit is reached the connection will **not** read more data until
+ some messages are finalized. For additional semantic information see the
+ description
+ <a href="http://dbus.freedesktop.org/doc/api/html/group__DBusConnection.html#ga6565d75f16e6e803372b2ae3d94d991b">here</a>.
+
+ @tparam userdata conn The D-Bus connection object
+ @treturn number Returns the maximum total number of bytes that can be used
+ for all messages received on this connection.
+ */
+static int
+l2dbus_connectionGetMaxReceivedSize
+    (
+    lua_State*  L
+    )
+{
+    l2dbus_Connection* connUd;
+
+    /* Make sure the module is initialized */
+    l2dbus_checkModuleInitialized(L);
+    connUd = (l2dbus_Connection*)luaL_checkudata(L, 1,
+                                                L2DBUS_CONNECTION_MTBL_NAME);
+    lua_pushnumber(L,
+        (lua_Number)dbus_connection_get_max_received_size(
+                                    cdbus_connectionGetDBus(connUd->conn)));
+
+    return 1;
+}
+
+
+
+/**
+ @function setMaxReceivedSize
+ @within Connection
+
+ Sets the the maximum total number of bytes that can be used for all messages
+ received on this connection.
+
+ This is the maximum total number of bytes that can be used for all messages
+ received on this connection. Messages are counted toward the maximum until
+ they are finalized (e.g. collected by the Lua garbage collector). When the
+ maximum limit is reached the connection will **not** read more data until
+ some messages are finalized. For additional semantic information see the
+ description
+ <a href="http://dbus.freedesktop.org/doc/api/html/group__DBusConnection.html#ga6565d75f16e6e803372b2ae3d94d991b">here</a>.
+
+ @tparam userdata conn The D-Bus connection object
+ @tparam number size The maximum total number of bytes that can be used for
+ all messages received on this connection.
+ */
+static int
+l2dbus_connectionSetMaxReceivedSize
+    (
+    lua_State*  L
+    )
+{
+    l2dbus_Connection* connUd;
+
+    /* Make sure the module is initialized */
+    l2dbus_checkModuleInitialized(L);
+    connUd = (l2dbus_Connection*)luaL_checkudata(L, 1,
+                                                L2DBUS_CONNECTION_MTBL_NAME);
+    long limit = luaL_checklong(L, 2);
+
+    dbus_connection_set_max_received_size(cdbus_connectionGetDBus(connUd->conn),
+                                            limit);
+
+    return 0;
+}
+
+
+/**
+ @function getOutgoingSize
+ @within Connection
+
+ Gets the **approximate** size in bytes of all messages in the outgoing message
+ queue.
+
+ This is only an approximate value and shouldn't be considered a precise
+ amount.
+
+ @tparam userdata conn The D-Bus connection object
+ @treturn number Returns the approximate size (in bytes) of all the messages
+ in the outgoing queue.
+ */
+static int
+l2dbus_connectionGetOutgoingSize
+    (
+    lua_State*  L
+    )
+{
+    l2dbus_Connection* connUd;
+
+    /* Make sure the module is initialized */
+    l2dbus_checkModuleInitialized(L);
+    connUd = (l2dbus_Connection*)luaL_checkudata(L, 1,
+                                                L2DBUS_CONNECTION_MTBL_NAME);
+    lua_pushnumber(L,
+        (lua_Number)dbus_connection_get_outgoing_size(
+                    cdbus_connectionGetDBus(connUd->conn)));
+
+    return 1;
+}
+
 
 /**
  * @brief Called by Lua VM to GC/reclaim the Connection userdata.
@@ -1111,6 +1296,11 @@ static const luaL_Reg l2dbus_connMetaTable[] = {
     {"unregisterMatch", l2dbus_connectionUnregisterMatch},
     {"registerServiceObject", l2dbus_connectionRegisterObject},
     {"unregisterServiceObject", l2dbus_connectionUnregisterObject},
+    {"getMaxMessageSize", l2dbus_connectionGetMaxMessageSize},
+    {"setMaxMessageSize", l2dbus_connectionSetMaxMessageSize},
+    {"getMaxReceivedSize", l2dbus_connectionGetMaxReceivedSize},
+    {"setMaxReceivedSize", l2dbus_connectionSetMaxReceivedSize},
+    {"getOutgoingSize", l2dbus_connectionGetOutgoingSize},
     {"__gc", l2dbus_connectionDispose},
     {NULL, NULL},
 };

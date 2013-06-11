@@ -723,10 +723,14 @@ function Service:emit(conn, intfName, signalName, ...)
 		
 	local msg = l2dbus.Message.newSignal(self.objInst:path(), intfName,
 										signalName)
+	-- Add the arguments to the message
 	msg:addArgsBySignature(signature, ...)
 	
-	-- Add the arguments to the message
-	return conn:send(msg)	
+	local result = conn:send(msg)
+	-- Dispose of the message since now D-Bus owns it
+	msg:dispose()
+	
+	return result	
 end
 
 
@@ -842,9 +846,12 @@ function ReplyContext:reply(...)
 		-- Make our best guess encoding thing correctly
 		replyMsg:addArgs(...)
 	end
+	local result = self.conn:send(replyMsg)
+	-- Dispose of the reply message since D-Bus now owns it
+	replyMsg:dispose()
 	
-	-- Return true/serial # or false/nil
-	return self.conn:send(replyMsg)
+	-- Return serial # if sent or zero if it can't be queued
+	return result
 end
 
 
@@ -873,7 +880,10 @@ function ReplyContext:error(errName, errMsg)
 	verify(validate.isValidInterface(errName), "invalid D-Bus error name")
 	local errorMsg = l2dbus.Message.newError(self.msg, errName, errMsg)
 	-- Return true/serial # or false/nil
-	return self.conn:send(errorMsg)
+	local result = self.conn:send(errorMsg)
+	-- Dispose of the errorMsg since D-Bus now owns it
+	errorMsg:dispose()
+	return result
 end
 
 

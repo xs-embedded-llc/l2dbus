@@ -126,6 +126,22 @@ function M.openBus(busName, privConn)
 		return result, status
 	end
 	
+
+	self.getMaxReceivedSize = function()
+		return self.priv.bus.getMaxReceivedSize()
+	end
+	
+
+	self.setMaxReceivedSize = function(size)
+		self.priv.bus.setMaxReceivedSize(size)
+	end
+	
+
+	self.getOutgoingSize = function()
+		return self.priv.bus.getOutgoingSize()
+	end
+	
+	
 	-- openBus
 	local errInfo
 	self.priv.bus, errInfo = ldbus.openBus(busName and busName or self.priv.busName,

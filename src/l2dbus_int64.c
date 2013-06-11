@@ -51,12 +51,11 @@
  messages where they will be converted correctly to the underlying D-Bus
  Int64 type.
 
- Several numerical operations are supported supported by this type. For
- binary operations the "other" number is first cast to an Int64 before the
- operator is applied. What this means is that standard Lua numbers which are
- floating point will be truncated and potentially lose information. Please
- be aware of this limitation when operating on these types. The operators
- supported include:
+ Several numerical operations are supported by this type. For binary operations
+ the "other" number is first cast to an Int64 before the operator is applied.
+ What this means is that standard Lua numbers which are floating point will be
+ truncated and potentially lose information. Please be aware of this limitation
+ when operating on these types. The operators supported include:
 
  <ul>
  <li>Addition (+)</li>

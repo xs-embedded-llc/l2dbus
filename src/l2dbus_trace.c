@@ -34,6 +34,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <dbus/dbus.h>
 #include "l2dbus_trace.h"
 #include "lauxlib.h"
 
@@ -302,6 +303,72 @@ l2dbus_traceGetFlags
     lua_setfield(L, -2, "flags");
 
     return 1;
+}
+
+
+/**
+ * @brief Optionally prints a trace of a D-Bus message depending on the "level".
+ *
+ * @param [in] level    Trace mask controlling whether trace appears.
+ * @param [in] msg      The D-Bus message to trace.
+ */
+void
+l2dbus_traceMessage
+    (
+    unsigned            level,
+    struct DBusMessage* msg
+    )
+{
+    const cdbus_Char* msgTypeStr ="UNKNOWN";
+    cdbus_Int32 msgType = DBUS_MESSAGE_TYPE_INVALID;
+    const cdbus_Char* path = NULL;
+    const cdbus_Char* intf = NULL;
+    const cdbus_Char* name = NULL;
+    const cdbus_Char* dest = NULL;
+    const cdbus_Char* errName = NULL;
+
+
+    if ( NULL != msg )
+    {
+        msgType = dbus_message_get_type(msg);
+        msgTypeStr = dbus_message_type_to_string(msgType);
+        if ( (DBUS_MESSAGE_TYPE_METHOD_CALL == msgType) ||
+            (DBUS_MESSAGE_TYPE_SIGNAL == msgType) )
+        {
+            path = dbus_message_get_path(msg);
+            intf = dbus_message_get_interface(msg);
+            name = dbus_message_get_member(msg);
+            l2dbus_trace(level, "(Ser=%u) [%s] <%s> %s%s%s",
+                dbus_message_get_serial(msg),
+                msgTypeStr,
+                path ? path : "",
+                intf ? intf : "",
+                intf ? "." : "",
+                name ? name : "");
+        }
+        else if (DBUS_MESSAGE_TYPE_METHOD_RETURN == msgType)
+        {
+            dest = dbus_message_get_destination(msg);
+            l2dbus_trace(level, "(RSer=%u) [%s] -> %s",
+                        dbus_message_get_reply_serial(msg),
+                        msgTypeStr,
+                        dest ? dest : "");
+        }
+        else if (DBUS_MESSAGE_TYPE_ERROR == msgType )
+        {
+            errName = dbus_message_get_error_name(msg);
+            l2dbus_trace(level, "(RSer=%u) [%s] %s",
+                                dbus_message_get_reply_serial(msg),
+                                msgTypeStr,
+                                errName ? errName : "");
+        }
+        else
+        {
+            l2dbus_trace(level, "(Ser=%u) [%s]",
+                                dbus_message_get_serial(msg),
+                                msgTypeStr);
+        }
+    }
 }
 
 

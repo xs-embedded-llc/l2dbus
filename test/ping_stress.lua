@@ -20,7 +20,17 @@ local helpText = [[
   --bus [busName]       -- Bus name
   -g                    -- force garbage collection call after each reply (rx/tx)
                            May impact overall performance.  Default is off.
+  --maxrxsize [size]	-- Sets the maximum total number of bytes that can
+  						   be used for all messages received on the connection.
+  						   The default value is 63 MBytes (66060288 bytes).
   -p [filename]         -- PID file.  Place to store the PID.  Useful with other tools.
+  --setpause            -- Set the garbage collection "setpause" option to
+                           test various GC tuning. Default is 200, lower is
+                           more aggressive and occurs more often.   Values
+                           smaller than 100 mean the collector will not wait
+                           to start a new cycle. A value of 200 means that the
+                           collector waits for the total memory in use to
+                           double before starting a new cycle.
   -v                    -- Verbosity
                            v = level 1, Basic Count
                                Shows the packet count only
@@ -67,13 +77,6 @@ local helpText = [[
 
   Server Args:
   -S                    -- Run as the server side. Default is client.
-  --setpause            -- Set the garbage collection "setpause" option to
-                           test various GC tuning. Default is 200, lower is
-                           more aggressive and occurs more often.   Values
-                           smaller than 100 mean the collector will not wait
-                           to start a new cycle. A value of 200 means that the
-                           collector waits for the total memory in use to
-                           double before starting a new cycle.
 
   Example:
   (NOTE: Adjust the verbosity to meet your needs)
@@ -155,6 +158,7 @@ local g_serverMode          = false             -- -S option
 local g_timestamp           = false             -- -t option
 local g_verbose             = 0                 -- -v option
 local g_waitOnExit          = false             -- -w option
+local g_maxRxSize			= 66060288			-- --connsize option
 
 
 local g_dbusBus             = nil   -- dbus object
@@ -593,6 +597,8 @@ function InitDbus()
         os.exit(2)
     end
 	
+	g_dbusBus.setMaxReceivedSize(g_maxRxSize)
+	
     if g_serverMode == true then
         -- SERVER MODE
 
@@ -640,6 +646,11 @@ function InitDbus()
         g_dbusBus.setDefaultProxy( dbProxy )
 
     end
+    
+    if g_verbose > 0 then
+		print(string.format("Bus: max received size: %d (bytes)",
+				g_dbusBus.getMaxReceivedSize()))
+    end
 
 end -- InitDbus
 
@@ -656,6 +667,7 @@ local function ParseArgs()
     local lArgs    = utils.deepcopy(arg)
     local longOpt  = {--name           hasArg   short/retOpt
                       {"bus",          true,    nil },
+                      {"maxrxsize",    true,    nil },
                       {"setpause",     true,    nil },
           }
 
@@ -669,6 +681,10 @@ local function ParseArgs()
 
             g_dbusBusName = optval
 
+		elseif opt == "maxrxsize" then
+			print("Value: " .. tonumber(optval))
+			g_maxRxSize = tonumber(optval)
+			
         elseif opt == "c" then
 
             g_iterCount = tonumber(optval)
@@ -787,12 +803,14 @@ local function ParseArgs()
             print("PID Filename:                       ", sPid)
         end
 
-
+        if pauseVal then
+            print("GC setpause Value:                  ", pauseVal)
+        end
+		
+		print("Max Conn Rx Size (bytes):               ", g_maxRxSize)
+				    
         if g_serverMode == true then
             print("PID:                                ", posix.getpid("pid"))
-            if pauseVal then
-                print("GC setpause Value:                  ", pauseVal)
-            end
             print()
             print("NOTE: Connect to Bus:", STRESS_BUSNAME)
 
@@ -873,9 +891,14 @@ end -- Snapshot
 ----------------------------------------------------------------
 local function main()
 
-	l2dbus.Trace.setFlags(l2dbus.Trace.ERROR, l2dbus.Trace.WARN)
     ParseArgs()
 
+	if g_verbose > 1 then
+		l2dbus.Trace.setFlags(l2dbus.Trace.ALL)
+	else
+		l2dbus.Trace.setFlags(l2dbus.Trace.ERROR, l2dbus.Trace.WARN)
+	end
+	
     InitDbus()
 
     if g_serverMode ~= true then

@@ -49,6 +49,8 @@
 #include "l2dbus_dbuscompat.h"
 #include "lauxlib.h"
 
+static const char DBUS_MSG_NO_REF_ERROR[] =
+        "reference to D-Bus message no longer exists";
 
 /**
  L2DBUS Message
@@ -316,6 +318,7 @@ l2dbus_newMessageMethodReturn
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, -1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
     luaL_argcheck(L, DBUS_MESSAGE_TYPE_METHOD_CALL == dbus_message_get_type(msgUd->msg), 1,
                  "must be a D-Bus method call message");
 
@@ -484,6 +487,7 @@ l2dbus_newMessageError
     l2dbus_checkModuleInitialized(L);
 
     replyMsgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, replyMsgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
     luaL_argcheck(L, DBUS_MESSAGE_TYPE_METHOD_CALL == dbus_message_get_type(replyMsgUd->msg), 1,
                  "must be a D-Bus method call message");
 
@@ -541,6 +545,8 @@ l2dbus_newMessageCopy
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     msgCopy = dbus_message_copy(msgUd->msg);
     if ( NULL == msgCopy )
     {
@@ -594,6 +600,8 @@ l2dbus_messageGetType
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     lua_pushinteger(L, dbus_message_get_type(msgUd->msg));
 
     return 1;
@@ -632,6 +640,8 @@ l2dbus_messageSetNoReply
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     luaL_argcheck(L, lua_isboolean(L, 2), 2, "boolean value expected");
     dbus_bool_t noReply = lua_toboolean(L, 2);
     dbus_message_set_no_reply(msgUd->msg, noReply);
@@ -664,6 +674,8 @@ l2dbus_messageGetNoReply
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     lua_pushboolean(L, dbus_message_get_no_reply(msgUd->msg));
     return 1;
 }
@@ -697,6 +709,8 @@ l2dbus_messageSetAutoStart
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     luaL_argcheck(L, lua_isboolean(L, 2), 2, "boolean value expected");
     dbus_bool_t autoStart = lua_toboolean(L, 2);
     dbus_message_set_auto_start(msgUd->msg, autoStart);
@@ -729,6 +743,8 @@ l2dbus_messageGetAutoStart
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     lua_pushboolean(L, dbus_message_get_auto_start(msgUd->msg));
     return 1;
 }
@@ -761,6 +777,8 @@ l2dbus_messageSetPath
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     msgType = dbus_message_get_type(msgUd->msg);
 
     luaL_argcheck(L, (DBUS_MESSAGE_TYPE_METHOD_CALL == msgType) ||
@@ -814,6 +832,8 @@ l2dbus_messageGetPath
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     msgType = dbus_message_get_type(msgUd->msg);
     luaL_argcheck(L, (DBUS_MESSAGE_TYPE_METHOD_CALL == msgType) ||
                         (DBUS_MESSAGE_TYPE_SIGNAL == msgType), 1,
@@ -858,6 +878,8 @@ l2dbus_messageHasPath
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     msgType = dbus_message_get_type(msgUd->msg);
     luaL_argcheck(L, (DBUS_MESSAGE_TYPE_METHOD_CALL == msgType) ||
                         (DBUS_MESSAGE_TYPE_SIGNAL == msgType), 1,
@@ -900,6 +922,8 @@ l2dbus_messageDecomposedPath
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     msgType = dbus_message_get_type(msgUd->msg);
     luaL_argcheck(L, (DBUS_MESSAGE_TYPE_METHOD_CALL == msgType) ||
                         (DBUS_MESSAGE_TYPE_SIGNAL == msgType), 1,
@@ -955,6 +979,8 @@ l2dbus_messageSetInterface
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     msgType = dbus_message_get_type(msgUd->msg);
 
     luaL_argcheck(L, (DBUS_MESSAGE_TYPE_METHOD_CALL == msgType) ||
@@ -1006,6 +1032,8 @@ l2dbus_messageGetInterface
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     msgType = dbus_message_get_type(msgUd->msg);
     luaL_argcheck(L, (DBUS_MESSAGE_TYPE_METHOD_CALL == msgType) ||
                         (DBUS_MESSAGE_TYPE_SIGNAL == msgType), 1,
@@ -1049,6 +1077,8 @@ l2dbus_messageHasInterface
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     msgType = dbus_message_get_type(msgUd->msg);
     luaL_argcheck(L, (DBUS_MESSAGE_TYPE_METHOD_CALL == msgType) ||
                         (DBUS_MESSAGE_TYPE_SIGNAL == msgType), 1,
@@ -1089,6 +1119,8 @@ l2dbus_messageSetMember
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     msgType = dbus_message_get_type(msgUd->msg);
 
     luaL_argcheck(L, (DBUS_MESSAGE_TYPE_METHOD_CALL == msgType) ||
@@ -1140,6 +1172,8 @@ l2dbus_messageGetMember
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     msgType = dbus_message_get_type(msgUd->msg);
     luaL_argcheck(L, (DBUS_MESSAGE_TYPE_METHOD_CALL == msgType) ||
                         (DBUS_MESSAGE_TYPE_SIGNAL == msgType), 1,
@@ -1183,6 +1217,8 @@ l2dbus_messageHasMember
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     msgType = dbus_message_get_type(msgUd->msg);
     luaL_argcheck(L, (DBUS_MESSAGE_TYPE_METHOD_CALL == msgType) ||
                         (DBUS_MESSAGE_TYPE_SIGNAL == msgType), 1,
@@ -1220,6 +1256,8 @@ l2dbus_messageSetErrorName
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     msgType = dbus_message_get_type(msgUd->msg);
 
     luaL_argcheck(L, DBUS_MESSAGE_TYPE_ERROR == msgType, 1,
@@ -1269,6 +1307,8 @@ l2dbus_messageGetErrorName
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     msgType = dbus_message_get_type(msgUd->msg);
     luaL_argcheck(L, DBUS_MESSAGE_TYPE_ERROR == msgType, 1,
                   "must be a D-Bus error message");
@@ -1313,6 +1353,7 @@ l2dbus_messageSetDestination
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
 
     /* Can be either a string or nil */
     luaL_argcheck(L, lua_isnil(L, 2) || lua_isstring(L, 2), 2,
@@ -1357,6 +1398,8 @@ l2dbus_messageGetDestination
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     destination = dbus_message_get_destination(msgUd->msg);
 
     if ( NULL == destination )
@@ -1398,6 +1441,8 @@ l2dbus_messageHasDestination
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     destination = luaL_checkstring(L, 2);
     lua_pushboolean(L, dbus_message_has_destination(msgUd->msg, destination));
 
@@ -1433,6 +1478,7 @@ l2dbus_messageSetSender
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
 
     /* Can be either a string or nil */
     luaL_argcheck(L, lua_isnil(L, 2) || lua_isstring(L, 2), 2,
@@ -1477,6 +1523,8 @@ l2dbus_messageGetSender
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     sender = dbus_message_get_sender(msgUd->msg);
 
     if ( NULL == sender )
@@ -1522,6 +1570,8 @@ l2dbus_messageHasSender
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     sender = luaL_checkstring(L, 2);
     lua_pushboolean(L, dbus_message_has_sender(msgUd->msg, sender));
 
@@ -1556,6 +1606,8 @@ l2dbus_messageGetSignature
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     signature = dbus_message_get_signature(msgUd->msg);
 
     if ( NULL == signature )
@@ -1593,6 +1645,8 @@ l2dbus_messageHasSignature
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     signature = luaL_checkstring(L, 2);
     lua_pushboolean(L, dbus_message_has_signature(msgUd->msg, signature));
 
@@ -1622,6 +1676,8 @@ l2dbus_messageContainsUnixFds
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     lua_pushboolean(L, dbus_message_contains_unix_fds(msgUd->msg));
 
     return 1;
@@ -1658,6 +1714,8 @@ l2dbus_messageSetSerial
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     serial = luaL_checkinteger(L, 2);
 
     dbus_message_set_serial(msgUd->msg, serial);
@@ -1690,6 +1748,8 @@ l2dbus_messageGetSerial
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     lua_pushinteger(L, dbus_message_get_serial(msgUd->msg));
 
     return 1;
@@ -1757,6 +1817,7 @@ l2dbus_messageAddArgs
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
 
     if ( nArgs > 0 )
     {
@@ -1797,6 +1858,7 @@ l2dbus_messageAddArgsBySignature
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
 
     signature = luaL_checkstring(L, 2);
 
@@ -1837,6 +1899,8 @@ l2dbus_messageGetArgs
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
 
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     return l2dbus_transcodeDbusArgsToLua(L, msgUd->msg);
 }
 
@@ -1867,6 +1931,8 @@ l2dbus_messageGetArgsAsArray
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
 
     return l2dbus_transcodeDbusArgsToLuaArray(L, msgUd->msg);
 }
@@ -1901,6 +1967,9 @@ l2dbus_messageMarshallToArray
     l2dbus_checkModuleInitialized(L);
 
     msgUd = luaL_checkudata(L, 1, L2DBUS_MESSAGE_MTBL_NAME);
+
+    luaL_argcheck(L, msgUd->msg != NULL, 1, DBUS_MSG_NO_REF_ERROR);
+
     if ( !dbus_message_marshal(msgUd->msg, &msgBuf, &msgBufLen) )
     {
         luaL_error(L, "failed to allocate memory for D-Bus message");
@@ -2037,6 +2106,56 @@ l2dbus_messageValidateSignature
 
 
 /**
+ @function dispose
+ @within l2dbus.Message
+
+ Unreferences the underlying (wrapped) D-Bus message.
+
+ This function unreferences the D-Bus message that is wrapped by the Lua
+ userdata object. Unreferencing the message likely means that at the D-Bus
+ level the message is destroyed. The advantage of explicitly unreferencing
+ a message is that it deterministically destroys the underlying D-Bus message
+ rather than waiting for the Lua garbage collector to destroy it. Since the
+ Lua garbage collector may run infrequently there is always the chance that
+ numerous unreferenced Lua D-Bus messages may exist and consume valuable
+ system resources. This call can free the D-Bus message resource at the expense
+ that the (likely smaller) Lua D-Bus message userdata remains unclaimed until
+ the Lua garbage collector runs and unreferences the message userdata.
+
+ **Note:** Once the *dispose* method is called on the Lua D-Bus message then
+ attempts to call additional methods will **fail** and generate a Lua error
+ to indicate the underlying D-Bus message no longer is referenced. In other
+ words, do **not** do this unless you want an error. Once a message is
+ disposed then the only *safe* action is for the Lua garbage collector to
+ reclaim it. This can be accelerated by not holding any strong references to
+ the Lua D-Bus message in question.
+
+ @tparam userdata msg The Lua D-Bus message to dispose.
+ */
+static int
+l2dbus_messageUnref
+    (
+    lua_State*  L
+    )
+{
+    l2dbus_Message* ud = (l2dbus_Message*)luaL_checkudata(L, -1,
+                                        L2DBUS_MESSAGE_MTBL_NAME);
+
+    if ( ud->msg != NULL )
+    {
+        L2DBUS_TRACE((L2DBUS_TRC_TRACE,
+                "Unref D-Bus msg (%p) type: %s serial #: %d",
+                ud->msg,
+                dbus_message_type_to_string(dbus_message_get_type(ud->msg)),
+                dbus_message_get_serial(ud->msg)));
+        dbus_message_unref(ud->msg);
+        ud->msg = NULL;
+    }
+    return 0;
+}
+
+
+/**
  * @brief Called by Lua VM to GC/reclaim the D-Bus Message userdata.
  *
  * This method is called by the Lua VM to reclaim the D-Bus Message
@@ -2053,17 +2172,8 @@ l2dbus_messageDispose
 {
     l2dbus_Message* ud = (l2dbus_Message*)luaL_checkudata(L, -1,
                                         L2DBUS_MESSAGE_MTBL_NAME);
-
     L2DBUS_TRACE((L2DBUS_TRC_TRACE, "GC: message (userdata=%p)", ud));
-
-    if ( ud->msg != NULL )
-    {
-        L2DBUS_TRACE((L2DBUS_TRC_TRACE, "Unref msg type: %s  serial #: %d",
-                dbus_message_type_to_string(dbus_message_get_type(ud->msg)),
-                dbus_message_get_serial(ud->msg)));
-        dbus_message_unref(ud->msg);
-    }
-
+    l2dbus_messageUnref(L);
     return 0;
 }
 
@@ -2105,6 +2215,7 @@ static const luaL_Reg l2dbus_messageMetaTable[] = {
     {"getArgs", l2dbus_messageGetArgs},
     {"getArgsAsArray", l2dbus_messageGetArgsAsArray},
     {"marshallToArray", l2dbus_messageMarshallToArray},
+    {"dispose", l2dbus_messageUnref},
     {"__gc", l2dbus_messageDispose},
     {NULL, NULL},
 };

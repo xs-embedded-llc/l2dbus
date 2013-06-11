@@ -87,6 +87,8 @@ l2dbus_pendingCallHandler
     assert( NULL != pending );
     assert( NULL != L );
 
+    L2DBUS_TRACE((L2DBUS_TRC_TRACE, "Pending call handler invoked"));
+
     /* If the pending call userdata has been GC'ed then ... */
     if ( NULL == ud )
     {
@@ -226,11 +228,15 @@ l2dbus_pendingCallSetNotify
         /* Unreference the function/data since we couldn't register
          * our notification handler
          */
+        L2DBUS_TRACE((L2DBUS_TRC_ERROR, "Failed to register pending call "
+                      "notification handler"));
         l2dbus_callbackUnref(L, &ud->cbCtx);
         lua_pushboolean(L, L2DBUS_FALSE);
     }
     else
     {
+        L2DBUS_TRACE((L2DBUS_TRC_TRACE, "Registered pending call "
+                              "notification handler"));
         lua_pushboolean(L, L2DBUS_TRUE);
     }
 
@@ -265,6 +271,8 @@ l2dbus_pendingCallCancel
 
     dbus_pending_call_cancel(ud->pendingCall);
     l2dbus_callbackUnref(L, &ud->cbCtx);
+
+    L2DBUS_TRACE((L2DBUS_TRC_TRACE, "Pending call cancelled"));
 
     return 0;
 }
@@ -339,6 +347,9 @@ l2dbus_pendingCallStealReply
     msg = dbus_pending_call_steal_reply(ud->pendingCall);
     if ( NULL != msg )
     {
+        L2DBUS_TRACE((L2DBUS_TRC_TRACE, "Stealing reply from pending call"));
+        L2DBUS_TRACE_MSG((L2DBUS_TRC_TRACE, msg));
+
         /* Leaves a Message user data on the Lua stack. The
          * Lua object now owns the reference
          */

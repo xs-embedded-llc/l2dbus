@@ -76,6 +76,12 @@
  is found then an appropriate error message is returned to the client
  application.
 
+ **Note:** Although possible, a more convenient method is available to
+ implement custom D-Bus services. The @{l2dbus.service} module provides a
+ friendlier interface for instantiating D-Bus services and internally leverages
+ the ServiceObject. It is recommended that new services are implemented
+ using @{l2dbus.service} methods instead.
+
  @namespace l2dbus.ServiceObject
  */
 

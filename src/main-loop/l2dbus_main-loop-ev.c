@@ -113,9 +113,10 @@ l2dbus_mainLoopThreadInit
  this module should **no longer** be utilized by L2DBUS and doing so may
  result in a system crash.
 
- Typically, it is unnecessary to shutdown this module since these resources
- will be reclaimed when the client application terminates and the module is
- unloaded. This function is provided to aid in profiling memory usage.
+ **Note:** Typically, it is unnecessary to shutdown this module since these
+ resources will be reclaimed when the client application terminates and the
+ module is unloaded. This function is provided to aid in debugging and
+ profiling memory usage.
  */
 static int
 l2dbus_mainLoopThreadFree
@@ -306,15 +307,21 @@ l2dbus_mainLoopPostLoop
  collected by the Lua garbage collector. If a Lua ev.Loop userdata is
  passed in it will, however, hold a reference to that. In the case of
  a Lua ev.Loop or lightuserdata object it is the responsibility of the caller
- to dispose of the loop appropriately at program termination.
+ to dispose of the loop appropriately at program termination (if required).
 
- *Note:* If passing in a libev main loop (ev.Loop) please insure
- that it has been fully instantiated by either creating it by calling
-     loop = ev.Loop.new()
- or calling a Lua libev function that consumes a ev.Loop object
- (e.g. loop:now()). By default the libev ev.Loop objects are lazily realized.
- It's possible to unwittingly pass an unrealized Lua libev main loop to the
- this function which will cause it to fail.
+ *Note:* If passing in a Lua libev main loop (ev.Loop) please insure
+ that **only** the default loop (ev.Loop.default) is used and that it has been
+ fully instantiated by calling a function that consumes a ev.Loop, e.g.
+     loop = ev.Loop.default
+     loop:now()
+ By default the libev ev.Loop objects are lazily realized (even the default
+ one). It's possible to unwittingly pass an unrealized Lua libev main loop to
+ this function which will cause it to fail. Also, it's critical that only
+ the *default* libev ev.Loop.default is used since it's isn't prematurely
+ destroyed when the Lua libev modules is garbage collected by Lua at program
+ termination. Using a Lua libev module that is instantiated via ev.Loop.new()
+ can result in an assertion at program termination if it's being utilized by
+ L2DBUS.
 
  See <a href="http://software.schmorp.de/pkg/libev.html">libev</a> for
  additional information on the underlying main loop library.
