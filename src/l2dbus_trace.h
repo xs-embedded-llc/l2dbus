@@ -90,7 +90,7 @@ void l2dbus_traceMessage(unsigned level, struct DBusMessage* msg);
 
 #else
     #define L2DBUS_TRACE(X) do { if ( 0 ) l2dbus_trace X; } while ( 0 )
-    #define L2DBUS_TRACE_MSG(X) do { if ( 0 ) l2dbus_trace X; } while ( 0 )
+    #define L2DBUS_TRACE_MSG(X) do { if ( 0 ) l2dbus_traceMessage X; } while ( 0 )
 #endif
 
 

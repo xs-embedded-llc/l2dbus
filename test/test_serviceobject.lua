@@ -272,7 +272,7 @@ end
 
 local function main()
 	l2dbus.Trace.setFlags(l2dbus.Trace.ERROR, l2dbus.Trace.WARN)
-	local result
+	local status, result
 
 	local mainLoop
 	if (arg[1] == "--glib") or (arg[1] == "-g") then
@@ -303,16 +303,16 @@ local function main()
 
 	local  dbusProxy = dbusProxyCtrl:getProxy(l2dbus.Dbus.INTERFACE_DBUS)
 
-    _,result = dbusProxy.m.ListNames()
+    status,result = dbusProxy.m.ListNames()
     print("The current registered Bus Names:")
     pretty.dump(result)
 
-	_,result = dbusProxy.m.NameHasOwner(L2DBUS_TEST_BUS_NAME)
+	status,result = dbusProxy.m.NameHasOwner(L2DBUS_TEST_BUS_NAME)
     if result then
     	error("Bus name " .. L2DBUS_TEST_BUS_NAME .. " is already claimed!")
     end
 
-    _,result = dbusProxy.m.RequestName(L2DBUS_TEST_BUS_NAME, l2dbus.Dbus.NAME_FLAG_DO_NOT_QUEUE)
+    status,result = dbusProxy.m.RequestName(L2DBUS_TEST_BUS_NAME, l2dbus.Dbus.NAME_FLAG_DO_NOT_QUEUE)
     assert( result == l2dbus.Dbus.REQUEST_NAME_REPLY_PRIMARY_OWNER )
 
 
@@ -372,8 +372,10 @@ local function main()
     gService:detach(conn)
     dbusProxyCtrl:setBlockingMode(true)
     dbusProxyCtrl:disconnectAllSignals()
-    assert(l2dbus.Dbus.RELEASE_NAME_REPLY_RELEASED ==
-    	dbusProxy.m.ReleaseName(L2DBUS_TEST_BUS_NAME))
+    status,result = dbusProxy.m.ReleaseName(L2DBUS_TEST_BUS_NAME)
+    if l2dbus.Dbus.RELEASE_NAME_REPLY_RELEASED ~= result then
+    	io.stderr:write("Failed to release bus name!\n")
+    end
     conn:flush()
     timeout = nil
     gService = nil
