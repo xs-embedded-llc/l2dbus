@@ -807,7 +807,7 @@ local function ParseArgs()
             print("GC setpause Value:                  ", pauseVal)
         end
 		
-		print("Max Conn Rx Size (bytes):               ", g_maxRxSize)
+		print("Max Conn Rx Size (bytes):           ", g_maxRxSize)
 				    
         if g_serverMode == true then
             print("PID:                                ", posix.getpid("pid"))

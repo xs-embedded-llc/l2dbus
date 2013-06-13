@@ -408,7 +408,7 @@ l2dbus_mainLoopNew
             {
                 /* Keep a reference to the Lua libev object */
                 lua_pushvalue(L, -1);
-                loopUd->loopRef = lua_ref(L, LUA_REGISTRYINDEX);
+                loopUd->loopRef = luaL_ref(L, LUA_REGISTRYINDEX);
             }
         }
     }
