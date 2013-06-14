@@ -2,7 +2,7 @@
 ---
 ## Introduction
 
-A gentle high-level introduction to the L2DBUS library can be found <a href="./doc/manual/01-introduction.md">here</a>.
+A gentle high-level introduction to the L2DBUS library can be found [here](./docs/manual/01-introduction.md).
 
 ## Dependencies
 
@@ -128,7 +128,7 @@ And of course to *clean* the build you can simply erase the build directory from
 
 ## License
 
-The L2DBUS library itself is licensed under the MIT License. See <a href="../../../LICENSE">LICENSE</a> in the source distribution for additional details. Additional terms may apply since L2DBUS does have other dependencies. The intent, however, was to utilize components that only have compatible licenses and support both open source and propriety (closed) source applications.
+The L2DBUS library itself is licensed under the MIT License. See [LICENSE](./LICENSE) in the source distribution for additional details. Additional terms may apply since L2DBUS does have other dependencies. The intent, however, was to utilize components that only have compatible licenses and support both open source and propriety (closed) source applications.
 
 ## Known Issues / Caveats
 
