@@ -128,7 +128,7 @@ And of course to *clean* the build you can simply erase the build directory from
 
 ## Documentation
 
-Besides the [introduction](./docs/manual/01-introduction.md) the only documentation available for L2DBUS is the Lua API documentation found [here](http://xs-embedded-llc.github.io/l2dbus/api/index.html). Additionally, there are several test [applications](./test/README) that demonstrate many of the features of the binding.
+Besides the [introduction](./docs/manual/01-introduction.md) the only documentation available for L2DBUS is the Lua API documentation found [here](http://xs-embedded-llc.github.io/l2dbus/api/index.html). Additionally, there are several test [applications](./test/README.md) that demonstrate many of the features of the binding.
 
 ## License
 
