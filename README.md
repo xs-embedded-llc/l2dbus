@@ -12,7 +12,7 @@ L2DBUS uses the following external libraries and programs:
    * [libev](http://software.schmorp.de/pkg/libev.html) (version >= 4.00) **Optional**
    * [Glib](https://developer.gnome.org/glib/) (version >= 2.0.0) **Optional**
    * [Lua](http://www.lua.org/download.html) (version 5.1.X or 5.2.X) or [LuaJIT](http://luajit.org/download.html) (version > 2.0.X)
-   * CDBUS
+   * [CDBUS](https://github.com/xs-embedded-llc/cdbus)
    * [CMake](http://www.cmake.org/) (version >= 2.6.0) Necessary for building.
 
 Linking will also pull in the math library (*-lm*).
