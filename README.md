@@ -126,6 +126,10 @@ And of course to *clean* the build you can simply erase the build directory from
 
 	# rm -rf x86_64-Release
 
+## Documentation
+
+Besides the [introduction](./docs/manual/01-introduction.md) the only documentation available for L2DBUS is the Lua API documentation found [here](http://xs-embedded-llc.github.io/l2dbus/api/index.html). Additionally, there are several test [applications](./test/README) that demonstrate many of the features of the binding.
+
 ## License
 
 The L2DBUS library itself is licensed under the MIT License. See [LICENSE](./LICENSE) in the source distribution for additional details. Additional terms may apply since L2DBUS does have other dependencies. The intent, however, was to utilize components that only have compatible licenses and support both open source and propriety (closed) source applications.
