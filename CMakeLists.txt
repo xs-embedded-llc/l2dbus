@@ -223,7 +223,7 @@ SET(DIST_DIR "${CMAKE_BINARY_DIR}/dist-${PROJECT_NAME}")
 ADD_CUSTOM_TARGET("dist-${PROJECT_NAME}"
     rm -rf "${DIST_DIR}" "${CMAKE_BINARY_DIR}/${L2DBUS_PKG_NAME}"
     COMMAND mkdir "${DIST_DIR}"
-    COMMAND git clone --depth 1 ssh://git@git.xs-embedded.us:2222/l2dbus.git "${DIST_DIR}/${PROJECT_NAME}"
+    COMMAND git clone --depth 1 git@github.com:xs-embedded-llc/l2dbus.git "${DIST_DIR}/${PROJECT_NAME}"
     COMMAND tar -czf "${CMAKE_BINARY_DIR}/${L2DBUS_PKG_NAME}"
             -C "${DIST_DIR}" --exclude-vcs --exclude="arm*" --exclude="x86*"
             --exclude=".cproject" --exclude=".project" --exclude=".settings"
@@ -257,9 +257,9 @@ MESSAGE (STATUS "Compile ${PROJECT_NAME} using: make")
 MESSAGE (STATUS "Install ${PROJECT_NAME} using: make install")
 MESSAGE (STATUS "Uninstall ${PROJECT_NAME} using: make uninstall")
 MESSAGE (STATUS "Compile public API documentation using: make pub-docs")
-MESSAGE (STATUS "Compile private API  documentation using: make priv-docs")
-MESSAGE (STATUS "Install public API  documentation using: make install-docs")
-MESSAGE (STATUS "Uninstall public API  documentation using: make uninstall-docs")
+MESSAGE (STATUS "Compile private API documentation using: make priv-docs")
+MESSAGE (STATUS "Install public API documentation using: make install-docs")
+MESSAGE (STATUS "Uninstall public API documentation using: make uninstall-docs")
 MESSAGE (STATUS "Create ${PROJECT_NAME} source distribution using: make dist-${PROJECT_NAME}")
 MESSAGE (STATUS " (be sure to set the correct CMAKE_INSTALL_PREFIX before)\n")
 
