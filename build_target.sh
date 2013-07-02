@@ -69,7 +69,7 @@ if [ ! -e Makefile ]; then
         -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_PATH_PREFIX}/cmake.toolchain \
         "${args[@]}" ..
   if [ $? != 0 ]; then
-    exit $_
+    exit $?
   fi
 fi
 

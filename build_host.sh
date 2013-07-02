@@ -35,7 +35,7 @@ cd ${BUILD_DIR}
 if [ ! -e Makefile ]; then
   cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE "${args[@]}" ..
   if [ $? != 0 ]; then
-    exit $_
+    exit $?
   fi
 fi
 

@@ -261,7 +261,7 @@ MESSAGE (STATUS "Compile private API documentation using: make priv-docs")
 MESSAGE (STATUS "Install public API documentation using: make install-docs")
 MESSAGE (STATUS "Uninstall public API documentation using: make uninstall-docs")
 MESSAGE (STATUS "Create ${PROJECT_NAME} source distribution using: make dist-${PROJECT_NAME}")
-MESSAGE (STATUS " (be sure to set the correct CMAKE_INSTALL_PREFIX before)\n")
+MESSAGE (STATUS "(be sure to set the correct CMAKE_INSTALL_PREFIX before)\n")
 
 
 
