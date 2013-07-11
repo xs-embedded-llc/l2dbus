@@ -424,6 +424,7 @@ end
 -- messages sent to its object path.
 -- 
 -- @within Service
+-- @tparam userdata svc The Service instance.
 -- @tparam userdata conn The D-Bus connection.
 -- @treturn bool Returns **true** if the service is attached and **false**
 -- otherwise.
