@@ -410,8 +410,8 @@ M.isValidErrorName = M.isValidInterface
 --- Verifies *v* is true and if not throw a Lua error with *msg* as the string.
 -- 
 -- @tparam bool v Value to verify whether it evaluates to **true** or **false*.
--- @tparam string msg The message to emit in the Lua error if *v* evaluates to
--- **false**.
+-- @tparam ?string msg The optional message to emit in the Lua error if *v*
+-- evaluates to **false**.
 -- @treturn nil	Returns **nil** if **v** evaluates to **true**, otherwise a
 -- Lua error is thrown with **msg** as the error text.
 --- @function verify 
