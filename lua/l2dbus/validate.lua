@@ -128,13 +128,13 @@ end
 
 -- Verifies *v* is true and if not throw a Lua error with *msg* as the string.
 -- @tparam bool v Value to verify whether it evaluates to **true** or **false*.
--- @tparam string msg The message to emit in the Lua error if *v* evaluates to
--- **false**.
+-- @tparam ?string msg The optional message to emit in the Lua error if *v*
+-- evaluates to **false**.
 -- @treturn nil	Returns **nil** if **v** evaluates to **true**, otherwise a
 -- Lua error is thrown with **msg** as the error text.
 local function doVerify(v, msg)
 	if not v then
-	    return error(msg, 2)
+	    return error(msg and msg or "verification failure", 2)
 	else
 	    return nil
 	end

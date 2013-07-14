@@ -430,7 +430,8 @@ end
 -- otherwise.
 -- @function attach
 function Service:attach(conn)
-	verify("userdata" == type(conn))
+	verify("userdata" == type(conn),
+	       string.format("invalid connection type (%s)", type(conn)))
 	return conn:registerServiceObject(self.objInst)
 end
 
@@ -448,7 +449,8 @@ end
 -- otherwise.
 -- @function detach
 function Service:detach(conn)
-	verify("userdata" == type(conn))
+	verify("userdata" == type(conn),
+	       string.format("invalid connection type (%s)", type(conn)))
 	return conn:unregisterServiceObject(self.objInst)
 end
 
@@ -490,7 +492,8 @@ function Service:addInterface(name, metadata)
 	if "string" == type(metadata) then
 		metadata = M.convertXmlToIntfMeta(name, metadata)
 	end
-	verify("table" == type(metadata))
+	verify("table" == type(metadata),
+	       string.format("invalid metadata type (%s)", type(metadata)))
 	
 	local isAdded = false
 	local status = true
@@ -598,7 +601,7 @@ end
 function Service:registerMethodHandler(intfName, methodName, handler)
 	verify(validate.isValidInterface(intfName), "invalid D-Bus interface name")
 	verify(validate.isValidMember(methodName), "invalid D-Bus method name")
-	verify("function" == type(handler))
+	verify("function" == type(handler), "invalid handler type")
 	
 	if self.interfaces[intfName] == nil then
 		error("interface unknown to this service object: " .. intfName)
