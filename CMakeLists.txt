@@ -5,8 +5,6 @@ PROJECT( l2dbus  C )
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/CMakeModules")
 set(FIND_LIBRARY_USE_LIB64_PATHS TRUE)
 
-include(FindPkgConfig)
-
 # Define the L2DBUS root directory
 set(L2DBUS_ROOT_DIR ${PROJECT_SOURCE_DIR})
 set(L2DBUS_OUTPUT_DIR "${L2DBUS_ROOT_DIR}/${CMAKE_SYSTEM_PROCESSOR}-${CMAKE_BUILD_TYPE}")
@@ -27,86 +25,14 @@ endif(COMMAND cmake_policy)
 set(L2DBUS_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 file(GLOB L2DBUS_SRC_FILES "${L2DBUS_SRC_DIR}/*.c")
 
-add_library(L2DBUS_MODULE SHARED ${L2DBUS_SRC_FILES})
-if( NOT L2DBUS_NO_CORE )
-    set_target_properties(L2DBUS_MODULE PROPERTIES OUTPUT_NAME l2dbus_core)
-    set_target_properties(L2DBUS_MODULE PROPERTIES PREFIX "")
-endif( NOT L2DBUS_NO_CORE )
-
-if( NOT L2DBUS_NO_LIBEV_LOOP )
-    set(L2DBUS_EV_SRC_FILES
-            "${L2DBUS_SRC_DIR}/main-loop/l2dbus_main-loop-ev.c"
-            "${L2DBUS_SRC_DIR}/main-loop/l2dbus_module.c"
-            "${L2DBUS_SRC_DIR}/l2dbus_compat.c"
-            "${L2DBUS_SRC_DIR}/l2dbus_types.c"
-            "${L2DBUS_SRC_DIR}/l2dbus_alloc.c"
-            "${L2DBUS_SRC_DIR}/l2dbus_util.c"
-       )
-    add_library(L2DBUS_EV_MODULE SHARED ${L2DBUS_EV_SRC_FILES})
-    set_target_properties(L2DBUS_EV_MODULE PROPERTIES OUTPUT_NAME l2dbus_ev)
-    set_target_properties(L2DBUS_EV_MODULE PROPERTIES PREFIX "")
-endif( NOT L2DBUS_NO_LIBEV_LOOP )
-
-if( NOT L2DBUS_NO_GLIB_LOOP )
-    set(L2DBUS_GLIB_SRC_FILES
-            "${L2DBUS_SRC_DIR}/main-loop/l2dbus_main-loop-glib.c"
-            "${L2DBUS_SRC_DIR}/main-loop/l2dbus_module.c"
-            "${L2DBUS_SRC_DIR}/l2dbus_compat.c"
-            "${L2DBUS_SRC_DIR}/l2dbus_types.c"
-            "${L2DBUS_SRC_DIR}/l2dbus_alloc.c"
-            "${L2DBUS_SRC_DIR}/l2dbus_util.c"
-       )
-    add_library(L2DBUS_GLIB_MODULE SHARED ${L2DBUS_GLIB_SRC_FILES})
-    set_target_properties(L2DBUS_GLIB_MODULE PROPERTIES OUTPUT_NAME l2dbus_glib)
-    set_target_properties(L2DBUS_GLIB_MODULE PROPERTIES PREFIX "")
-endif( NOT L2DBUS_NO_GLIB_LOOP )
-
-
 # Configure the compiler settings
 include(CompilerSettings)
+
+include(FindPkgConfig)
 
 pkg_check_modules(DBUSLIB_PKG REQUIRED "dbus-1>=1.4.0")
 include_directories(${DBUSLIB_PKG_INCLUDE_DIRS})
 link_directories(${DBUSLIB_PKG_LIBRARY_DIRS})
-
-
-if( NOT L2DBUS_NO_LIBEV_LOOP )
-    pkg_check_modules(LIBEV_PKG "ev")
-    if( LIBEV_PKG_FOUND )
-        include_directories(${LIBEV_PKG_INCLUDE_DIRS})
-        link_directories(${LIBEV_PKG_LIBRARY_DIRS})
-    else( LIBEV_PKG_FOUND )
-        # Search for the library in the usual places
-        find_library( LIBEV_LIB ev )
-        if( "${LIBEV_LIB}" STREQUAL "LIBEV_LIB-NOTFOUND" )
-            message(FATAL_ERROR "Cannot find libev in the library search path")
-        else( "${LIBEV_LIB}" STREQUAL "LIBEV_LIB-NOTFOUND" )
-            find_path(LIBEV_PKG_INCLUDE_DIRS ev.h)
-            include_directories(${LIBEV_PKG_INCLUDE_DIRS})
-            get_filename_component(LIBEV_PKG_LIBRARY_DIRS ${LIBEV_LIB} PATH)
-            link_directories(${LIBEV_PKG_LIBRARY_DIRS})
-            set(LIBEV_PKG_LIBRARIES "ev")
-            message(STATUS "Will link with libev found here: ${LIBEV_LIB}")
-            message(STATUS "LIBEV_PKG_INCLUDE_DIRS: ${LIBEV_PKG_INCLUDE_DIRS}")
-            message(STATUS "LIBEV_PKG_LIBRARY_DIRS: ${LIBEV_PKG_LIBRARY_DIRS}")
-        endif( "${LIBEV_LIB}" STREQUAL "LIBEV_LIB-NOTFOUND" )
-    endif( LIBEV_PKG_FOUND )
-    
-    pkg_check_modules(CDBUS_EV_PKG REQUIRED "cdbus-ev")
-    include_directories(${CDBUS_EV_PKG_INCLUDE_DIRS})
-    link_directories(${CDBUS_EV_PKG_LIBRARY_DIRS})
-endif( NOT L2DBUS_NO_LIBEV_LOOP )
-
-if( NOT L2DBUS_NO_GLIB_LOOP )
-    pkg_check_modules(GLIB_PKG REQUIRED "glib-2.0>=2.0.0")
-    include_directories(${GLIB_PKG_INCLUDE_DIRS})
-    link_directories(${GLIB_PKG_LIBRARY_DIRS})
-
-    pkg_check_modules(CDBUS_GLIB_PKG REQUIRED "cdbus-glib")
-    include_directories(${CDBUS_GLIB_PKG_INCLUDE_DIRS})
-    link_directories(${CDBUS_GLIB_PKG_LIBRARY_DIRS})
-    
-endif( NOT L2DBUS_NO_GLIB_LOOP )
 
 pkg_check_modules(CDBUS_PKG "cdbus")
 if( CDBUS_PKG_FOUND )
@@ -128,70 +54,39 @@ if( NOT DEFINED L2DBUS_LUA_VERSION )
     set(L2DBUS_LUA_VERSION "5.1")
 endif( NOT DEFINED L2DBUS_LUA_VERSION )
 
+# Go find Lua
 MESSAGE(STATUS "Searching for Lua ${L2DBUS_LUA_VERSION}")
 find_package(Lua ${L2DBUS_LUA_VERSION} REQUIRED)
 if ( "${LUA_VERSION_STRING}" STREQUAL "LUA_VERSION_STRING-NOTFOUND" )
     set(LUA_VERSION_STRING "${L2DBUS_LUA_VERSION}")
 endif ( "${LUA_VERSION_STRING}" STREQUAL "LUA_VERSION_STRING-NOTFOUND" )
-
 MESSAGE(STATUS "Found Lua version ${LUA_VERSION_STRING}")
-
-
 include_directories("${LUA_INCLUDE_DIR}")
-include_directories("${L2DBUS_SRC_DIR}")
-
-if( NOT L2DBUS_NO_CORE )
-    target_link_libraries(L2DBUS_MODULE ${DBUSLIB_PKG_LIBRARIES}
-                                    ${CDBUS_PKG_LIBRARIES}
-                                    ${LUA_LIBRARIES})
-endif( NOT L2DBUS_NO_CORE )
-
-
-if( NOT L2DBUS_NO_LIBEV_LOOP )
-    target_link_libraries(L2DBUS_EV_MODULE
-                                    ${CDBUS_PKG_LIBRARIES}
-                                    ${CDBUS_EV_PKG_LIBRARIES}
-                                    ${LUA_LIBRARIES})
-endif( NOT L2DBUS_NO_LIBEV_LOOP )
-
-if( NOT L2DBUS_NO_GLIB_LOOP )
-    target_link_libraries(L2DBUS_GLIB_MODULE
-                                    ${CDBUS_PKG_LIBRARIES}
-                                    ${CDBUS_GLIB_PKG_LIBRARIES}
-                                    ${LUA_LIBRARIES})
-endif( NOT L2DBUS_NO_GLIB_LOOP )
-
+IF(NOT DEFINED LUA_INSTALL_CMOD_PATH)
+    SET(LUA_INSTALL_CMOD_PATH "lib/lua/${L2DBUS_LUA_VERSION}")
+ENDIF(NOT DEFINED LUA_INSTALL_CMOD_PATH)
+IF(NOT DEFINED LUA_INSTALL_LMOD_PATH)
+    SET(LUA_INSTALL_LMOD_PATH "share/lua/${L2DBUS_LUA_VERSION}")
+ENDIF(NOT DEFINED LUA_INSTALL_LMOD_PATH)
 
 LINK_DIRECTORIES(${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+include_directories("${L2DBUS_SRC_DIR}")
+add_library(L2DBUS_MODULE SHARED ${L2DBUS_SRC_FILES})
+set_target_properties(L2DBUS_MODULE PROPERTIES OUTPUT_NAME l2dbus_core)
+set_target_properties(L2DBUS_MODULE PROPERTIES PREFIX "")
 
+target_link_libraries(L2DBUS_MODULE ${DBUSLIB_PKG_LIBRARIES}
+                                ${CDBUS_PKG_LIBRARIES}
+                                ${LUA_LIBRARIES})
 # Installation setup
 set(INSTALL_TARGETS_DEFAULT_ARGS
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION "lib/lua/${L2DBUS_LUA_VERSION}"
     ARCHIVE DESTINATION lib
 )
-
-IF(NOT DEFINED LUA_INSTALL_CMOD_PATH)
-    SET(LUA_INSTALL_CMOD_PATH "lib/lua/${L2DBUS_LUA_VERSION}")
-ENDIF(NOT DEFINED LUA_INSTALL_CMOD_PATH)
-
-IF(NOT DEFINED LUA_INSTALL_LMOD_PATH)
-    SET(LUA_INSTALL_LMOD_PATH "share/lua/${L2DBUS_LUA_VERSION}")
-ENDIF(NOT DEFINED LUA_INSTALL_LMOD_PATH)
-
-if( NOT L2DBUS_NO_CORE )
-    install(DIRECTORY "${L2DBUS_ROOT_DIR}/lua/l2dbus" DESTINATION "${LUA_INSTALL_LMOD_PATH}")
-    install(DIRECTORY "${L2DBUS_ROOT_DIR}/lua/ldbus" DESTINATION "${LUA_INSTALL_LMOD_PATH}")
-    install(TARGETS L2DBUS_MODULE DESTINATION "${LUA_INSTALL_CMOD_PATH}")
-endif( NOT L2DBUS_NO_CORE )
-
-if( NOT L2DBUS_NO_LIBEV_LOOP )
-    install(TARGETS L2DBUS_EV_MODULE DESTINATION "${LUA_INSTALL_CMOD_PATH}")
-endif( NOT L2DBUS_NO_LIBEV_LOOP )
-
-if( NOT L2DBUS_NO_GLIB_LOOP )
-    install(TARGETS L2DBUS_GLIB_MODULE DESTINATION "${LUA_INSTALL_CMOD_PATH}")
-endif( NOT L2DBUS_NO_GLIB_LOOP )
+install(DIRECTORY "${L2DBUS_ROOT_DIR}/lua/l2dbus" DESTINATION "${LUA_INSTALL_LMOD_PATH}")
+install(DIRECTORY "${L2DBUS_ROOT_DIR}/lua/ldbus" DESTINATION "${LUA_INSTALL_LMOD_PATH}")
+install(TARGETS L2DBUS_MODULE DESTINATION "${LUA_INSTALL_CMOD_PATH}")
 
 # Uninstall target
 configure_file(
@@ -199,7 +94,6 @@ configure_file(
     "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
     IMMEDIATE @ONLY
 )
-
 add_custom_target(uninstall
     COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
 
@@ -254,6 +148,79 @@ ADD_CUSTOM_TARGET(uninstall-docs
 )
 ADD_DEPENDENCIES(install-docs pub-docs)
 ADD_DEPENDENCIES(uninstall uninstall-docs)
+
+if( NOT L2DBUS_NO_LIBEV_LOOP )
+    pkg_check_modules(LIBEV_PKG "ev")
+    if( LIBEV_PKG_FOUND )
+        include_directories(${LIBEV_PKG_INCLUDE_DIRS})
+        link_directories(${LIBEV_PKG_LIBRARY_DIRS})
+    else( LIBEV_PKG_FOUND )
+        # Search for the library in the usual places
+        find_library( LIBEV_LIB ev )
+        if( "${LIBEV_LIB}" STREQUAL "LIBEV_LIB-NOTFOUND" )
+            message(FATAL_ERROR "Cannot find libev in the library search path")
+        else( "${LIBEV_LIB}" STREQUAL "LIBEV_LIB-NOTFOUND" )
+            find_path(LIBEV_PKG_INCLUDE_DIRS ev.h)
+            include_directories(${LIBEV_PKG_INCLUDE_DIRS})
+            get_filename_component(LIBEV_PKG_LIBRARY_DIRS ${LIBEV_LIB} PATH)
+            link_directories(${LIBEV_PKG_LIBRARY_DIRS})
+            set(LIBEV_PKG_LIBRARIES "ev")
+            message(STATUS "Will link with libev found here: ${LIBEV_LIB}")
+            message(STATUS "LIBEV_PKG_INCLUDE_DIRS: ${LIBEV_PKG_INCLUDE_DIRS}")
+            message(STATUS "LIBEV_PKG_LIBRARY_DIRS: ${LIBEV_PKG_LIBRARY_DIRS}")
+        endif( "${LIBEV_LIB}" STREQUAL "LIBEV_LIB-NOTFOUND" )
+    endif( LIBEV_PKG_FOUND )
+    
+    pkg_check_modules(CDBUS_EV_PKG REQUIRED "cdbus-ev")
+    include_directories(${CDBUS_EV_PKG_INCLUDE_DIRS})
+    link_directories(${CDBUS_EV_PKG_LIBRARY_DIRS})
+
+    set(L2DBUS_EV_SRC_FILES
+            "${L2DBUS_SRC_DIR}/main-loop/l2dbus_main-loop-ev.c"
+            "${L2DBUS_SRC_DIR}/main-loop/l2dbus_module.c"
+            "${L2DBUS_SRC_DIR}/l2dbus_compat.c"
+            "${L2DBUS_SRC_DIR}/l2dbus_types.c"
+            "${L2DBUS_SRC_DIR}/l2dbus_alloc.c"
+            "${L2DBUS_SRC_DIR}/l2dbus_util.c"
+       )
+    add_library(L2DBUS_EV_MODULE SHARED ${L2DBUS_EV_SRC_FILES})
+    set_target_properties(L2DBUS_EV_MODULE PROPERTIES OUTPUT_NAME l2dbus_ev)
+    set_target_properties(L2DBUS_EV_MODULE PROPERTIES PREFIX "")
+    target_link_libraries(L2DBUS_EV_MODULE
+                                    ${CDBUS_PKG_LIBRARIES}
+                                    ${CDBUS_EV_PKG_LIBRARIES}
+                                    ${LUA_LIBRARIES})
+    add_dependencies(L2DBUS_EV_MODULE L2DBUS_MODULE)
+    install(TARGETS L2DBUS_EV_MODULE DESTINATION "${LUA_INSTALL_CMOD_PATH}")
+endif( NOT L2DBUS_NO_LIBEV_LOOP )
+
+if( NOT L2DBUS_NO_GLIB_LOOP )
+    pkg_check_modules(GLIB_PKG REQUIRED "glib-2.0>=2.0.0")
+    include_directories(${GLIB_PKG_INCLUDE_DIRS})
+    link_directories(${GLIB_PKG_LIBRARY_DIRS})
+
+    pkg_check_modules(CDBUS_GLIB_PKG REQUIRED "cdbus-glib")
+    include_directories(${CDBUS_GLIB_PKG_INCLUDE_DIRS})
+    link_directories(${CDBUS_GLIB_PKG_LIBRARY_DIRS})
+    
+    set(L2DBUS_GLIB_SRC_FILES
+            "${L2DBUS_SRC_DIR}/main-loop/l2dbus_main-loop-glib.c"
+            "${L2DBUS_SRC_DIR}/main-loop/l2dbus_module.c"
+            "${L2DBUS_SRC_DIR}/l2dbus_compat.c"
+            "${L2DBUS_SRC_DIR}/l2dbus_types.c"
+            "${L2DBUS_SRC_DIR}/l2dbus_alloc.c"
+            "${L2DBUS_SRC_DIR}/l2dbus_util.c"
+       )
+    add_library(L2DBUS_GLIB_MODULE SHARED ${L2DBUS_GLIB_SRC_FILES})
+    set_target_properties(L2DBUS_GLIB_MODULE PROPERTIES OUTPUT_NAME l2dbus_glib)
+    set_target_properties(L2DBUS_GLIB_MODULE PROPERTIES PREFIX "")
+    target_link_libraries(L2DBUS_GLIB_MODULE
+                                    ${CDBUS_PKG_LIBRARIES}
+                                    ${CDBUS_GLIB_PKG_LIBRARIES}
+                                    ${LUA_LIBRARIES})
+    add_dependencies(L2DBUS_GLIB_MODULE L2DBUS_MODULE)
+    install(TARGETS L2DBUS_GLIB_MODULE DESTINATION "${LUA_INSTALL_CMOD_PATH}")
+endif( NOT L2DBUS_NO_GLIB_LOOP )
 
 
 # Needs to be last statement:
