@@ -55,12 +55,14 @@ local ev = require("ev")
 
 local M = { }
 --- Module version
-local VERSION = "1.1.2"
+local VERSION = "1.1.3"
 local mainLoop = ev.Loop.default
 -- Call a method to force the loop to actually be allocated
 mainLoop:now()
 local dispLoop = require("l2dbus_ev").MainLoop.new(mainLoop)
 local dispatch = l2dbus.Dispatcher.new(dispLoop)
+
+local MATCH_ALL_BUSNAMES = ".all_names"
 
 --- XS Embedded Service Provider Interface Description
 local XS_EMBEDDED_SERVICE_PROVIDER_INF = "com.xsembedded.ServiceProvider"
@@ -213,7 +215,7 @@ local function newProxy(bus, busName, objPath)
 	-- @return @{ErrorInfo} which is a table: {errCode, errMsg}
 	local request = function(method, param, ignoreReply)
 		self.proxyCtrl:setProxyNoReplyNeeded(ignoreReply == true)
-		proxy = self.proxyCtrl:getProxy(XS_EMBEDDED_SERVICE_PROVIDER_INF)
+		local proxy = self.proxyCtrl:getProxy(XS_EMBEDDED_SERVICE_PROVIDER_INF)
 		local status, pending, errMsg = proxy.m.Request(method, param)
 		if status then
 			-- If we're running in the main thread then ...
@@ -439,7 +441,7 @@ local function newAdaptor(objPath, b)
 
 	-- (Private) Handles all method requests for this adaptor
 	local handleRequest = function(ctx, method, payload)
-        local handler = self.globalMethodHandler or self.methodMap[req.method]
+        local handler = self.globalMethodHandler or self.methodMap[method]
 		if handler == nil then
 			-- Make best effort to send the D-Bus error message
 			emitError(ctx, "No request handler found")
