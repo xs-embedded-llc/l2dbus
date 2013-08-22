@@ -55,22 +55,23 @@ local ev = require("ev")
 
 local M = { }
 --- Module version
-local VERSION = "1.1.4"
-local mainLoop = ev.Loop.default
--- Call a method to force the loop to actually be allocated
-mainLoop:now()
-local dispLoop = require("l2dbus_ev").MainLoop.new(mainLoop)
-local dispatch = l2dbus.Dispatcher.new(dispLoop)
+local VERSION = "1.2.0"
+
+-- Filled in by the init() routine
+local mainLoop
+local dispatch
+local loopType
+local evLoop
 
 local MATCH_ALL_BUSNAMES = ".all_names"
 
 --- XS Embedded Service Provider Interface Description
 local XS_EMBEDDED_SERVICE_PROVIDER_INF = "com.xsembedded.ServiceProvider"
-local XS_EMBEDDED_SERVICE_PROVIDER_XML = 
+local XS_EMBEDDED_SERVICE_PROVIDER_XML =
 [[
 <!DOCTYPE node PUBLIC "­//freedesktop//DTD D­BUS Object Introspection 1.0//EN"
-"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd"> 
-<node> 
+"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
     <interface name="com.xsembedded.ServiceProvider">
         <method name="Request">
             <arg name="methodName" direction="in" type="s"/>
@@ -419,7 +420,7 @@ local function newAdaptor(objPath, b)
     -- @return @{ErrorInfo} which is a table: {errCode, errMsg}
     local dbusError = function(context, errName, errMsg)
         errName = errName or M.DEFAULT_ERROR_NAME
-        
+
         if context:error(errName, errMsg) then
             return "", {errCode = M.ERR_OK, errMsg = ""}
         else
@@ -620,7 +621,7 @@ local function newBus(b)
                             errMsg = string.format("%s : %s", value, errMsg)}
             end
         end
-        
+
         return result, errInfo
     end
 
@@ -906,17 +907,20 @@ function M.closeBus(bus)
     return "", {errCode = M.ERR_OK, errMsg = ""}
 end
 
-
---- Gets the dispatch Lua file descriptors
--- @return readFd, writeFd
-function M.getDispatchFds()
-    return -1, -1
-end
-
 --- Gets the underlying libev loop used by the module.
 -- @return Libev main loop
 function M.getLoop()
-    return mainLoop
+    if mainLoop == nil then
+        -- For backward compatibility, initialize for a libev mainloop
+        M.init( "l2dbus_ev" )
+    end
+
+    if loopType == "l2dbus_ev" then
+        return evLoop
+    else
+        -- Only useful for libev loops, so return nil
+        return nil
+    end
 end
 
 --- Gets the underlying L2DBUS dispatcher for the shim.
@@ -941,6 +945,38 @@ function M.stopLoop()
     dispatch:stop()
 end
 
+--- Selects and inits the main loop for the module.
+-- If this routine is not called prior to loop() libev
+-- will be intialized for backward compatibility.
+-- @param sLoopType the type of loop to init
+-- ("l2dbus_ev", "l2dbus_glib", ...)
+-- @return None
+function M.init( sLoopType )
+
+    local initLoop
+
+    loopType = sLoopType
+
+    if sLoopType == "l2dbus_ev" then
+
+        evLoop = ev.Loop.default
+        -- Call a method to force the loop to actually be allocated
+        evLoop:now()
+        initLoop = evLoop
+
+    elseif sLoopType == "l2dbus_glib" then
+
+        -- NOP, ensures sLoopType is supported
+        --      uses the generic init below
+
+    else
+        assert( 0, "ERROR: Unknown l2dbus loop type on init(): "..sLoopType )
+    end
+
+    mainLoop = require(sLoopType).MainLoop.new(initLoop)
+    dispatch = l2dbus.Dispatcher.new(mainLoop)
+end
+
 --- Main loop for the module.
 -- This function does *not* return
 -- @param init Either an initialization routine to run as a function (wrapped in a coroutine)
@@ -948,27 +984,49 @@ end
 -- @tparam array ... An array of initial arguments to be provided to the initialization function
 -- @return None
 function M.loop(init, ...)
+
+    -- - - - - - - - - - - - - - - - - - - - - - - - - -
+    local function startup()
+        local status, result = nil
+        if type(init) == "function" then
+            local co = coroutine.create(init)
+            status, result = coroutine.resume(co, initArgs)
+        elseif type(init) == "thread" then
+            status, result = coroutine.resume(init, initArgs)
+        end
+        if not status then
+            log:warn("Init function error: " .. result)
+            M.stopLoop()
+        end
+        return status, result
+    end
+    -- - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    if mainLoop == nil then
+        -- For backward compatibility, initialize for a libev mainloop
+        M.init( "l2dbus_ev" )
+    end
+
     local initArgs = ...
     if (type(init) ~= "function") and (type(init) ~= "thread") and
         (type(init) ~= nil) then
         error("First parameter must be a function, coroutine, or nil")
     end
 
-    local starter = ev.Idle.new(function(loop, idle, revents)
-            idle:stop(loop)
-            local status, result = nil
-            if type(init) == "function" then
-                local co = coroutine.create(init)
-                status, result = coroutine.resume(co, initArgs)
-            elseif type(init) == "thread" then
-                status, result = coroutine.resume(init, initArgs)
-            end
-            if not status then
-                log:warn("Init function error: " .. result)
-                M.stopLoop()
-            end
-        end)
-    starter:start(mainLoop)
+    -- If using libev take advantage of its main loop,
+    -- otherwise we will use a timer to put us in a
+    -- coroutine to initialize.
+    if evLoop then
+        local starter = ev.Idle.new(function(loop, idle, revents)
+                idle:stop(loop)
+                startup()
+            end)
+        starter:start(evLoop)
+    else
+        -- Use a short l2dbus timer to get us in a coroutine.
+        local timeout = l2dbus.Timeout.new(dispatch, 1, false, function() startup() end )
+        timeout:setEnable( true )
+    end
 
     -- Loop forever processing events
     dispatch:run(l2dbus.Dispatcher.DISPATCH_WAIT)
