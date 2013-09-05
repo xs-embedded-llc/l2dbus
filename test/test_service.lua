@@ -109,7 +109,7 @@ local AUDIO_PLAYER_INTERFACE_NAME = "org.example.service.AudioPlayer"
 local function dumpMessage(msg)
 	-- Dump out the message
 	local msgType = msg:getType()
-	io.stdout:write(msg.msgTypeToString(msgType) .. " sender=" ..
+	io.stdout:write(l2dbus.Message.msgTypeToString(msgType) .. " sender=" ..
 					tostring(msg:getSender()) .. " -> dest=" ..
 					tostring(msg:getDestination()) .. " serial=" ..
 					tostring(msg:getSerial()))
@@ -134,23 +134,35 @@ local function dumpMessage(msg)
 end
 
 
-local function onAudioCaptureRequest(svcObj, conn, msg, userdata)
-	print("onAudioCaptureRequest: " .. svcObj:path() .. " serial # = " .. msg:getSerial())
+local function onAudioCaptureRequest(intf, conn, msg, userdata)
+	print("onAudioCaptureRequest: " .. msg:getObjectPath() ..
+	      " serial # = " .. msg:getSerial())
 	dumpMessage(msg)
-	if "quit" == msg:getMember() then
+	local result = l2dbus.Dbus.HANDLER_RESULT_NOT_YET_HANDLED
+	local member = msg:getMember()
+	if "quit" == member then
 		local reply = l2dbus.Message.newMethodReturn(msg)
 		conn:send(reply)
 		disp:stop()
+		result = l2dbus.Dbus.HANDLER_RESULT_HANDLED
+	elseif ("closeSession" == member) or ("getCodecs" == member) or
+	   ("getSources" == member) or ("openSession" == member) or
+	   ("startCapture" == member) or ("stopCapture") then
+	   local reply = l2dbus.Message.newError(msg,
+	                   l2dbus.Dbus.ERROR_NOT_SUPPORTED,
+	                   string.format("Member <%s> not implemented", member))
+	   conn:send(reply)
+	   result = l2dbus.Dbus.HANDLER_RESULT_HANDLED
 	end
 
-	return l2dbus.Dbus.HANDLER_RESULT_HANDLED;
+	return result;
 end
 
 
 local function defaultServiceHandler(svcObj, conn, msg, userdata)
 	print("DefaultServiceHandler: " .. svcObj:path())
 	dumpMessage(msg)
-	return l2dbus.Dbus.HANDLER_RESULT_HANDLED;
+	return l2dbus.HANDLER_RESULT_NOT_YET_HANDLED;
 end
 
 local function main()
@@ -168,9 +180,6 @@ local function main()
     assert( nil ~= disp )
     local conn = l2dbus.Connection.openStandard(disp, l2dbus.Dbus.BUS_SESSION)
     assert( nil ~= conn )
-
-    --local timeout = l2dbus.Timeout.new(disp, 10000, false, onTimeout, disp)
-    --timeout:setEnable(true)
 
     local msg = l2dbus.Message.newMethodCall({destination=l2dbus.Dbus.SERVICE_DBUS,
 				path=l2dbus.Dbus.PATH_DBUS, interface=l2dbus.Dbus.INTERFACE_DBUS,

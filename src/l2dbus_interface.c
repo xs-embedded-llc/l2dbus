@@ -144,7 +144,7 @@ l2dbus_interfaceDestroyProperty
  was registered.
  @return A suitable DBusHandlerResult value. Returning
  DBUS_HANDLER_RESULT_HANDLED indicates the interface handler processed
- the request. Otherwise the service object will be given a change to
+ the request. Otherwise the service object will be given a chance to
  handle the request.
  */
 static DBusHandlerResult
@@ -164,7 +164,7 @@ l2dbus_interfaceHandler
     /* Leaves the userdata sitting on the top of the stack */
     ud = l2dbus_objectRegistryGet(L, userdata);
 
-    /* Nil or the Service Object userdata is sitting at the top of the
+    /* Nil or the Interface userdata is sitting at the top of the
      * stack at this point.
      */
 
@@ -175,20 +175,20 @@ l2dbus_interfaceHandler
     if ( NULL == ud )
     {
         L2DBUS_TRACE((L2DBUS_TRC_WARN,
-            "Cannot call interface handler because service object has been GC'ed"));
+            "Cannot call interface handler because interface has been GC'ed"));
     }
     else if ( LUA_NOREF != ud->cbCtx.funcRef )
     {
         /* Push function and user value on the stack and execute the callback */
         lua_rawgeti(L, LUA_REGISTRYINDEX, ud->cbCtx.funcRef);
-        /* Push the service object userdata */
-        lua_pushvalue(L, -2 /* Service object ud */);
+        /* Push the interface userdata */
+        lua_pushvalue(L, -2 /* Interface ud */);
         /* Push the associated Lua userdata wrapper on the stack */
         l2dbus_objectRegistryGet(L, conn);
         if ( lua_isnil(L, -1) )
         {
-            L2DBUS_TRACE((L2DBUS_TRC_WARN,
-                        "Cannot call interface handler because connection has been GC'ed"));
+            L2DBUS_TRACE((L2DBUS_TRC_WARN, "Cannot call interface handler "
+                "because connection has been GC'ed"));
         }
         else
         {
@@ -203,7 +203,8 @@ l2dbus_interfaceHandler
                 {
                     errMsg = lua_tostring(L, -1);
                 }
-                L2DBUS_TRACE((L2DBUS_TRC_ERROR, "Interface callback error: %s", errMsg));
+                L2DBUS_TRACE((L2DBUS_TRC_ERROR, "Interface callback error: %s",
+                                errMsg));
             }
             else
             {
@@ -246,12 +247,12 @@ l2dbus_interfaceHandler
  With the interface there can be associated a handler that can process
  client requests. The signature of the handler has the form:
 
-     DBusHandlerResult function onRequest(svcObj, conn, msg, userToken)
+     DBusHandlerResult function onRequest(interface, conn, msg, userToken)
 
  Where:
 
  <ul>
- <li>*svcObj*     - The D-Bus service object implementing this interface</li>
+ <li>*interface*  - The D-Bus interface associated with the handler</li>
  <li>*conn*       - The D-Bus connection from which the request was received</li>
  <li>*msg*        - The D-Bus request message</li>
  <li>*userToken*  - A value specified by the user when the interface was created.</li>
