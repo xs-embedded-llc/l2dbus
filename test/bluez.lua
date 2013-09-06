@@ -15,18 +15,18 @@
 --- + AudioSource support (plays A2DP output from device)
 --- + PAN support (NOTE: Need to manually start DHCP)
 --- + HFP support (Needs more work)
+---
+--- NOTE: Tested with Ubuntu Bluez v4.98
 ----------------------------------------------------------------
 local proxyctrl = require("l2dbus.proxyctrl")
 local l2dbus    = require("l2dbus")
 local pretty    = require("pl.pretty")
 local stringx   = require("pl.stringx")
-local ev        = require("ev")
 local Prompter  = require("utils.prompter")
-
 
 -- Const
 --------
-local APP_VER       = "1.0.0"
+local APP_VER       = "1.1.0"
 
 local BUSNAME       = 1
 local OBJPATH       = 2
@@ -68,6 +68,11 @@ local PAIRING_AGENT_METHODS = {
              {name = "passkey", sig="u", dir="in"},
              {name = "entered", sig="y", dir="in"} }
     },
+    { name = "DisplayPinCode",
+      args = {
+             {name = "device",  sig="s", dir="in"},
+             {name = "pincode", sig="s", dir="in"} }
+    },
     { name = "Release",
       args = { }
     },
@@ -104,11 +109,8 @@ local HFP_AGENT_METHODS = {
 -- Globals
 ----------
 
-local gMainLoop = ev.Loop.default
-gMainLoop:now()
-local gPrompter = Prompter:new(gMainLoop)
-
-local gDispatcher
+local gDispatcher = l2dbus.Dispatcher.new(require("l2dbus_ev").MainLoop.new())
+local gPrompter   = Prompter.getInstance(gDispatcher)
 local gProxyCtrl
 local gMgrProxy
 local gSystemConn
@@ -299,26 +301,33 @@ end -- executeMenuAction
 --- Simple generic handler for requests.
 ---
 --- @tparam   (string)  prefix   ...."pairing"|"hfp"
---- @tparam   (string)  svcObj   ....
+--- @tparam   (string)  ifaceObj ....
 --- @tparam   (string)  conn     ....
 --- @tparam   (string)  msg      ....
 --- @tparam   (string)  userdata ....
 ---
 --- @treturn  Always l2dbus.Dbus.HANDLER_RESULT_HANDLED
 ----------------------------------------------------------------
-local function onAgentRequest(prefix, svcObj, conn, msg, userdata)
+local function onAgentRequest(prefix, ifaceObj, conn, msg, userdata)
 
-    local member = msg:getMember()
+    local member  = msg:getMember()
+    local methods = gPairMethods
 
-    print("\nonPairingAgentRequest: " .. svcObj:path() .. "/" .. member )
+    print("\nonAgentRequest: " .. ifaceObj:name() .. "/" .. member, prefix )
     dumpMessage(msg)
 
-    if gHfpMethods[prefix.."_"..member] == nil then
-        print( string.format("ERROR: Unknown %s method: ", prefix), member )
+    if prefix == "hfp" then
+        methods = gHfpMethods
+    end
+
+    if methods[prefix.."_"..member] == nil then
+        local sErr = string.format("ERROR: Unknown %s method: %s", prefix, member)
+        print( sErr  )
+        conn:send( l2dbus.Message.newError( msg, "ERR_INV", sErr ) )
         return l2dbus.Dbus.HANDLER_RESULT_NOT_YET_HANDLED;
     end
 
-    gHfpMethods[prefix.."_"..member]( svcObj, conn, msg, userdata )
+    methods[prefix.."_"..member]( ifaceObj, conn, msg, userdata )
 
     return l2dbus.Dbus.HANDLER_RESULT_HANDLED;
 
@@ -341,6 +350,8 @@ local function defaultSvcHandler(svcObj, conn, msg, userdata)
     print("\nDefault API: " .. svcObj:path() .. "/" .. msg:getMember() )
     dumpMessage(msg)
 
+    conn:send( l2dbus.Message.newMethodReturn( msg ) )
+
     return l2dbus.Dbus.HANDLER_RESULT_HANDLED;
 
 end -- defaultSvcHandler
@@ -358,7 +369,6 @@ local function initDbus()
     l2dbus.Trace.setFlags(l2dbus.Trace.ERROR, l2dbus.Trace.WARN)
     --l2dbus.Trace.setFlags(l2dbus.Trace.ALL)
 
-    gDispatcher = l2dbus.Dispatcher.new(require("l2dbus_ev").MainLoop.new(gMainLoop))
     assert( nil ~= gDispatcher )
 
     -- Init [Pairing/HFP] Agent Service
@@ -387,8 +397,8 @@ local function initDbus()
                                           "DefaultHandler" )
     -- Pairing Interface
     gPairInf = l2dbus.Interface.new( PAIRING_AGENT[IFACE],
-                                     function (svcObj, conn, msg, userdata)
-                                         onAgentRequest( "pairing", svcObj, conn, msg, userdata )
+                                     function (ifaceObj, conn, msg, userdata)
+                                         return onAgentRequest( "pairing", ifaceObj, conn, msg, userdata )
                                      end,
                                      "PairingAgentHandler" )
     gPairInf:registerMethods( PAIRING_AGENT_METHODS )
@@ -397,7 +407,7 @@ local function initDbus()
     -- HFP Interface
     gHfpInf = l2dbus.Interface.new( HFP_AGENT[IFACE],
                                     function (svcObj, conn, msg, userdata)
-                                        onAgentRequest( "hfp", svcObj, conn, msg, userdata )
+                                        return onAgentRequest( "hfp", svcObj, conn, msg, userdata )
                                     end,
                                     "HfpAgentHandler" )
     gHfpInf:registerMethods( HFP_AGENT_METHODS )
@@ -487,7 +497,7 @@ local function initOfono( proxy )
 
     -- Register
     ------------------------------
-    local status, result = executeMenuAction( "RegisterAgent", proxy.m.RegisterAgent, OFONO_HFP_AGENT[OBJPATH] )
+    local status, result = executeMenuAction( "RegisterAgent", proxy.m.RegisterAgent, OFONO_HFP_AGENT[OBJPATH], "DisplayYesNo" )
     if status == false then
         if string.find(result, "AlreadyExists") == nil then
             print( "ERROR: Unable to register the ofono HFP agent." )
@@ -579,7 +589,7 @@ local function getDeviceIfaceProxy( iface, adapterProxy, bUseLastDevice )
         end
 
         if #tDeviceList == 0 then
-            print( "INFO: No created devices detected, use option 'm' first." )
+            print( "INFO: No created devices detected" )
             return nil
         end
 
@@ -706,7 +716,7 @@ local function menuConnectService( proxyCtrl )
             -- First look for ofono, if this is available, let it be the agent
             if initOfono( proxy ) == false then
 
-                local status, result = executeMenuAction( "RegisterAgent", proxy.m.RegisterAgent, HFP_AGENT[OBJPATH] )
+                local status, result = executeMenuAction( "RegisterAgent", proxy.m.RegisterAgent, HFP_AGENT[OBJPATH], "DisplayYesNo" )
                 if status == false then
                     if string.find(result, "AlreadyExists") == nil then
                         print( "ERROR: Unable to register an HFP agent." )
@@ -1047,11 +1057,6 @@ local function menuOptionsAdapters()
                                           tInfo.Icon or "?" ) )
         end -- loop
 
-        if #tDeviceStrList == 0 and #tDeviceList == 0 then
-            print( "ERROR: No devices available, start by using option 's'" )
-            break
-        end
-
         -- Submenu
         -----------------------------------------------------------
         local tMenu =  { "Info/Properties",
@@ -1111,13 +1116,23 @@ local function menuOptionsAdapters()
                 break
             end
 
+            -- Register
+            ------------------------------
+            -- (Attempt at registering us for a pairing agent.)
+            --local status, result = executeMenuAction( "RegisterAgent", proxy.m.RegisterAgent, PAIRING_AGENT[OBJPATH], "DisplayYesNo" )
+            --if status == false then
+            --    if string.find(result, "AlreadyExists") == nil then
+            --        print( "ERROR: Unable to register the pairing agent." )
+            --        return false
+            --    end
+            --end
+
             gConfirmExecute = true
             local status, tDevObj = executeMenuAction( "CreatePairedDevice",
                                                        proxy.m.CreatePairedDevice,
                                                        tDevice.Address,
                                                        PAIRING_AGENT[OBJPATH],
                                                        "DisplayYesNo" )
-            pretty.dump( tDevObj )
 
         elseif opt == 4 then  -- "RemoveDevice"
 
@@ -1127,7 +1142,7 @@ local function menuOptionsAdapters()
             end
 
             gConfirmExecute = true
-            executeMenuAction( "RemoveDevice", proxy.m.RemoveDevice, tDevice.Address )
+            executeMenuAction( "RemoveDevice", proxy.m.RemoveDevice, tDevice.CreatedPath )
 
         elseif opt == 5 then  -- "FindDevice"
 
@@ -1399,9 +1414,7 @@ local function menuMain()
         end
     end
 
-
-
-    gMainLoop:unloop()
+    gDispatcher:stop()
 
 end -- menuMain
 
@@ -1519,12 +1532,12 @@ end -- popup
 --- Possible Errors: org.bluez.Error.InvalidArguments
 --- 		 org.bluez.Error.Failed
 ---
---- @tparam   (string)  svcObj   ....
+--- @tparam   (string)  ifaceObj ....
 --- @tparam   (string)  conn     ....
 --- @tparam   (string)  msg      ....
 --- @tparam   (string)  userdata ....
 ----------------------------------------------------------------
-function gHfpMethods.hfp_NewConnection( svcObj, conn, msg, userdata )
+function gHfpMethods.hfp_NewConnection( ifaceObj, conn, msg, userdata )
 
     print( "TODO: Implement NewConnection() (returns: Failed)" )
     pretty.dump( msg:getArgsAsArray() )
@@ -1542,12 +1555,12 @@ end -- hfp_NewConnection
 --- unregisters the agent or whenever the Adapter where
 --- the HandsfreeAgent registers itself is removed.
 ---
---- @tparam   (string)  svcObj   ....
+--- @tparam   (string)  ifaceObj  ....
 --- @tparam   (string)  conn     ....
 --- @tparam   (string)  msg      ....
 --- @tparam   (string)  userdata ....
 ----------------------------------------------------------------
-function gHfpMethods.hfp_Release( svcObj, conn, msg, userdata )
+function gHfpMethods.hfp_Release( ifaceObj, conn, msg, userdata )
 
     print( "TODO: Implement Release() (returns: Failed)" )
     pretty.dump( msg:getArgsAsArray() )
@@ -1568,12 +1581,12 @@ end -- hfp_Release
 --- Possible errors: org.bluez.Error.Rejected
 ---                  org.bluez.Error.Canceled
 ---
---- @tparam   (string)  svcObj   ....
+--- @tparam   (string)  ifaceObj ....
 --- @tparam   (string)  conn     ....
 --- @tparam   (string)  msg      ....
 --- @tparam   (string)  userdata ....
 ----------------------------------------------------------------
-function gPairMethods.pairing_Authorize( svcObj, conn, msg, userdata )
+function gPairMethods.pairing_Authorize( ifaceObj, conn, msg, userdata )
 
     local tResults = msg:getArgsAsArray()
 
@@ -1599,12 +1612,12 @@ end -- pairing_Authorize
 --- This method gets called to indicate that the agent
 --- request failed before a reply was returned.
 ---
---- @tparam   (string)  svcObj   ....
+--- @tparam   (string)  ifaceObj ....
 --- @tparam   (string)  conn     ....
 --- @tparam   (string)  msg      ....
 --- @tparam   (string)  userdata ....
 ----------------------------------------------------------------
-function gPairMethods.pairing_Cancel( svcObj, conn, msg, userdata )
+function gPairMethods.pairing_Cancel( ifaceObj, conn, msg, userdata )
 
     popup( "Agent Cancelled", "Agent API" )
     -- Used to cancel the displaying of the passkey (N/A here)
@@ -1624,12 +1637,12 @@ end -- pairing_Cancel
 --- Possible errors: org.bluez.Error.Rejected
 ---                  org.bluez.Error.Canceled
 ---
---- @tparam   (string)  svcObj   ....
+--- @tparam   (string)  ifaceObj ....
 --- @tparam   (string)  conn     ....
 --- @tparam   (string)  msg      ....
 --- @tparam   (string)  userdata ....
 ----------------------------------------------------------------
-function gPairMethods.pairing_ConfirmModeChange( svcObj, conn, msg, userdata )
+function gPairMethods.pairing_ConfirmModeChange( ifaceObj, conn, msg, userdata )
 
     local tResults = msg:getArgsAsArray()
 
@@ -1667,12 +1680,12 @@ end -- pairing_ConfirmModeChange
 --- so the display should be zero-padded at the start if
 --- the value contains less than 6 digits.
 ---
---- @tparam   (string)  svcObj   ....
+--- @tparam   (string)  ifaceObj ....
 --- @tparam   (string)  conn     ....
 --- @tparam   (string)  msg      ....
 --- @tparam   (string)  userdata ....
 ----------------------------------------------------------------
-function gPairMethods.pairing_DisplayPasskey( svcObj, conn, msg, userdata )
+function gPairMethods.pairing_DisplayPasskey( ifaceObj, conn, msg, userdata )
 
     local tResults = msg:getArgsAsArray()
 
@@ -1685,6 +1698,48 @@ function gPairMethods.pairing_DisplayPasskey( svcObj, conn, msg, userdata )
 end -- pairing_DisplayPasskey
 
 ----------------------------------------------------------------
+--- pairing_DisplayPinCode
+---
+--- This method gets called when the service daemon
+--- needs to display a pincode for an authentication.
+---
+--- An empty reply should be returned. When the pincode
+--- needs no longer to be displayed, the Cancel method
+--- of the agent will be called.
+---
+--- If this method is not implemented the RequestPinCode
+--- method will be used instead.
+---
+--- This is used during the pairing process of keyboards
+--- that don't support Bluetooth 2.1 Secure Simple Pairing,
+--- in contrast to DisplayPasskey which is used for those
+--- that do.
+---
+--- This method will only ever be called once since
+--- older keyboards do not support typing notification.
+---
+--- Note that the PIN will always be a 6-digit number,
+--- zero-padded to 6 digits. This is for harmony with
+--- the later specification.
+---
+--- @tparam   (string)  ifaceObj ....
+--- @tparam   (string)  conn     ....
+--- @tparam   (string)  msg      ....
+--- @tparam   (string)  userdata ....
+----------------------------------------------------------------
+function gPairMethods.pairing_DisplayPinCode( ifaceObj, conn, msg, userdata )
+
+    local tResults = msg:getArgsAsArray()
+
+    popup( string.format("Pin Code: %06d",
+                         tonumber(tResults[2]) or 0 ),
+           "PinCode" )
+
+    conn:send( l2dbus.Message.newMethodReturn( msg ) )
+
+end -- pairing_DisplayPinCode
+
+----------------------------------------------------------------
 --- pairing_Release
 ---
 --- void Release()
@@ -1695,12 +1750,12 @@ end -- pairing_DisplayPasskey
 --- agent, because when this method gets called it has
 --- already been unregistered.
 ---
---- @tparam   (string)  svcObj   ....
+--- @tparam   (string)  ifaceObj ....
 --- @tparam   (string)  conn     ....
 --- @tparam   (string)  msg      ....
 --- @tparam   (string)  userdata ....
 ----------------------------------------------------------------
-function gPairMethods.pairing_Release( svcObj, conn, msg, userdata )
+function gPairMethods.pairing_Release( ifaceObj, conn, msg, userdata )
 
     popup( "Agent Released", "Agent API" )
     -- NOP
@@ -1726,12 +1781,12 @@ end -- pairing_DisplayRelease
 --- Possible errors: org.bluez.Error.Rejected
 ---                  org.bluez.Error.Canceled
 ---
---- @tparam   (string)  svcObj   ....
+--- @tparam   (string)  ifaceObj ....
 --- @tparam   (string)  conn     ....
 --- @tparam   (string)  msg      ....
 --- @tparam   (string)  userdata ....
 ----------------------------------------------------------------
-function gPairMethods.pairing_RequestConfirmation( svcObj, conn, msg, userdata )
+function gPairMethods.pairing_RequestConfirmation( ifaceObj, conn, msg, userdata )
 
     local tResults = msg:getArgsAsArray()
 
@@ -1763,12 +1818,12 @@ end -- pairing_RequestConfirmation
 --- Possible errors: org.bluez.Error.Rejected
 ---                  org.bluez.Error.Canceled
 ---
---- @tparam   (string)  svcObj   ....
+--- @tparam   (string)  ifaceObj ....
 --- @tparam   (string)  conn     ....
 --- @tparam   (string)  msg      ....
 --- @tparam   (string)  userdata ....
 ----------------------------------------------------------------
-function gPairMethods.pairing_RequestPasskey( svcObj, conn, msg, userdata )
+function gPairMethods.pairing_RequestPasskey( ifaceObj, conn, msg, userdata )
 
     local passkey  = DEFAULT_PASSKEY
     local tResults = msg:getArgsAsArray()
@@ -1801,12 +1856,12 @@ end -- pairing_RequestPasskey
 --- Possible errors: org.bluez.Error.Rejected
 ---                  org.bluez.Error.Canceled
 ---
---- @tparam   (string)  svcObj   ....
+--- @tparam   (string)  ifaceObj ....
 --- @tparam   (string)  conn     ....
 --- @tparam   (string)  msg      ....
 --- @tparam   (string)  userdata ....
 ----------------------------------------------------------------
-function gPairMethods.pairing_RequestPinCode( svcObj, conn, msg, userdata )
+function gPairMethods.pairing_RequestPinCode( ifaceObj, conn, msg, userdata )
 
     local pinCode  = DEFAULT_PINCODE
     local tResults = msg:getArgsAsArray()
@@ -1835,17 +1890,16 @@ local function main()
 
     initDbus()
 
-    local starter = ev.Idle.new(function(loop, idle, revents)
-            idle:stop(loop)
-            local co = coroutine.create(menuMain)
-            local status, result = coroutine.resume(co)
-            if not status then
-                print("Error: " .. result)
-            end
-        end)
-    starter:start(gMainLoop)
+    local timer = l2dbus.Timeout.new(gDispatcher, 25, false, function()
+                        local co = coroutine.create(menuMain)
+                        local status, result = coroutine.resume(co)
+                        if not status then
+                            print("Error: " .. result)
+                        end
+                  end)
+    timer:setEnable(true)
 
-    gMainLoop:loop()
+    gDispatcher:run(l2dbus.Dispatcher.DISPATCH_WAIT)
 
     gProxyCtrl:disconnectAllSignals()
     gPrompter:restoreTtyState()
@@ -1857,11 +1911,9 @@ local function main()
 
 end -- main
 
-
 main()
 
 
-gMainLoop = nil
 l2dbus.shutdown()
 
 
