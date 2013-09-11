@@ -1087,7 +1087,7 @@ local function main(arg)
 end
 
 -- Determine the context in which the module is used
-if type(package.loaded[(...)]) ~= "userdata" then
+if require('l2dbus.is_main')() then
     -- The module is being run as a program
     main(arg)
 else
