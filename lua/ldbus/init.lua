@@ -1050,7 +1050,7 @@ end
 
 
 -- Determine the context in which the module is usd
-if type(package.loaded[(...)]) ~= "userdata" then
+if require('is_main')() then
     -- The module is being run as a program
     main(arg)
 else
