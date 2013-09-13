@@ -46,7 +46,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 -- @alias M
 
 
-local l2dbus = require("l2dbus_core")
+local l2dbus = require("l2dbus")
 local xml = require("l2dbus.xml")
 local validate = require("l2dbus.validate")
 
@@ -1087,7 +1087,7 @@ local function main(arg)
 end
 
 -- Determine the context in which the module is used
-if require('l2dbus.is_main')() then
+if l2dbus.isMain() then
     -- The module is being run as a program
     main(arg)
 else

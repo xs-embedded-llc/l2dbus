@@ -151,8 +151,6 @@ l2dbus_shutdownCdbus
  necessary to call this function when terminating since
  the Lua VM and OS will implicitly free any underlying
  resources.
-
- @return nil
  */
 static int
 l2dbus_shutdown
@@ -168,6 +166,24 @@ l2dbus_shutdown
     return 0;
 }
 
+
+/**
+ @function isMain
+
+ Determines if the Lua file is loaded as a module or run as a "main" program.
+
+ This function attempts to detect whether the file in which it's called is
+ being loaded by another Lua file (as a module) or if it's being executed
+ directly as the "main" program. This is analogous to the Python construct:
+
+     if __name__ == "__main__":
+         run_as_program()
+     else:
+         loaded_as_module()
+
+ @treturn boolean Returns **true** if the Lua file is being run as a "main"
+ program or **false** if it is being loaded as a module.
+ */
 
 /**
  Version table.

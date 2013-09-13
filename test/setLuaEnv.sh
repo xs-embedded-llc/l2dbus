@@ -10,8 +10,8 @@
 # Tailor as needed for your build environment
 export BUILD_ROOT="${HOME}/workspace"
 export LD_LIBRARY_PATH="${BUILD_ROOT}/cdbus/x86_64-Debug/lib"
-export LUA_PATH="${LUA_PATH};;${BUILD_ROOT}/l2dbus/lua/?.lua;${BUILD_ROOT}/l2dbus/lua/?/init.lua"
-export LUA_CPATH="${LUA_CPATH};;${BUILD_ROOT}/l2dbus/x86_64-Debug/lib/?.so"
+export LUA_PATH="${BUILD_ROOT}/l2dbus/lua/?.lua;${BUILD_ROOT}/l2dbus/lua/?/init.lua;;${LUA_PATH}"
+export LUA_CPATH="${BUILD_ROOT}/l2dbus/x86_64-Debug/lib/?.so;;${LUA_CPATH}"
 
 echo ""
 echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"

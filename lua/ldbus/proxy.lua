@@ -269,7 +269,7 @@ end
 
 
 -- Determine the context in which the module is usd
-if require('l2dbus.is_main')() then
+if ldbus.isMain() then
     -- The module is being run as a program
     main(arg)
 else

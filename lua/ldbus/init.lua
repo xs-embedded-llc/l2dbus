@@ -55,7 +55,7 @@ local ev = require("ev")
 
 local M = { }
 --- Module version
-local VERSION = "1.2.1"
+local VERSION = "1.2.2"
 
 -- Filled in by the init() routine
 local mainLoop
@@ -1043,6 +1043,9 @@ function M.loopIterate(runOpt)
 end
 
 
+-- Reference L2DBUS's isMain function
+M.isMain = l2dbus.isMain
+
 -- Called when this module is run as a program
 local function main(arg)
     print(string.match(arg[0], "^(.+)%.lua") .. " - Version: " .. VERSION)
@@ -1050,7 +1053,7 @@ end
 
 
 -- Determine the context in which the module is usd
-if require('l2dbus.is_main')() then
+if l2dbus.isMain() then
     -- The module is being run as a program
     main(arg)
 else

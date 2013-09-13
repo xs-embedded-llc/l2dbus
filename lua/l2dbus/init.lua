@@ -47,8 +47,12 @@ local function main(arg)
 end
 
 
+l2dbus.isMain = function()
+    return debug.getinfo(4) == nil
+end
+
 -- Determine the context in which the module is used
-if require('l2dbus.is_main')() then
+if l2dbus.isMain() then
     -- The module is being run as a program
     main(arg)
 else
