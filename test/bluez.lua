@@ -17,6 +17,42 @@
 --- + HFP support (Needs more work)
 ---
 --- NOTE: Tested with Ubuntu Bluez v4.98
+---
+--- Some Limitations:
+--- 1. agent only set on CreatePairedDevice.  The app tries to register
+---    an agent, but if one is already registered you cannot register
+---    a new [default] agent.
+---
+--- This MUST run on the dbus system bus, therefore you must open
+--- access for this service.  For example, add the following to:
+--- /etc/dbus-1/system.d/com.service.TestBlueZ
+---
+--- <!-- This configuration file specifies the required security policies
+---      for oFono core daemon to work. -->
+---
+--- <!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN"
+---  "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
+--- <busconfig>
+---
+---   <!-- ../system.conf have denied everything, so we just punch some holes -->
+---
+---   <policy user="root">
+---     <allow own="com.service.TestBlueZ"/>
+---     <allow send_destination="com.service.TestBlueZ"/>
+---     <allow send_interface="org.bluez.Agent"/>
+---     <allow send_interface="org.bluez.HandsfreeAgent"/>
+---   </policy>
+---
+---   <policy at_console="true">
+---     <allow send_destination="com.service.TestBlueZ"/>
+---   </policy>
+---
+---   <policy context="default">
+---     <allow send_destination="com.service.TestBlueZ"/>
+---   </policy>
+---
+--- </busconfig>
+---
 ----------------------------------------------------------------
 local proxyctrl = require("l2dbus.proxyctrl")
 local l2dbus    = require("l2dbus")
@@ -26,7 +62,7 @@ local Prompter  = require("utils.prompter")
 
 -- Const
 --------
-local APP_VER       = "1.1.0"
+local APP_VER       = "2.0.0"
 
 local BUSNAME       = 1
 local OBJPATH       = 2
@@ -52,7 +88,7 @@ local PAIRING_AGENT_METHODS = {
 
     { name = "Authorize",
       args = {
-             {name = "device",  sig="s", dir="in"},
+             {name = "device",  sig="o", dir="in"},
              {name = "uuid",    sig="s", dir="in"} }
     },
     { name = "Cancel",
@@ -64,13 +100,13 @@ local PAIRING_AGENT_METHODS = {
     },
     { name = "DisplayPasskey",
       args = {
-             {name = "device",  sig="s", dir="in"},
+             {name = "device",  sig="o", dir="in"},
              {name = "passkey", sig="u", dir="in"},
              {name = "entered", sig="y", dir="in"} }
     },
     { name = "DisplayPinCode",
       args = {
-             {name = "device",  sig="s", dir="in"},
+             {name = "device",  sig="o", dir="in"},
              {name = "pincode", sig="s", dir="in"} }
     },
     { name = "Release",
@@ -78,17 +114,17 @@ local PAIRING_AGENT_METHODS = {
     },
     { name = "RequestConfirmation",
       args = {
-             {name = "device",  sig="s", dir="in"},
+             {name = "device",  sig="o", dir="in"},
              {name = "passkey", sig="u", dir="in"} }
     },
     { name = "RequestPasskey",
       args = {
-             {name = "device",  sig="s", dir="in"},
+             {name = "device",  sig="o", dir="in"},
              {name = "pinCode", sig="u", dir="out"} }
     },
     { name = "RequestPinCode",
       args = {
-             {name = "device",  sig="s", dir="in"},
+             {name = "device",  sig="o", dir="in"},
              {name = "pinCode", sig="s", dir="out"} }
     },
 }
@@ -114,7 +150,6 @@ local gPrompter   = Prompter.getInstance(gDispatcher)
 local gProxyCtrl
 local gMgrProxy
 local gSystemConn
-local gSessionConn
 
 local gOfonoProxy
 local gOfonoProxyCtrl
@@ -143,7 +178,6 @@ local gSilentExecute  = false
 
 -- prompts in executeMenuAction() to confirm the execution
 local gConfirmExecute = false
-
 
 
 ----------------------------------------------------------------
@@ -334,6 +368,43 @@ local function onAgentRequest(prefix, ifaceObj, conn, msg, userdata)
 end -- onAgentRequest
 
 ----------------------------------------------------------------
+--- registerDefaultAgent
+---
+--- Attempts to register an agent for pairing in case one does
+--- not exist.
+----------------------------------------------------------------
+local function registerDefaultAgent()
+
+    gSilentExecute  = true
+    gConfirmExecute = false
+    local status, result = executeMenuAction( "DefaultAdapter", gMgrProxy.m.DefaultAdapter )
+
+    if status == false or result == nil then
+        return
+    end
+
+    local proxyCtrl = proxyctrl.new(gSystemConn, BLUEZ_ADAPTER[BUSNAME], result )
+    assert(proxyCtrl:bind())
+
+    local proxy = proxyCtrl:getProxy( BLUEZ_ADAPTER[IFACE] )
+    assert( nil ~= proxy )
+
+    -- Register an Agent
+    ------------------------------
+    -- (Attempt at registering us for a pairing agent.)
+    gSilentExecute  = true
+    gConfirmExecute = false
+    local status, result = executeMenuAction( "RegisterAgent", proxy.m.RegisterAgent, PAIRING_AGENT[OBJPATH], "DisplayYesNo" )
+    if status == false then
+        if string.find(result, "AlreadyExists") == nil then
+            print( "ERROR: Unable to register the pairing agent." )
+            return
+        end
+    end
+
+end -- registerDefaultAgent
+
+----------------------------------------------------------------
 --- defaultSvcHandler
 ---
 --- Default service handler for requests.  Only logs.
@@ -360,9 +431,6 @@ end -- defaultSvcHandler
 --- initDbus
 ---
 --- [add description here]
----
----
---- @treturn  (boolean) [add here]
 ----------------------------------------------------------------
 local function initDbus()
 
@@ -371,10 +439,10 @@ local function initDbus()
 
     assert( nil ~= gDispatcher )
 
-    -- Init [Pairing/HFP] Agent Service
-    ---------------------------------
-    gSessionConn = l2dbus.Connection.openStandard(gDispatcher, l2dbus.Dbus.BUS_SESSION)
-    assert( nil ~= gSessionConn )
+    -- Init BlueZ Agents Interface
+    ------------------------------
+    gSystemConn = l2dbus.Connection.openStandard(gDispatcher, l2dbus.Dbus.BUS_SYSTEM)
+    assert( nil ~= gSystemConn )
 
     local msg = l2dbus.Message.newMethodCall({destination = l2dbus.Dbus.SERVICE_DBUS,
                                               path        = l2dbus.Dbus.PATH_DBUS,
@@ -382,14 +450,14 @@ local function initDbus()
                                               method      = "RequestName"})
     msg:addArgsBySignature("su", AGENT[BUSNAME], l2dbus.Dbus.NAME_FLAG_DO_NOT_QUEUE)
 
-    print("Requesting a bus name: " .. AGENT[BUSNAME])
-    local reply, errName, errMsg = gSessionConn:sendWithReplyAndBlock( msg )
+    print("Requesting a system bus name: " .. AGENT[BUSNAME])
+    local reply, errName, errMsg = gSystemConn:sendWithReplyAndBlock( msg )
     if reply == nil then
         error("Request Failed =>  " .. tostring(errName) .. " : " .. tostring(errMsg))
     else
         local result = reply:getArgs()
         assert( result == l2dbus.Dbus.REQUEST_NAME_REPLY_PRIMARY_OWNER )
-        print("Acquired name successfully")
+        print("Acquired name successfully on system bus")
     end
 
     gAgentSvc = l2dbus.ServiceObject.new( AGENT[OBJPATH],
@@ -406,22 +474,19 @@ local function initDbus()
 
     -- HFP Interface
     gHfpInf = l2dbus.Interface.new( HFP_AGENT[IFACE],
-                                    function (svcObj, conn, msg, userdata)
-                                        return onAgentRequest( "hfp", svcObj, conn, msg, userdata )
+                                    function (ifaceObj, conn, msg, userdata)
+                                        return onAgentRequest( "hfp", ifaceObj, conn, msg, userdata )
                                     end,
                                     "HfpAgentHandler" )
     gHfpInf:registerMethods( HFP_AGENT_METHODS )
     assert( gAgentSvc:addInterface( gHfpInf ) )
 
-
+    -- Introspection interface
     assert( gAgentSvc:addInterface( l2dbus.Introspection.new() ) )
-    assert( gSessionConn:registerServiceObject( gAgentSvc ) )
 
-    -- Init BlueZ Manager
-    ------------------------------
-    gSystemConn = l2dbus.Connection.openStandard(gDispatcher, l2dbus.Dbus.BUS_SYSTEM)
-    assert( nil ~= gSystemConn )
+    assert( gSystemConn:registerServiceObject( gAgentSvc ) )
 
+    -- Setup proxy to bluez
     gProxyCtrl = proxyctrl.new(gSystemConn, BLUEZ_MGR[BUSNAME], BLUEZ_MGR[OBJPATH] )
     assert(gProxyCtrl:bind())
 
@@ -430,6 +495,15 @@ local function initDbus()
 
 end -- initDbus
 
+----------------------------------------------------------------
+--- initOfono
+---
+--- [add description here]
+---
+--- @tparam   (string)  proxy ....
+---
+--- @treturn  (boolean) [add here]
+----------------------------------------------------------------
 local function initOfono( proxy )
 
     if gOfonoProxy == nil then
@@ -668,7 +742,11 @@ local function menuConnectService( proxyCtrl )
         proxyCtrl:connectSignal( sIface,
                                  "PropertyChanged",
                                  function ( sProperty, val )
-                                     print( "\nPropertyChanged: ", sProperty, val )
+                                     if type(val) == "table" then
+                                         print( "\nPropertyChanged: ", sProperty, pretty.write(val) )
+                                     else
+                                         print( "\nPropertyChanged: ", sProperty, val )
+                                     end
                                  end )
     end
 
@@ -907,7 +985,11 @@ local function menuStartStopDiscovery()
         tDiscovering[ adapterIdx ].proxyCtrl:connectSignal( BLUEZ_ADAPTER[IFACE],
                                                             "PropertyChanged",
                         function ( sProperty, val )
-                            print( "\nPropertyChanged: ", sProperty, val )
+                            if type(val) == "table" then
+                                 print( "\nPropertyChanged: ", sProperty, pretty.write(val) )
+                             else
+                                 print( "\nPropertyChanged: ", sProperty, val )
+                             end
 
                             -- This will cycle on/off every so many seconds
                             if sProperty == "Discovering" then
@@ -1019,7 +1101,11 @@ local function menuOptionsAdapters()
     local hSig =proxyCtrl:connectSignal( BLUEZ_ADAPTER[IFACE],
                              "PropertyChanged",
                              function ( sProperty, val )
-                                 print( "\nPropertyChanged: ", sProperty, val )
+                                 if type(val) == "table" then
+                                     print( "\nPropertyChanged: ", sProperty, pretty.write(val) )
+                                 else
+                                     print( "\nPropertyChanged: ", sProperty, val )
+                                 end
                              end )
 
     while true do
@@ -1116,22 +1202,11 @@ local function menuOptionsAdapters()
                 break
             end
 
-            -- Register
-            ------------------------------
-            -- (Attempt at registering us for a pairing agent.)
-            --local status, result = executeMenuAction( "RegisterAgent", proxy.m.RegisterAgent, PAIRING_AGENT[OBJPATH], "DisplayYesNo" )
-            --if status == false then
-            --    if string.find(result, "AlreadyExists") == nil then
-            --        print( "ERROR: Unable to register the pairing agent." )
-            --        return false
-            --    end
-            --end
-
             gConfirmExecute = true
             local status, tDevObj = executeMenuAction( "CreatePairedDevice",
                                                        proxy.m.CreatePairedDevice,
                                                        tDevice.Address,
-                                                       PAIRING_AGENT[OBJPATH],
+                                                       l2dbus.DbusTypes.ObjectPath.new (PAIRING_AGENT[OBJPATH]), -- not necessary, can pass just string, here as example
                                                        "DisplayYesNo" )
 
         elseif opt == 4 then  -- "RemoveDevice"
@@ -1273,7 +1348,11 @@ local function menuOptionsDevices()
         hSig = proxyCtrl:connectSignal( BLUEZ_ADAPTER[IFACE],
                              "PropertyChanged",
                              function ( sProperty, val )
-                                 print( "\nPropertyChanged: ", sProperty, val )
+                                 if type(val) == "table" then
+                                     print( "\nPropertyChanged: ", sProperty, pretty.write(val) )
+                                 else
+                                     print( "\nPropertyChanged: ", sProperty, val )
+                                 end
                              end )
 
         -- Item Processing
@@ -1378,6 +1457,8 @@ end -- menuOptionsDevices
 ---
 ----------------------------------------------------------------
 local function menuMain()
+
+    registerDefaultAgent(  )
 
     local doExit = false
     while not doExit do
@@ -1492,21 +1573,21 @@ local function popup( sPrompt, sTitle, sType )
     end
     print( string.rep( "*", 60 ) )
 
+    local cmd = ""
     if sType == "YorN" then
-        local cmd = "q"
         while cmd ~= "Y" and cmd ~= "N" and
               cmd ~= "y" and cmd ~= "n" do
             io.stdout:write("(Y)es or (N)o? ")
             cmd = io.stdin:read( 1 )
             print( "\n" )
         end
-        return string.upper(cmd)
+        cmd = string.upper(cmd)
 
     elseif sType == "prompt" then
-        local cmd = io.stdin:read( "*line" )
+        cmd = io.stdin:read( "*line" )
         print( "\n" )
-        return cmd
     end
+    return cmd
 
 end -- popup
 
@@ -1530,7 +1611,7 @@ end -- popup
 --- necessary initialization has been done.
 ---
 --- Possible Errors: org.bluez.Error.InvalidArguments
---- 		 org.bluez.Error.Failed
+---          org.bluez.Error.Failed
 ---
 --- @tparam   (string)  ifaceObj ....
 --- @tparam   (string)  conn     ....
@@ -1791,12 +1872,11 @@ function gPairMethods.pairing_RequestConfirmation( ifaceObj, conn, msg, userdata
     local tResults = msg:getArgsAsArray()
 
     -- Since we are using a static passkey, will not get user input
-    popup( string.format("Authorize?\ndevice:         %s\nremote passkey: %06d\nlocal passkey:  %06d\n\nresult: %s",
-                         tResults[1] or 0, tResults[2] or 0, DEFAULT_PASSKEY,
-                         ( DEFAULT_PASSKEY == tResults[2]) and "PASSED" or "FAILED" ),
-           "Request Confirmation" )
+    local cmd = popup( string.format("Authorize?\ndevice:         %s\nremote passkey: %06d\n",
+                                     tResults[1] or "", tResults[2] or 0 ),
+                       "Request Confirmation", "YorN" )
 
-    if DEFAULT_PASSKEY == tResults[2] then
+    if cmd == "Y" then
         conn:send( l2dbus.Message.newMethodReturn( msg ) )
     else
         conn:send( l2dbus.Message.newError( msg, "org.bluez.Error.Rejected", "" ) )
