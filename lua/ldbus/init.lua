@@ -55,7 +55,7 @@ local ev = require("ev")
 
 local M = { }
 --- Module version
-local VERSION = "1.2.2"
+local VERSION = "1.2.3"
 
 -- Filled in by the init() routine
 local mainLoop
@@ -955,7 +955,7 @@ function M.init( sLoopType )
 
     local initLoop
 
-    loopType = sLoopType or "l2dbus_ev"
+    sLoopType = sLoopType or "l2dbus_ev"
 
     if sLoopType == "l2dbus_ev" then
 
@@ -970,7 +970,7 @@ function M.init( sLoopType )
         --      uses the generic init below
 
     else
-        assert( 0, "ERROR: Unknown l2dbus loop type on init(): "..sLoopType )
+        assert( 0, "ERROR: Unknown l2dbus loop type on init(): ".. tostring(sLoopType) )
     end
 
     mainLoop = require(sLoopType).MainLoop.new(initLoop)
