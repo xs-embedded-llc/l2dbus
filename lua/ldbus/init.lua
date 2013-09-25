@@ -55,7 +55,7 @@ local ev = require("ev")
 
 local M = { }
 --- Module version
-local VERSION = "1.2.3"
+local VERSION = "1.2.4"
 
 -- Filled in by the init() routine
 local mainLoop
@@ -956,6 +956,7 @@ function M.init( sLoopType )
     local initLoop
 
     sLoopType = sLoopType or "l2dbus_ev"
+    loopType  = sLoopType
 
     if sLoopType == "l2dbus_ev" then
 
