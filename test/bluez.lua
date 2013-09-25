@@ -13,19 +13,27 @@
 --- + view adapter info/properties
 --- + view/create/remove/pair devices (we can act as the agent for pairing)
 --- + AudioSource support (plays A2DP output from device)
---- + PAN support (NOTE: Need to manually start DHCP)
+--- + PAN support (NOTE: Need to manually start DHCP--see "Simple Testing Procedures" below)
 --- + HFP support (Needs more work)
 ---
---- NOTE: Tested with Ubuntu Bluez v4.98
+--- NOTE: Tested with Ubuntu Bluez v4.98 & 4.101
 ---
 --- Some Limitations:
---- 1. agent only set on CreatePairedDevice.  The app tries to register
----    an agent, but if one is already registered you cannot register
----    a new [default] agent.
+--- =============================
+--- 1. agent only set on CreatePairedDevice.  So if pairing is initiated
+---    from the phone, there will be no agent to handle this.  Pairing
+---    MUST be initiated from this app.
+--- 2. Patches required for 4.101 PANU to connect to NAP.
+--- 3. See occassionaly hang after pairing and the agent is released.
+---    Seems better if you Confirm the request from this program first,
+---    then accept the pairing on the phone.
+---    Workaround: kill this app and restart.
 ---
+--- System Setup:
+--- =============================
 --- This MUST run on the dbus system bus, therefore you must open
---- access for this service.  For example, add the following to:
---- /etc/dbus-1/system.d/com.service.TestBlueZ
+--- access for this service.  For example, add the following file(s):
+--- /etc/dbus-1/system.d/com.service.TestBlueZ.conf
 ---
 --- <!-- This configuration file specifies the required security policies
 ---      for oFono core daemon to work. -->
@@ -53,6 +61,45 @@
 ---
 --- </busconfig>
 ---
+---
+--- Simple Testing Procedures:
+--- =============================
+---
+--- Start Discovery of Devices:
+--- ---------------------------
+--- 1. Option a ("Adapter menu...")
+---    8 ("Start/stop Discovery")
+---    <Enter>, ("Start" is default)
+---    <Enter>
+--- 2. Watch as devices are found and info listed
+---
+--- Stop Discovery of Devices:
+--- ---------------------------
+--- 1. Option a ("Adapter menu...")
+---    8 ("Start/stop Discovery")
+---    <Enter>
+---    ("Stop" is default) <Enter>
+--- 2. Now the discovery will have stopped
+---
+--- Pair a Devices:
+--- ---------------------------
+--- 1. Do, "Start Discovery of Devices" from above
+--- 2. Do, "Stop Discovery of Devices" from above
+--- 3. Option 3 ("CreatePairedDevice...") <Enter>
+--- 4. Select the device in the list of found devices,
+---    <Enter>
+---    ("confirmation") <Enter>
+---
+--- Connect to PAN NAP on Phone: (Tested with iPhone 5)
+--- ----------------------------
+--- 1. Do, "Pair a Devices" from above
+--- 2. From main menu, Option d ("Device menu...")
+---    6 ("Connect to Service...")
+---    <Enter>
+---    2 ("org.bluez.Network")
+---    ("Connect" is default) <Enter>
+---    ("nap" is default) <Enter>
+---
 ----------------------------------------------------------------
 local proxyctrl = require("l2dbus.proxyctrl")
 local l2dbus    = require("l2dbus")
@@ -62,7 +109,7 @@ local Prompter  = require("utils.prompter")
 
 -- Const
 --------
-local APP_VER       = "2.0.0"
+local APP_VER       = "2.1.0"
 
 local BUSNAME       = 1
 local OBJPATH       = 2
@@ -73,15 +120,16 @@ local BLUEZ_CTRL    = {"org.bluez", nil, "org.bluez.Control"} -- objPath filled 
 local BLUEZ_DEVICE  = {"org.bluez", nil, "org.bluez.Device"}  -- objPath filled in later
 
 -- Service API for BlueZ Agents
-local AGENT            = {"com.service.TestBlueZ", "/com/service/TestBlueZ", nil}
+local SVC              = {"com.service.TestBlueZ",      "/com/service/TestBlueZ",      nil}
+local AGENT            = {"com.service.TestBlueZAgent", "/com/service/TestBlueZAgent", nil}
+local PAIRING_AGENT    = {AGENT[BUSNAME], AGENT[OBJPATH], "org.bluez.Agent"}
 local HFP_AGENT        = {AGENT[BUSNAME], AGENT[OBJPATH], "org.bluez.HandsfreeAgent"}
 local OFONO_HFP_AGENT  = {"org.ofono",    "/",            "org.ofono.Manager"}
 local OFONO_HFP_MODEM  = {"org.ofono",    nil,            "org.ofono.Modem"}
-local PAIRING_AGENT    = {AGENT[BUSNAME], AGENT[OBJPATH], "org.bluez.Agent"}
 
 
 local DEFAULT_PASSKEY       = 0
-local DEFAULT_PINCODE       = "0000"
+local DEFAULT_PINCODE       = "000000"
 
 -- Methods we register for the pairing process
 local PAIRING_AGENT_METHODS = {
@@ -155,7 +203,7 @@ local gOfonoProxy
 local gOfonoProxyCtrl
 
 -- Agent Service Specific
-local gPairCon
+local gProxySvc
 local gAgentSvc
 local gPairInf
 local gHfpInf
@@ -368,43 +416,6 @@ local function onAgentRequest(prefix, ifaceObj, conn, msg, userdata)
 end -- onAgentRequest
 
 ----------------------------------------------------------------
---- registerDefaultAgent
----
---- Attempts to register an agent for pairing in case one does
---- not exist.
-----------------------------------------------------------------
-local function registerDefaultAgent()
-
-    gSilentExecute  = true
-    gConfirmExecute = false
-    local status, result = executeMenuAction( "DefaultAdapter", gMgrProxy.m.DefaultAdapter )
-
-    if status == false or result == nil then
-        return
-    end
-
-    local proxyCtrl = proxyctrl.new(gSystemConn, BLUEZ_ADAPTER[BUSNAME], result )
-    assert(proxyCtrl:bind())
-
-    local proxy = proxyCtrl:getProxy( BLUEZ_ADAPTER[IFACE] )
-    assert( nil ~= proxy )
-
-    -- Register an Agent
-    ------------------------------
-    -- (Attempt at registering us for a pairing agent.)
-    gSilentExecute  = true
-    gConfirmExecute = false
-    local status, result = executeMenuAction( "RegisterAgent", proxy.m.RegisterAgent, PAIRING_AGENT[OBJPATH], "DisplayYesNo" )
-    if status == false then
-        if string.find(result, "AlreadyExists") == nil then
-            print( "ERROR: Unable to register the pairing agent." )
-            return
-        end
-    end
-
-end -- registerDefaultAgent
-
-----------------------------------------------------------------
 --- defaultSvcHandler
 ---
 --- Default service handler for requests.  Only logs.
@@ -439,59 +450,92 @@ local function initDbus()
 
     assert( nil ~= gDispatcher )
 
-    -- Init BlueZ Agents Interface
-    ------------------------------
-    gSystemConn = l2dbus.Connection.openStandard(gDispatcher, l2dbus.Dbus.BUS_SYSTEM)
-    assert( nil ~= gSystemConn )
+    -- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    local function requestName( sysConn, svcName )
+        local msg = l2dbus.Message.newMethodCall({destination = l2dbus.Dbus.SERVICE_DBUS,
+                                                  path        = l2dbus.Dbus.PATH_DBUS,
+                                                  interface   = l2dbus.Dbus.INTERFACE_DBUS,
+                                                  method      = "RequestName"})
+        msg:addArgsBySignature("su", svcName, l2dbus.Dbus.NAME_FLAG_DO_NOT_QUEUE)
 
-    local msg = l2dbus.Message.newMethodCall({destination = l2dbus.Dbus.SERVICE_DBUS,
-                                              path        = l2dbus.Dbus.PATH_DBUS,
-                                              interface   = l2dbus.Dbus.INTERFACE_DBUS,
-                                              method      = "RequestName"})
-    msg:addArgsBySignature("su", AGENT[BUSNAME], l2dbus.Dbus.NAME_FLAG_DO_NOT_QUEUE)
+        print("Requesting a system bus name: " .. svcName)
+        local reply, errName, errMsg = sysConn:sendWithReplyAndBlock( msg )
+        if reply == nil then
+            error("Request Failed =>  " .. tostring(errName) .. " : " .. tostring(errMsg))
+        else
+            local result = reply:getArgs()
+            assert( result == l2dbus.Dbus.REQUEST_NAME_REPLY_PRIMARY_OWNER )
+            print("Acquired name successfully on system bus")
+        end
+    end -- requestName
+    -- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    local function initMainProxy()
 
-    print("Requesting a system bus name: " .. AGENT[BUSNAME])
-    local reply, errName, errMsg = gSystemConn:sendWithReplyAndBlock( msg )
-    if reply == nil then
-        error("Request Failed =>  " .. tostring(errName) .. " : " .. tostring(errMsg))
-    else
-        local result = reply:getArgs()
-        assert( result == l2dbus.Dbus.REQUEST_NAME_REPLY_PRIMARY_OWNER )
-        print("Acquired name successfully on system bus")
-    end
+        -- Init Proxy to BlueZ
+        ------------------------------
+        gSystemConn = l2dbus.Connection.openStandard(gDispatcher, l2dbus.Dbus.BUS_SYSTEM)
+        assert( nil ~= gSystemConn )
 
-    gAgentSvc = l2dbus.ServiceObject.new( AGENT[OBJPATH],
-                                          defaultSvcHandler,
-                                          "DefaultHandler" )
-    -- Pairing Interface
-    gPairInf = l2dbus.Interface.new( PAIRING_AGENT[IFACE],
-                                     function (ifaceObj, conn, msg, userdata)
-                                         return onAgentRequest( "pairing", ifaceObj, conn, msg, userdata )
-                                     end,
-                                     "PairingAgentHandler" )
-    gPairInf:registerMethods( PAIRING_AGENT_METHODS )
-    assert( gAgentSvc:addInterface( gPairInf ) )
+        requestName( gSystemConn, SVC[BUSNAME] )
 
-    -- HFP Interface
-    gHfpInf = l2dbus.Interface.new( HFP_AGENT[IFACE],
-                                    function (ifaceObj, conn, msg, userdata)
-                                        return onAgentRequest( "hfp", ifaceObj, conn, msg, userdata )
-                                    end,
-                                    "HfpAgentHandler" )
-    gHfpInf:registerMethods( HFP_AGENT_METHODS )
-    assert( gAgentSvc:addInterface( gHfpInf ) )
+        gProxySvc = l2dbus.ServiceObject.new( SVC[OBJPATH],
+                                              defaultSvcHandler,
+                                              "DefaultHandler" )
+        -- Introspection interface
+        assert( gProxySvc:addInterface( l2dbus.Introspection.new() ) )
 
-    -- Introspection interface
-    assert( gAgentSvc:addInterface( l2dbus.Introspection.new() ) )
+        assert( gSystemConn:registerServiceObject( gProxySvc ) )
 
-    assert( gSystemConn:registerServiceObject( gAgentSvc ) )
+        -- Setup proxy to bluez
+        gProxyCtrl = proxyctrl.new(gSystemConn, BLUEZ_MGR[BUSNAME], BLUEZ_MGR[OBJPATH] )
+        assert(gProxyCtrl:bind())
 
-    -- Setup proxy to bluez
-    gProxyCtrl = proxyctrl.new(gSystemConn, BLUEZ_MGR[BUSNAME], BLUEZ_MGR[OBJPATH] )
-    assert(gProxyCtrl:bind())
+        gMgrProxy = gProxyCtrl:getProxy( BLUEZ_MGR[IFACE] )
+        assert( nil ~= gMgrProxy )
 
-    gMgrProxy = gProxyCtrl:getProxy( BLUEZ_MGR[IFACE] )
-    assert( nil ~= gMgrProxy )
+    end -- initMainProxy
+    -- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    local function initAgent()
+
+        -- Init BlueZ Agents Interface
+        ------------------------------
+        gSystemAgentConn = gSystemConn --l2dbus.Connection.openStandard(gDispatcher, l2dbus.Dbus.BUS_SYSTEM)
+        assert( nil ~= gSystemAgentConn )
+
+        --arequestName( gSystemAgentConn, AGENT[BUSNAME] )
+
+        gAgentSvc = l2dbus.ServiceObject.new( AGENT[OBJPATH],
+                                              defaultSvcHandler,
+                                              "DefaultHandler" )
+        -- Pairing Interface
+        gPairInf = l2dbus.Interface.new( PAIRING_AGENT[IFACE],
+                                         function (ifaceObj, conn, msg, userdata)
+                                             return onAgentRequest( "pairing", ifaceObj, conn, msg, userdata )
+                                         end,
+                                         "PairingAgentHandler" )
+        gPairInf:registerMethods( PAIRING_AGENT_METHODS )
+        assert( gAgentSvc:addInterface( gPairInf ) )
+
+        -- HFP Interface
+        gHfpInf = l2dbus.Interface.new( HFP_AGENT[IFACE],
+                                        function (ifaceObj, conn, msg, userdata)
+                                            return onAgentRequest( "hfp", ifaceObj, conn, msg, userdata )
+                                        end,
+                                        "HfpAgentHandler" )
+        gHfpInf:registerMethods( HFP_AGENT_METHODS )
+        assert( gAgentSvc:addInterface( gHfpInf ) )
+
+        -- Introspection interface
+        assert( gAgentSvc:addInterface( l2dbus.Introspection.new() ) )
+
+        assert( gSystemAgentConn:registerServiceObject( gAgentSvc ) )
+
+    end -- initAgent
+    -- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    initMainProxy( )
+
+    initAgent(  )
 
 end -- initDbus
 
@@ -1457,8 +1501,6 @@ end -- menuOptionsDevices
 ---
 ----------------------------------------------------------------
 local function menuMain()
-
-    registerDefaultAgent(  )
 
     local doExit = false
     while not doExit do
