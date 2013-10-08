@@ -15,7 +15,7 @@
 local l2dbus = require("l2dbus")
 local ev     = require("ev")      -- for backward compatibility
 
-local VERSION      = "2.0"
+local VERSION      = "2.2"
 
 local prompterInst = nil
 local Prompter     = {}
@@ -333,14 +333,14 @@ end
 ---
 --- Example, passes a default value and gives a prompt string.
 ---          This returns a string value.
---- ssid = Menu_Selection( g_tLastNet.ssid, "Enter an SSID:" )
+--- ssid = prompter:selection( g_tLastNet.ssid, "Enter an SSID:" )
 ---
 --- Example, passes a default entry (string), with a prompt string
 ---          and a table of valid entries to choose from.  The list
 ---          will be displayed and the default marked.  The user will
 ---          select a value from a numeric listing.
 ---          This returns a string value.
---- key_mgmt = Menu_Selection( g_tLastNet.cli.key_mgmt,
+--- key_mgmt = prompter:selection( g_tLastNet.cli.key_mgmt,
 ---                            "Select the Key Management:",
 ---                            {"NONE", "WEP", "WPA-PSK", "WPA2-PSK", "WPA-PSK + WPA2-PSK"} )
 ---
@@ -349,26 +349,49 @@ end
 ---          will be displayed and "NONE" is marked as default.
 ---          The user will select a value from a numeric listing.
 ---          This returns a string value.
---- key_mgmt = Menu_Selection( nil,
+--- key_mgmt = prompter:selection( nil,
 ---                            "Select the Key Management:",
 ---                            {"NONE", "WEP", "WPA-PSK", "WPA2-PSK", "WPA-PSK + WPA2-PSK"} )
 ---
 --- Example, same as above, except no default is selected.
---- key_mgmt = Menu_Selection( {},
+--- key_mgmt = prompter:selection( {},
 ---                            "Select the Key Management:",
 ---                            {"NONE", "WEP", "WPA-PSK", "WPA2-PSK", "WPA-PSK + WPA2-PSK"} )
 ---
 --- Example, passes a default value (int) and gives a prompt string.
 ---          This returns a numeric value.
---- id = Menu_Selection( g_tLastNet.id or 0, "Enter an ID:" )
+--- id = prompter:selection( g_tLastNet.id or 0, "Enter an ID:" )
 ---
 --- Example, passes a default value (boolean) and gives a prompt string.
 ---          This returns a boolean value.
---- bScan = Menu_Selection( true, "Enable Scanning:" )
+--- bScan = prompter:selection( true, "Enable Scanning:" )
 ---
 --- Example, passes NO default value, only a prompt string.
 ---          This returns a string value.
---- sOption = Menu_Selection( nil, "Option to Change:" )
+--- sOption = prompter:selection( nil, "Option to Change:" )
+---
+--- Example, typical menu operation. the "characters" are used
+---          as the valid option and will be returned.
+---          NOTE: Only returns on valid input.
+---          This returns the value.
+--- local tSubMenu = { "g. GetProperties",
+---                    "s. SetPriperties",
+---                    "q. Exit to Main Menu" }
+--- while true do
+---     print( "" )
+---     local opt = prompter:selection( "g", "Select an option:", tSubMenu )
+---     if opt == "q" then
+---         return
+---     end
+---     ...
+--- end
+--- NOTE: If the sDefault here is nil, the first entry is the default.
+---       If the sDefault here is "", nothing is the default.
+---
+--- Example, passes true false selection with a prompt.
+---          This returns a boolean value.
+--- sOption = gPrompter:selection( true, "Power Enabled:", { true, false } )
+---
 ---
 --- @tparam   (string|number|boolean|table|nil)
 ---                                    sDefault ....default value
@@ -383,7 +406,7 @@ end
 --- @tparam   (table)                  tList    ....optional list of possible
 ---                                                 values to display
 --- @tparam   (boolean)                bRetIndexOnly...only relevant when tList
----                                                 isnon-nil.  true returns the
+---                                                 is non-nil. true returns the
 ---                                                 item number in the list the
 ---                                                 user selected--not the string.
 ---
@@ -413,41 +436,81 @@ function Prompter:selection( sDefault, sPrompt, tList, bRetIndexOnly )
         -- Ask until we get something reasonable
         local bGotResult = false
         local sVal       = ""
+        local sValidOpts = nil
         while bGotResult == false do
             print(sPrompt)
-            for idx,name in pairs(tList) do
-                if sDefault == name then
-                    iDefault = idx
-                    print(idx,name, "(default)")
+            for idx,line in pairs(tList) do
+                sIdx, sName = string.match( tostring(line), "(.)%.%s(.*)" )
+                if sIdx then
+                    if sValidOpts == nil then
+                        sValidOpts = ","
+                        iDefault   = nil
+                    end
+                    sValidOpts = string.format("%s%s,", sValidOpts, sIdx)
+
+                    if sDefault == sIdx then
+                        print(sIdx..". "..sName, "(default)")
+                    else
+                        print(line)
+                    end
                 else
-                    print(idx,name)
+                    if sDefault == line then
+                        iDefault = idx
+                        print(idx,line, "(default)")
+                    else
+                        print(idx,line)
+                    end
                 end
+
             end
             print(string.rep("-",30))
             sVal = self:getLine(true)
-            if sVal == nil or sVal == "" or tonumber(sVal) == nil then
-                if iDefault then
+            if sValidOpts then
+                -- Must use user specified value
+                if sVal == nil or sVal == "" then
+                    if sDefault then
+                        bGotResult = true
+                        print(sDefault)
+                        sVal = sDefault
+                    end
+                elseif string.match( sValidOpts, string.format(".*,%s,.*", sVal) ) then
                     bGotResult = true
-                    print(tList[iDefault])
-                    sVal = tostring(iDefault)
                 end
+
             else
-                bGotResult = true
+                -- Using internal numeric values
+                if sVal == nil or sVal == "" or tonumber(sVal) == nil then
+                    if iDefault then
+                        bGotResult = true
+                        print(tList[iDefault])
+                        sVal = tostring(iDefault)
+                    end
+                else
+                    bGotResult = true
+                end
             end
+
 
             if bGotResult then
                 break
+            else
+                print()
             end
 
         end -- loop
 
         print()
-        if bRetIndexOnly == true then
-            return tonumber(sVal) -- return the index
+        if sValidOpts then
+            return sVal
         else
-            return tList[tonumber(sVal)]
+            if bRetIndexOnly == true then
+                return tonumber(sVal) -- return the index
+            else
+                return tList[tonumber(sVal)]
+            end
         end
-    end
+
+    end -- table processing
 
     if sDefault then
         print(string.format("%s (default: %s)",sPrompt, tostring(sDefault)))
