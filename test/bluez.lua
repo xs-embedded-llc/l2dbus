@@ -99,17 +99,21 @@
 ---    2 ("org.bluez.Network")
 ---    ("Connect" is default) <Enter>
 ---    ("nap" is default) <Enter>
+--- 3. With the app STILL running run the following from the command line:
+---    ifup bnep0
+---    NOTE: If you close this app bluez will disconnect the BT PAN connection.
 ---
 ----------------------------------------------------------------
 local proxyctrl = require("l2dbus.proxyctrl")
 local l2dbus    = require("l2dbus")
 local pretty    = require("pl.pretty")
 local stringx   = require("pl.stringx")
+local utils     = require("pl.utils")
 local Prompter  = require("utils.prompter")
 
 -- Const
 --------
-local APP_VER       = "2.1.0"
+local APP_VER       = "2.1.1"
 
 local BUSNAME       = 1
 local OBJPATH       = 2
@@ -198,6 +202,7 @@ local gPrompter   = Prompter.getInstance(gDispatcher)
 local gProxyCtrl
 local gMgrProxy
 local gSystemConn
+local gSystemAgentConn
 
 local gOfonoProxy
 local gOfonoProxyCtrl
@@ -499,10 +504,8 @@ local function initDbus()
 
         -- Init BlueZ Agents Interface
         ------------------------------
-        gSystemAgentConn = gSystemConn --l2dbus.Connection.openStandard(gDispatcher, l2dbus.Dbus.BUS_SYSTEM)
+        gSystemAgentConn = gSystemConn
         assert( nil ~= gSystemAgentConn )
-
-        --arequestName( gSystemAgentConn, AGENT[BUSNAME] )
 
         gAgentSvc = l2dbus.ServiceObject.new( AGENT[OBJPATH],
                                               defaultSvcHandler,
@@ -1557,50 +1560,6 @@ end -- menuMain
 ----------------------------------------------------------------
 local function popup( sPrompt, sTitle, sType )
 
-    ----------------------------------------------------------------
-    --- split
-    ---
-    --- split a string based on a specific character.            <br>
-    ---                                                          <br>
-    --- Code taken from:
-    --- <a href="http://snippets.luacode.org/?p=snippets/Split_a_string_into_a_list_5">Here</a> <br>
-    ---                                                          <br>
-    --- LICENSE: MIT/X11                                         <br>
-    ---                                                          <br>
-    --- @tparam   (string)  s  ....string to split
-    --- @tparam   (string)  re ....(regular expression) delimiter to split (if nil, space)
-    ---
-    --- @treturn  (table) table of values split by "re"
-    ----------------------------------------------------------------
-    local function split(s,re)
-        local i1 = 1
-        local ls = {}
-        local append = table.insert
-        if not re then
-            re = '%s+'
-        end
-        if re == '' then
-            return {s}
-        end
-        while true do                                                            --> lcov: ref+1
-            local i2,i3 = s:find(re,i1)
-            if not i2 then
-                local last = s:sub(i1)
-                if last ~= '' then
-                    append(ls,last)
-                end
-                if #ls == 1 and ls[1] == '' then
-                    return {}
-                else
-                    return ls
-                end
-            end
-            append(ls,s:sub(i1,i2-1))
-            i1 = i3+1
-        end                                                                      --> lcov: ref-1
-
-    end -- split
-
     sTitle = sTitle or "Pairing Prompt"
     sTitle = sTitle.." |"
 
@@ -1609,7 +1568,7 @@ local function popup( sPrompt, sTitle, sType )
     print( string.format( "* %-56s *", sTitle ) )
     print( string.format( "* %-56s *", string.rep("-", #sTitle) ) )
     print( string.format( "* %-56s *", "" ) )
-    local sLines = split( sPrompt, "\n" )
+    local sLines = utils.split( sPrompt, "\n" )
     for _, sLine in pairs(sLines) do
         print( string.format( "* %-56s *", sLine ) )
     end
