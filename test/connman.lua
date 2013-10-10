@@ -142,16 +142,19 @@
 ---
 --- BT Discovery:
 --- ------------------------
---- TBD
+--- Must use Bluez
 ---
 --- BT Pairing:
 --- ------------------------
---- TBD
+--- Must use Bluez
 ---
 --- BT PAN:
 --- ------------------------
---- TBD
----
+--- 1. Make sure Bluetooth is powered on, if not follow, "Wifi Initial Scan"
+--- 2. Use Bluez to pair the phone (Phone MUST obviously have PAN support)
+--- 3. option 's' (Service Submenu)
+--- 4. option 'c' (Connect), select the phone with PAN
+--- You will soon get an IP address and your done.
 ---
 --- ==================
 ---     Misc
@@ -182,7 +185,7 @@ local Prompter  = require("utils.prompter")
 
 -- Const
 --------
-local APP_VER       = "1.0.0"
+local APP_VER       = "1.0.1"
 
 local BUSNAME       = 1
 local OBJPATH       = 2
@@ -626,7 +629,7 @@ local function initDbus()
                                  end
                              end )
         gMgrProxy.proxyCtrl:connectSignal( CONNMAN_MGR[IFACE],
-                             "ServiceChanged",
+                             "ServicesChanged",
                              function ( tSvc, tObj )
                                  print( "\nManager ServiceChanged: ", pretty.write(tSvc), pretty.write(tObj) )
                              end )
