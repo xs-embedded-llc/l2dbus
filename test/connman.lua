@@ -11,7 +11,7 @@
 --- + Technology, Manager, Service, and Clock API's available
 --- + Main and Counter agents implemented
 ---
---- NOTE: Tested with connamn v1.18 (and later, pre 1.19)
+--- NOTE: Tested with connamn v1.19+
 ---
 --- Some Limitations:
 --- =============================
@@ -182,24 +182,26 @@ local pretty    = require("pl.pretty")
 local tablex    = require("pl.tablex")
 local utils     = require("pl.utils")
 local Prompter  = require("utils.prompter")
+local posix     = require( "posix" )
 
 -- Const
 --------
-local APP_VER       = "1.0.1"
+local APP_VER       = "1.1.0"
 
-local BUSNAME       = 1
-local OBJPATH       = 2
-local IFACE         = 3
-local CONNMAN_MGR   = {"net.connman", "/", "net.connman.Manager"}
-local CONNMAN_CLOCK = {"net.connman", "/", "net.connman.Clock"}
-local CONNMAN_SVC   = {"net.connman", "/", "net.connman.Service"}
-local CONNMAN_TECH  = {"net.connman", nil, "net.connman.Technology"}
+local BUSNAME         = 1
+local OBJPATH         = 2
+local IFACE           = 3
+local CONNMAN_MGR     = {"net.connman", "/", "net.connman.Manager"}
+local CONNMAN_CLOCK   = {"net.connman", "/", "net.connman.Clock"}
+local CONNMAN_SESSION = {"net.connman", nil, "net.connman.Session"}
+local CONNMAN_SVC     = {"net.connman", "/", "net.connman.Service"}
+local CONNMAN_TECH    = {"net.connman", nil, "net.connman.Technology"}
 
 local SVC           = {"com.service.TestConnMan",      "/com/service/TestConnMan",      nil}
 local AGENT         = {"com.service.TestConnManAgent", "/com/service/TestConnManAgent", "net.connman.Agent"}
 local AGENT_IFACE   = "net.connman.Agent"
 local COUNTER_IFACE = "net.connman.Counter"
-
+local NOTIFY_IFACE  = "net.connman.Notification"
 
 -- Methods we register for the main agent API
 local AGENT_METHODS = {
@@ -242,6 +244,18 @@ local COUNTER_AGENT_METHODS = {
     },
 }
 
+-- Methods we register for the session notification API
+local NOTIFY_METHODS = {
+
+    -- Notification API
+    { name = "Release",
+      args = { }
+    },
+    { name = "Update",
+      args = { {name = "settings", sig="a{sv}", dir="in"} }
+    },
+}
+
 -- Globals
 ----------
 
@@ -259,19 +273,27 @@ local gAgentInf             -- Main agent interface
 local gAgentMethods         = {}
 local gCounterAgentInf      -- Counter agent interface
 local gCounterAgentMethods  = {}
+local gNotifyAPI            = {}
 
 local gSignalRegistry       = {} -- prevents multiple registrations for same signal
 
 -- option 'z' related variables
-local gLastFunct     = nil
-local gLastArgs      = nil
-local gLastInfo      = ""
+local gLastFunct       = nil
+local gLastArgs        = nil
+local gLastInfo        = ""
 
-local gTechnologies   = {}
-local gPrevOpt        = {}
+local gTechnologies    = {}
+local gPrevOpt         = {}
 
-local gArgs           = {}
-local gVerbose        = 0
+local gArgs            = {}
+local gVerbose         = 0
+
+local gSessionList     = {}
+local gLastSessionName = nil
+local gLastSessionPath = nil
+
+
+local GetSession
 
 ----------------------------------------------------------------
 --- dumpMessage
@@ -424,6 +446,7 @@ local function executeMenuAction(tOptions, proxyObj, functName, ... )
     if not status then
         if tOptions.silent == false then
             print("Error: " .. result)
+            print()
         end
         return status, result
 
@@ -437,12 +460,14 @@ local function executeMenuAction(tOptions, proxyObj, functName, ... )
                 print( unpackedResult )
             end
         end
+        print()
         return status, unpackedResult
     end
 
     -- Not likely unless a problem exists
     if tOptions.silent == false then
         print( result )
+        print()
     end
     return status, result
 
@@ -461,7 +486,7 @@ end -- executeMenuAction
 ---
 --- @treturn  Always l2dbus.Dbus.HANDLER_RESULT_HANDLED
 ----------------------------------------------------------------
-local function onAgentRequest(prefix, ifaceObj, conn, msg, userdata)
+local function onAgentRequest(prefix, ifaceObj, conn, msg, userdata )
 
     local member  = msg:getMember()
     local methods = gAgentMethods
@@ -473,6 +498,8 @@ local function onAgentRequest(prefix, ifaceObj, conn, msg, userdata)
 
     if prefix == "counter" then
         methods = gCounterAgentMethods
+    elseif prefix == "notify" then
+        methods = gNotifyAPI
     end
 
     if methods[prefix.."_"..member] == nil then
@@ -689,12 +716,13 @@ end -- IsSignalRegistered
 ---
 --- @treturn  (object) specific proxy
 ----------------------------------------------------------------
-local function GetProxy( sName, tDbus, sObjPathOverride )
+local function GetProxy( sName, tDbus, sObjPathOverride, bSkipSignalReg )
 
     local proxyCtrl = proxyctrl.new(gSystemConn, tDbus[BUSNAME], sObjPathOverride or tDbus[OBJPATH] )
     assert(proxyCtrl:bind())
 
-    if IsSignalRegistered( sObjPathOverride or tDbus[OBJPATH], tDbus[IFACE], sName.."_PropertyChanged" ) == false then
+    if bSkipSignalReg ~= true and
+       IsSignalRegistered( sObjPathOverride or tDbus[OBJPATH], tDbus[IFACE], sName.."_PropertyChanged" ) == false then
 
         proxyCtrl:connectSignal( tDbus[IFACE],
                              "PropertyChanged",
@@ -889,7 +917,7 @@ local function submenuManager_generic( functName, ... )
 end -- submenuManager_generic
 
 ----------------------------------------------------------------
---- submenuManager_create
+--- submenuManager_createSession
 ---
 --- Create a new session for the application. Every
 --- application can create multiple session with
@@ -905,25 +933,140 @@ end -- submenuManager_generic
 --- Every application should at least create one session
 --- to inform about its requirements and it purpose.
 ----------------------------------------------------------------
-local function submenuManager_create( )
+local function submenuManager_createSession( )
 
-    print( "Create TODO\n" )
+    -- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    local function Notification( notify_path )
 
-end -- submenuManager_create
+        local proxySvc = l2dbus.ServiceObject.new( notify_path,
+                                                   defaultSvcHandler,
+                                                   "DefaultHandler" )
+        -- Introspection interface
+        assert( proxySvc:addInterface( l2dbus.Introspection.new() ) )
+
+        local iface = l2dbus.Interface.new( NOTIFY_IFACE,
+                                            function (ifaceObj, conn, msg, userdata)
+                                                return onAgentRequest( "notify", ifaceObj, conn, msg, userdata )
+                                            end,
+                                            "NotifyHandler" )
+        iface:registerMethods( NOTIFY_METHODS )
+        assert( proxySvc:addInterface( iface ) )
+
+        assert( gSystemConn:registerServiceObject( proxySvc ) )
+
+        return { proxy = proxySvc, iface = iface }
+
+    end -- Notification
+    -- - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    local appPath     = gPrompter:selection( "/foo", "Enter a application path:" )
+    local sessionName = gPrompter:selection( gLastSessionName or "sessionBar", "Enter a session name:" )
+
+    local allowBearers = {}
+    local opt          = ""
+
+    -- AllowedBearers
+    local tMenu = { "*","ethernet","wifi","bluetooth","cellular","vpn" }
+    while opt ~= "*" do
+        opt = gPrompter:selection( "*", "Select the bearer order (Enter to exit loop):", tMenu )
+        if opt == nil then
+            print( "Aborting..." )
+            return
+        end
+        if #allowBearers == 0 or opt ~= "*" then
+            table.insert( allowBearers, opt )
+        end
+        print( "Bearer Order:", pretty.write( allowBearers, " " ) )
+    end
+
+    -- Connection Type
+    local tMenu    = { "any","internet","local" }
+    local connType = gPrompter:selection( "any", "Select the connection type:", tMenu )
+
+    -- Create the session
+    local sessionObj = gSessionList[sessionName]
+
+    if sessionObj and sessionObj.session then
+        print( string.format( "WARNING: Session %s already created -> Creating another?", sessionName ) )
+    else
+        sessionObj = {}
+
+        sessionObj.notify_path = SVC[OBJPATH] .. "/session/" .. tostring( sessionName )
+        sessionObj.notify      = Notification( sessionObj.notify_path )
+    end
+
+    -- User configured settings
+    sessionObj.settings = { AllowedBearers = allowBearers,
+                            ConnectionType = connType }
+
+
+    local cuid = posix.getpasswd( posix.getpid( "uid" ), "name") -- get the name
+    local uid  = gPrompter:selection( cuid, "Create as uid (user):" )
+    if uid == nil or uid == "" then
+        uid = cuid
+    end
+
+    if posix.getpasswd( uid ) == nil then
+        uid = cuid
+        print( string.format("ERROR: %q is NOT a valid user--option ignored", uid) )
+    end
+
+    if uid ~= cuid then
+        -- change to new uid, this ensures the session
+        -- is created using the desired user ID
+        local status, err = posix.setpid( "U", posix.getpasswd( uid, "uid" ) )
+        if status ~= 0 then
+            print( string.format("ERROR: Aborting, failed to change to uid: %s, err: %s", uid, err) )
+            return
+        else
+            print( "Changed to user:", uid )
+        end
+    end
+
+    local status, result = executeMenuAction( {confirm=true,silent=false},
+                                      gMgrProxy, "CreateSession",
+                                      sessionObj.settings,
+                                      sessionObj.notify_path )
+    if status then
+        sessionObj.session_path = result
+        print( "notify path: ", sessionObj.notify_path )
+        print( "session path:", sessionObj.session_path )
+        -- Setup the session interface to connman
+        sessionObj.session = GetProxy( "", CONNMAN_SESSION, sessionObj.session_path, true )
+        gSessionList[sessionName] = sessionObj
+
+        gLastSessionName = sessionName
+    end
+
+    if uid ~= cuid then
+        -- reset to original uid
+        local status, err = posix.setpid( "U", posix.getpasswd( cuid, "uid" ) )
+        if status ~= 0 then
+            print( string.format("ERROR: Failed to change back to uid: %s, err: %s", cuid, err) )
+        else
+            print( "Changed back to user:", cuid )
+        end
+    end
+
+end -- submenuManager_createSession
 
 ----------------------------------------------------------------
---- submenuManager_destroy
+--- submenuManager_destroySession
 ---
 --- Remove the previously created session.
 ---
 --- If an application exits unexpectatly the session
 --- will be automatically destroyed.
 ----------------------------------------------------------------
-local function submenuManager_destroy( )
+local function submenuManager_destroySession( )
 
-    print( "Destroy TODO\n" )
+    local sessionPath,_,proxyObj = GetSession( )
 
-end -- submenuManager_destroy
+    local status = executeMenuAction( {confirm=true,silent=false},
+                                      gMgrProxy, "DestroySession", sessionPath )
+    proxyObj = nil
+
+end -- submenuManager_destroySession
 
 ----------------------------------------------------------------
 --- submenuManager_relPriv
@@ -1007,9 +1150,9 @@ local function submenu_Manager(  )
         end
 
         if opt == "c" then
-            submenuManager_create( )
+            submenuManager_createSession( )
         elseif opt == "d" then
-            submenuManager_destroy( )
+            submenuManager_destroySession( )
         elseif opt == "g" then
             submenuManager_generic( "GetProperties" )
         elseif opt == "s" then
@@ -1410,6 +1553,222 @@ end -- submenu_Service
 
 
 ----------------------------------------------------------------
+--- GetSession
+---
+--- Get the users session selection.
+---
+--- @treturn  (string) sesison name
+--- @treturn  (table)  service data (from GetSession)
+--- @treturn  (object) return the current selected session proxy
+----------------------------------------------------------------
+function GetSession( bSkipManualEntry )
+
+    local tMenu = {}
+
+    -- Until the manager supports a GetSession like interface
+    -- we will only be able to display sessions we know about.
+    local tSvc = {}
+    for k,v in pairs(gSessionList) do
+        table.insert( tMenu, string.format("%-10s (objPath:%-25s)",
+                                           k, v.session_path ))
+        table.insert( tSvc, { k, v } )
+    end
+    if bSkipManualEntry ~= true then
+        table.insert( tMenu, "[manually enter]" )
+    elseif #tMenu == 0 then
+        print( "No Sessions..." )
+        return nil
+    end
+
+--  local status, tSvc = executeMenuAction( {silent=true, confirm=false}, gMgrProxy, "GetSession" )
+--  if status == true then
+--      for k,v in pairs(tSvc) do
+--          TBD
+--      end
+--  end
+
+    local svcIdx = gPrompter:selection( nil, "Select a session:", tMenu, true )
+    if svcIdx == nil or svcIdx > #tMenu then
+        print( "Aborting..." )
+        return nil
+    end
+
+    local tObj = tSvc[svcIdx]
+
+    local sessionPath = ""
+    if tObj == nil then
+        if bSkipManualEntry ~= true then
+            sessionPath = gPrompter:selection( gLastSessionPath, "Enter a session object path:" )
+        else
+            print( "Aborting..." )
+            return nil
+        end
+    else
+        sessionPath = tObj[2].session_path
+    end
+
+    local proxyObj = GetProxy( nil, CONNMAN_SESSION, sessionPath, true )
+    if proxyObj == nil then
+        print( "ERROR: Unable to communicate with the session API." )
+        return tObj[1], tObj[2]
+    end
+
+    gLastSessionPath = sessionPath
+
+    return tObj[1], tObj[2], proxyObj
+
+end -- GetSession
+
+----------------------------------------------------------------
+--- submenuSession_change
+---
+--- Change the value of certain settings. Not all
+--- settings can be changed. Normally this should not
+--- be needed or an extra session should be created.
+--- However in some cases it makes sense to change
+--- a value and trigger different behavior.
+---
+--- A change of a setting will cause an update notification
+--- to be sent. Some changes might cause the session to
+--- be moved to offline state.
+----------------------------------------------------------------
+local function submenuSession_change( )
+
+    print( "Change TODO\n" )
+
+end -- submenuSession_change
+
+----------------------------------------------------------------
+--- submenuSession_connect
+---
+--- If not connected, then attempt to connect this
+--- session.
+---
+--- The usage of this method depends a little bit on
+--- the model of the application. Some application
+--- should not try to call Connect on any session at
+--- all. They should just monitor if it becomes online
+--- or gets back offline.
+---
+--- Others might require an active connection right now.
+--- So for example email notification should only check
+--- for new emails when a connection is available. However
+--- if the user presses the button for get email or wants
+--- to send an email it should request to get online with
+--- this method.
+---
+--- Depending on the bearer settings the current service
+--- is used or a new service will be connected.
+---
+--- This method returns immediately after it has been
+--- called. The application is informed through the update
+--- notification about the state of the session.
+---
+--- It is also not guaranteed that a session stays online
+--- after this method call. It can be taken offline at any
+--- time. This might happen because of idle timeouts or
+--- other reasons.
+---
+--- It is safe to call this method multiple times. The
+--- actual usage will be sorted out for the application.
+----------------------------------------------------------------
+local function submenuSession_connect( )
+
+    local _,_,proxyObj = GetSession( )
+
+    if proxyObj then
+        executeMenuAction( {confirm=true,silent=false}, proxyObj, "Connect" )
+    end
+
+    proxyObj = nil
+
+end -- submenuSession_connect
+
+----------------------------------------------------------------
+--- submenuSession_disconnect
+---
+--- This method indicates that the current session does
+--- not need a connection anymore.
+---
+--- This method returns immediately. The application is
+--- informed through the update notification about the
+--- state of the session.
+----------------------------------------------------------------
+local function submenuSession_disconnect( )
+
+    local _,_,proxyObj = GetSession( )
+
+    if proxyObj then
+        executeMenuAction( {confirm=true,silent=false}, proxyObj, "Disconnect" )
+    end
+
+    proxyObj = nil
+
+end -- submenuSession_disconnect
+
+----------------------------------------------------------------
+--- submenuSession_get
+---
+--- This method will list all sessions and get the details for
+--- one session.
+---
+--- NOTE: Currently not part of the connman API; therefore, we
+---       can only list the sessions created by this tool.
+----------------------------------------------------------------
+local function submenuSession_get( )
+
+    local sessionPath,tObj,proxyObj = GetSession( true )
+
+    if tObj then
+        print( "Session:", sessionPath )
+        pretty.dump( tObj )
+    end
+
+    proxyObj = nil
+
+end -- submenuSession_get
+
+----------------------------------------------------------------
+--- submenu_Session
+---
+--- Session submenu
+----------------------------------------------------------------
+local function submenu_Session(  )
+
+    local tSubMenu = { "c. CreateSession [experimental Manager API]",
+                       "d. DestroySession [experimental Manager API]",
+                       "g. GetSession (not part of connman)",
+                       "h. Change",
+                       "m. Connect",
+                       "n. Disconnect",
+                       "q. Exit to Main Menu" }
+    while true do
+
+        print( "" )
+        local opt = gPrompter:selection( "", "Select a Session API option:", tSubMenu )
+        if opt == "q" then
+            return
+        end
+
+        if opt == "c" then
+            submenuManager_createSession( )
+        elseif opt == "d" then
+            submenuManager_destroySession( )
+        elseif opt == "g" then
+            submenuSession_get()
+        elseif opt == "h" then
+            submenuSession_change()
+        elseif opt == "m" then
+            submenuSession_connect( )
+        elseif opt == "n" then
+            submenuSession_disconnect( )
+        end
+
+    end -- while loop
+
+end -- submenu_Session
+
+----------------------------------------------------------------
 --- GetTech
 ---
 --- Get the list of technologies available and get a selection
@@ -1696,8 +2055,9 @@ local function menuMain()
 
         print("c.   Clock Submenu [Experimental API]")
         print("m.   Manager Submenu")
-        print("s.   Service Submenu")
+        print("s.   Session Submenu")
         print(string.format("t.   Technologies Submenu (%s)", sTech))
+        print("v.   Service Submenu")
 
         if gLastFunct then
             print("z.   execute the last command", "== "..gLastInfo or "" )
@@ -1715,9 +2075,11 @@ local function menuMain()
         elseif cmd == 'm' then
             submenu_Manager()
         elseif cmd == 's' then
-            submenu_Service()
+            submenu_Session()
         elseif cmd == 't' then
             submenu_Tech()
+        elseif cmd == 'v' then
+            submenu_Service()
         elseif gLastFunct and cmd == 'z' then
             if gLastArgs then
                 gLastFunct( unpack( gLastArgs ) )
@@ -1760,6 +2122,7 @@ local function popup( sPrompt, sTitle, sType )
     for _, sLine in pairs(sLines) do
         print( string.format( "* %-56s *", sLine ) )
     end
+    print( string.format( "* %-56s *", os.date() ) )
     print( string.rep( "*", 60 ) )
 
     local cmd = ""
@@ -2014,6 +2377,68 @@ function gCounterAgentMethods.counter_Usage( ifaceObj, conn, msg, userdata )
 
 end -- counter_Usage
 
+----------------------------------------------------------------
+--- notify_Release
+---
+--- Callback for the notification Release API
+---
+--- This method gets called when the service daemon
+--- unregisters the session. A counter can use it to do
+--- cleanup tasks. There is no need to unregister the
+--- session, because when this method gets called it has
+--- already been unregistered.
+---
+--- @tparam   (string)  ifaceObj ....
+--- @tparam   (string)  conn     ....
+--- @tparam   (string)  msg      ....
+--- @tparam   (string)  userdata ....
+----------------------------------------------------------------
+function gNotifyAPI.notify_Release( ifaceObj, conn, msg, userdata )
+
+    local session_name = tostring(msg:getObjectPath())
+    local sessionObj   = gSessionList[session_name]
+
+    local sMsg = string.format("Release\nsession: %s\n%s",
+                               session_name,
+                               pretty.write( sessionObj ))
+    popup( sMsg, "Notify Agent API" )
+
+    if sessionObj then
+        -- Release
+        sessionObj.session         = nil
+        sessionObj.notify          = nil
+        gSessionList[session_name] = nil
+    end
+
+    conn:send( l2dbus.Message.newMethodReturn( msg ) )
+
+end -- notify_Release
+
+----------------------------------------------------------------
+--- notify_Update
+---
+--- Callback for the notification Update API
+---
+--- Sends an update of changed settings. Only settings
+--- that are changed will be included.
+---
+--- Initially on every session creation this method is
+--- called once to inform about the current settings.
+---
+--- @tparam   (string)  ifaceObj ....
+--- @tparam   (string)  conn     ....
+--- @tparam   (string)  msg      ....
+--- @tparam   (string)  userdata ....
+----------------------------------------------------------------
+function gNotifyAPI.notify_Update( ifaceObj, conn, msg, userdata )
+
+    local sMsg = string.format("Update\nsession: %s\n%s",
+                               tostring(msg:getObjectPath()),
+                               pretty.write( msg:getArgsAsArray() ))
+    popup( sMsg, "Notify Agent API" )
+    conn:send( l2dbus.Message.newMethodReturn( msg ) )
+
+end -- notify_Update
 
 ----------------------------------------------------------------
 --- parseArgs
@@ -2177,10 +2602,6 @@ Example: Manager.GetServices
     }
   }
 }
-
-
-
-
 
 ]=]
 
