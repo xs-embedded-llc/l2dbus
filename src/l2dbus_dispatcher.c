@@ -31,7 +31,6 @@
  *===========================================================================
  */
 #include <stdlib.h>
-#include "ev.h"
 #include "cdbus/cdbus.h"
 #include "l2dbus_alloc.h"
 #include "l2dbus_compat.h"

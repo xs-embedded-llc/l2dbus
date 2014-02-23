@@ -45,7 +45,6 @@
 #include "l2dbus_trace.h"
 #include "l2dbus_debug.h"
 #include "l2dbus_types.h"
-#include "ev.h"
 #include "lualib.h"
 
 /**
