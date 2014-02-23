@@ -199,7 +199,7 @@ if( NOT L2DBUS_NO_GLIB_LOOP )
     include_directories(${GLIB_PKG_INCLUDE_DIRS})
     link_directories(${GLIB_PKG_LIBRARY_DIRS})
 
-    pkg_check_modules(CDBUS_GLIB_PKG REQUIRED "cdbus-glib")
+    pkg_check_modules(CDBUS_GLIB_PKG REQUIRED "cdbus-glib>=1.0.0")
     include_directories(${CDBUS_GLIB_PKG_INCLUDE_DIRS})
     link_directories(${CDBUS_GLIB_PKG_LIBRARY_DIRS})
     
