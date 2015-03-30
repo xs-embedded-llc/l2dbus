@@ -186,7 +186,7 @@ local posix     = require( "posix" )
 
 -- Const
 --------
-local APP_VER       = "1.1.0"
+local APP_VER       = "1.1.1"
 
 local BUSNAME         = 1
 local OBJPATH         = 2
@@ -966,7 +966,7 @@ local function submenuManager_createSession( )
     local opt          = ""
 
     -- AllowedBearers
-    local tMenu = { "*","ethernet","wifi","bluetooth","cellular","vpn" }
+    local tMenu = { "*","ethernet","wifi","bluetooth","cellular","vpn","gadget" }
     while opt ~= "*" do
         opt = gPrompter:selection( "*", "Select the bearer order (Enter to exit loop):", tMenu )
         if opt == nil then

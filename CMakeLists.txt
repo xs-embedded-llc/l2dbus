@@ -5,6 +5,14 @@ PROJECT( l2dbus  C )
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/CMakeModules")
 set(FIND_LIBRARY_USE_LIB64_PATHS TRUE)
 
+# Older versions of cmake lack the FindLua script needed for
+# more recent versions of Lua.  So we have a copy in a 
+# compat directory if needed, otherwise cmake modules are used.
+find_package(Lua)
+if ( NOT Lua_FOUND )
+  list( APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/CMakeModules/compat")
+endif( NOT Lua_FOUND )
+
 # Define the L2DBUS root directory
 set(L2DBUS_ROOT_DIR ${PROJECT_SOURCE_DIR})
 set(L2DBUS_OUTPUT_DIR "${L2DBUS_ROOT_DIR}/${CMAKE_SYSTEM_PROCESSOR}-${CMAKE_BUILD_TYPE}")
