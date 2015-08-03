@@ -63,7 +63,7 @@ else( CDBUS_PKG_FOUND )
     if( "${CDBUS_LIB}" STREQUAL "CDBUS_LIB-NOTFOUND" )
         message(FATAL_ERROR "Cannot find libcdbus in the library search path")
     else( "${CDBUS_LIB}" STREQUAL "CDBUS_LIB-NOTFOUND" )
-        message(STATUS "Will link with libcdbus found here: "${CDBUS_LIB})
+        message(STATUS "Will link with libcdbus found here: " ${CDBUS_LIB})
     endif( "${CDBUS_LIB}" STREQUAL "CDBUS_LIB-NOTFOUND" )
 endif( CDBUS_PKG_FOUND )
 
