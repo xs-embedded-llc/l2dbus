@@ -1029,7 +1029,7 @@ newPropertyProxy = function(proxyCtrl, metadata)
 			
 			msg:addArgsBySignature("s", metadata.interface)
 			msg:addArgsBySignature("s", propName)
-			msg:addArgsBySignature("v", value)
+			msg:addArgs(l2dbus.DbusTypes.Variant.new(value))
 			local reply = nil
 			local errName = nil
 			local errMsg = nil
